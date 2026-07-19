@@ -1,0 +1,201 @@
+// reyOne Construction Manager — core schema
+// Single-tenant per deployment (no tenant_id). Future modules add their own
+// models to this file; core models below never depend on module models.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Company (singleton) — branding & global config
+// ---------------------------------------------------------------------------
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String
+  logoUrl   String?
+  phone     String?
+  email     String?
+  address   String?  @db.Text
+  currency  String   @default("INR")
+  timezone  String   @default("Asia/Kolkata")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("company")
+}
+
+// ---------------------------------------------------------------------------
+// Users, Roles, Permissions
+// ---------------------------------------------------------------------------
+model User {
+  id           Int        @id @default(autoincrement())
+  name         String
+  email        String     @unique
+  phone        String?
+  passwordHash String
+  designation  String?
+  salary       Decimal?   @db.Decimal(15, 2)
+  status       UserStatus @default(ACTIVE)
+  roleId       Int
+  role         Role       @relation(fields: [roleId], references: [id])
+
+  refreshTokens RefreshToken[]
+  activityLogs  ActivityLog[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // soft delete
+
+  @@index([roleId])
+  @@index([status])
+  @@map("users")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  key         String           @unique // owner, admin, project_manager, ...
+  name        String
+  description String?
+  isSystem    Boolean          @default(false) // seeded roles cannot be deleted
+  users       User[]
+  permissions RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  key         String           @unique // "projects.create", "*" for owner
+  module      String // grouping: "projects"
+  action      String // "create"
+  description String?
+  roles       RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Module registry & configuration
+// ---------------------------------------------------------------------------
+model Module {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique // "projects", "finance"
+  name        String
+  description String?
+  enabled     Boolean  @default(true)
+  isCore      Boolean  @default(false) // core modules cannot be disabled
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("modules")
+}
+
+// Key/value config, grouped. value is JSON so it holds scalars, lists, objects.
+model Setting {
+  id        Int      @id @default(autoincrement())
+  group     String // "projects", "finance", "system"
+  key       String
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([group, key])
+  @@map("settings")
+}
+
+// Governs custom/configurable fields per entity (e.g. project form).
+model FieldDefinition {
+  id         Int      @id @default(autoincrement())
+  entityType String // "project"
+  key        String // machine key stored inside custom_fields JSON
+  label      String
+  fieldType  String // text, number, date, select, textarea, checkbox
+  options    Json? // for select
+  required   Boolean  @default(false)
+  visible    Boolean  @default(true)
+  isCustom   Boolean  @default(true) // false = toggling a built-in field
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([entityType, key])
+  @@index([entityType])
+  @@map("field_definitions")
+}
+
+// ---------------------------------------------------------------------------
+// Activity log
+// ---------------------------------------------------------------------------
+model ActivityLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String // "user.created", "project.updated"
+  entityType String?
+  entityId   String?
+  meta       Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Polymorphic attachments (future File Manager plugs in here)
+// ---------------------------------------------------------------------------
+model Attachment {
+  id           Int      @id @default(autoincrement())
+  entityType   String // "project", "expense", "user"
+  entityId     Int
+  fileName     String
+  filePath     String
+  mimeType     String?
+  size         Int?
+  uploadedById Int?
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@map("attachments")
+}
