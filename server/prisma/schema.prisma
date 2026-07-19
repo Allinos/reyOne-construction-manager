@@ -295,3 +295,61 @@ model TaskAssignee {
   @@index([userId])
   @@map("task_assignees")
 }
+
+// ===========================================================================
+// MODULE: Finance
+// Payments (money in, always project-tied) and Expenses (money out, project or
+// company). Accounts, payment methods, and expense categories are configured
+// in settings; transactions reference them by key. projectId/phaseId are
+// scalar FKs (no relation into the Projects module) to keep finance removable
+// independently. Account balances are always DERIVED from these rows, never
+// stored, so they can't drift.
+// ===========================================================================
+model Payment {
+  id          Int      @id @default(autoincrement())
+  projectId   Int
+  phaseId     Int?
+  amount      Decimal  @db.Decimal(15, 2)
+  date        DateTime
+  method      String // payment method key (settings: finance.payment_methods)
+  account     String // account key (settings: finance.accounts)
+  notes       String?  @db.Text
+  createdById Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([account])
+  @@index([date])
+  @@map("payments")
+}
+
+enum ExpenseScope {
+  PROJECT
+  COMPANY
+}
+
+model Expense {
+  id          Int          @id @default(autoincrement())
+  scope       ExpenseScope @default(COMPANY)
+  projectId   Int? // required when scope = PROJECT
+  category    String
+  amount      Decimal      @db.Decimal(15, 2)
+  date        DateTime
+  method      String
+  account     String
+  expenseBy   String?
+  notes       String?      @db.Text
+  createdById Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([scope])
+  @@index([projectId])
+  @@index([account])
+  @@index([category])
+  @@index([date])
+  @@map("expenses")
+}
