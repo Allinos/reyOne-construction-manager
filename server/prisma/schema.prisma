@@ -199,3 +199,99 @@ model Attachment {
   @@index([entityType, entityId])
   @@map("attachments")
 }
+
+// ===========================================================================
+// MODULE: Projects
+// Self-contained. Assignees reference users by scalar userId (no relation into
+// the core User model) so this whole module can be removed without touching
+// core. Phases are snapshotted onto each project at creation from the
+// configurable template in settings, so editing the template never rewrites
+// historical projects.
+// ===========================================================================
+model Project {
+  id              Int       @id @default(autoincrement())
+  referenceNumber String    @unique
+  name            String
+  // Client details (kept on the project for simplicity at this scale)
+  clientName      String
+  clientPhone     String?
+  clientEmail     String?
+  clientAddress   String?   @db.Text
+  // Core project fields
+  category        String?
+  status          String    @default("pending")
+  agreementDate   DateTime?
+  projectAmount   Decimal   @default(0) @db.Decimal(15, 2)
+  advanceAmount   Decimal   @default(0) @db.Decimal(15, 2)
+  // Client-specific configurable fields (governed by field_definitions)
+  customFields    Json?
+  createdById     Int?
+  phases          ProjectPhase[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([status])
+  @@index([category])
+  @@index([deletedAt])
+  @@map("projects")
+}
+
+model ProjectPhase {
+  id        Int             @id @default(autoincrement())
+  projectId Int
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  status    String          @default("pending")
+  deadline  DateTime?
+  sortOrder Int             @default(0)
+  tasks     PhaseTask[]
+  assignees PhaseAssignee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@map("project_phases")
+}
+
+// Employees assigned to a phase. userId is a scalar FK into users (no relation
+// object) to keep the module decoupled from core.
+model PhaseAssignee {
+  phaseId Int
+  userId  Int
+  phase   ProjectPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  @@id([phaseId, userId])
+  @@index([userId])
+  @@map("phase_assignees")
+}
+
+model PhaseTask {
+  id          Int            @id @default(autoincrement())
+  phaseId     Int
+  phase       ProjectPhase   @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?        @db.Text
+  status      String         @default("pending")
+  deadline    DateTime?
+  sortOrder   Int            @default(0)
+  assignees   TaskAssignee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phaseId])
+  @@map("phase_tasks")
+}
+
+model TaskAssignee {
+  taskId Int
+  userId Int
+  task   PhaseTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@index([userId])
+  @@map("task_assignees")
+}
