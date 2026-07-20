@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
+import { ThemeProvider } from '../context/ThemeContext';
 import { ToastProvider } from '../context/ToastContext';
 import { ConfirmProvider } from '../context/ConfirmContext';
 import ProtectedRoute from './ProtectedRoute';
@@ -10,8 +11,9 @@ import { MODULE_DEFS } from './modules';
 export default function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <ConfirmProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <ConfirmProvider>
           <AuthProvider>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
@@ -34,8 +36,9 @@ export default function App() {
               </Route>
             </Routes>
           </AuthProvider>
-        </ConfirmProvider>
-      </ToastProvider>
+          </ConfirmProvider>
+        </ToastProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

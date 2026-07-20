@@ -11,10 +11,13 @@
   body {
     @apply bg-cream text-slate-800 antialiased;
   }
+  .dark body {
+    background-color: #0f172a;
+    color: #e2e8f0;
+  }
 }
 
 @layer components {
-  /* Reusable primitives keep the UI consistent across modules. */
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
       transition-colors focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:opacity-50;
@@ -23,25 +26,26 @@
     @apply btn bg-brand-500 text-white hover:bg-brand-600;
   }
   .btn-secondary {
-    @apply btn border border-slate-200 bg-white text-slate-700 hover:bg-cream-200;
+    @apply btn border border-slate-200 bg-white text-slate-700 hover:bg-cream-200
+      dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700;
   }
   .btn-ghost {
-    @apply btn text-slate-600 hover:bg-cream-200;
+    @apply btn text-slate-600 hover:bg-cream-200 dark:text-slate-300 dark:hover:bg-slate-700;
   }
   .card {
-    @apply rounded-xl border border-cream-300 bg-white shadow-sm;
+    @apply rounded-xl border border-cream-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800;
   }
   .input {
     @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm
-      focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100;
+      focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100
+      dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-brand-900;
   }
   .label {
-    @apply mb-1 block text-sm font-medium text-slate-600;
+    @apply mb-1 block text-sm font-medium text-slate-600 dark:text-slate-300;
   }
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
-  /* Small action pills used in table rows (match the reference Edit/Delete). */
   .pill {
     @apply inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors;
   }
@@ -51,11 +55,55 @@
   .pill-delete {
     @apply pill bg-red-100 text-red-600 hover:bg-red-200;
   }
-  /* Orange section header bar (PHASE_1 / PROJECT PAYMENTS style). */
   .section-head {
-    @apply flex items-center justify-between rounded-t-xl bg-brand-50 px-4 py-3;
+    @apply flex items-center justify-between rounded-t-xl bg-brand-50 px-4 py-3 dark:bg-slate-700/40;
   }
   .section-title {
-    @apply flex items-center gap-2 font-semibold text-brand-800;
+    @apply flex items-center gap-2 font-semibold text-brand-800 dark:text-brand-300;
   }
+}
+
+/* Dark-mode overrides for the common literal utility classes used across pages,
+   so surfaces adapt without editing every component. Two-class selectors beat
+   the single-class Tailwind utilities without !important. */
+.dark .bg-white {
+  background-color: #1e293b;
+}
+.dark .bg-cream,
+.dark .bg-cream-100 {
+  background-color: #1e293b;
+}
+.dark .bg-cream-200,
+.dark .bg-cream-300 {
+  background-color: #334155;
+}
+.dark .hover\:bg-cream-100:hover,
+.dark .hover\:bg-cream-200:hover,
+.dark .hover\:bg-cream-300:hover {
+  background-color: #334155;
+}
+.dark .bg-brand-50 {
+  background-color: rgba(249, 115, 22, 0.16);
+}
+.dark .text-slate-800 {
+  color: #e2e8f0;
+}
+.dark .text-slate-700 {
+  color: #cbd5e1;
+}
+.dark .text-slate-600 {
+  color: #cbd5e1;
+}
+.dark .text-slate-500 {
+  color: #94a3b8;
+}
+.dark .text-slate-400 {
+  color: #64748b;
+}
+.dark .border-cream-200,
+.dark .border-cream-300 {
+  border-color: #334155;
+}
+.dark .divide-cream-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #334155;
 }

@@ -19,6 +19,10 @@ const PATHS = {
   add: 'M12 5v14M5 12h14',
   expenses: 'M3 6h18M3 6v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6M8 12h8',
   chart: 'M3 3v18h18M7 14l3-3 3 3 5-5',
+  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
+  trash: 'M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6',
+  check: 'M20 6L9 17l-5-5',
+  close: 'M18 6 6 18M6 6l12 12',
 };
 
 export default function Icon({ name, className = 'w-5 h-5', strokeWidth = 2 }) {
