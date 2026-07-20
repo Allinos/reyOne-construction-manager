@@ -16,6 +16,9 @@ const PATHS = {
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   menu: 'M3 12h18M3 6h18M3 18h18',
   building: 'M3 21h18M6 21V7l6-4 6 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h.01M15 17h.01',
+  add: 'M12 5v14M5 12h14',
+  expenses: 'M3 6h18M3 6v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6M8 12h8',
+  chart: 'M3 3v18h18M7 14l3-3 3 3 5-5',
 };
 
 export default function Icon({ name, className = 'w-5 h-5', strokeWidth = 2 }) {

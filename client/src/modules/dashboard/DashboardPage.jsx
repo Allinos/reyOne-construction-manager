@@ -53,6 +53,7 @@ export default function DashboardPage() {
         <StatCard label="Total Revenue" value={formatMoney(s.totalRevenue, currency)} accent="text-green-600" />
         <StatCard label="Total Expenses" value={formatMoney(s.totalExpenses, currency)} accent="text-red-600" />
         <StatCard label="Total Profit" value={formatMoney(s.totalProfit, currency)} accent="text-brand-600" />
+        <StatCard label="Pending Payments" value={formatMoney(s.pendingPayments, currency)} accent="text-amber-600" />
         <StatCard label="Total Users" value={s.totalUsers} />
       </div>
 

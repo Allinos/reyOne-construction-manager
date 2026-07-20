@@ -6,6 +6,9 @@ const dashboardRepository = {
   totalProjects() {
     return prisma.project.count({ where: { deletedAt: null } });
   },
+  sumProjectAmount() {
+    return prisma.project.aggregate({ where: { deletedAt: null }, _sum: { projectAmount: true } });
+  },
   projectStatusCounts() {
     return prisma.project.groupBy({ by: ['status'], where: { deletedAt: null }, _count: { _all: true } });
   },

@@ -7,23 +7,44 @@ import SettingsModule from '../modules/settings/SettingsModule';
 import ModuleManagerPage from '../modules/modulemanager/ModuleManagerPage';
 import ActivityPage from '../modules/activity/ActivityPage';
 
-// Frontend module registry — mirrors the backend modules. Each entry declares
-// its nav label, icon, route, and the permission required to see it. The
-// sidebar renders an entry only when the backend reports its module enabled AND
-// the user holds the permission, so the UI stays in lockstep with the config.
+// Frontend module registry — mirrors the backend modules. `section` groups the
+// item in the sidebar; `hidden` keeps a routed module out of the nav (used for
+// admin screens that live inside Settings). The sidebar shows an item only when
+// the backend reports its module enabled AND the user holds the permission.
 export const MODULE_DEFS = [
-  { key: 'dashboard', label: 'Dashboard', path: '/', icon: 'dashboard', permission: 'dashboard.read', element: <DashboardPage /> },
-  { key: 'projects', label: 'Projects', path: '/projects', icon: 'projects', permission: 'projects.read', element: <ProjectsModule /> },
-  { key: 'finance', label: 'Finance', path: '/finance', icon: 'finance', permission: 'finance.read', element: <FinanceModule /> },
-  { key: 'users', label: 'Users', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
-  { key: 'roles', label: 'Roles', path: '/roles', icon: 'roles', permission: 'roles.read', element: <RolesPage /> },
-  { key: 'activity', label: 'Activity', path: '/activity', icon: 'activity', permission: 'activity.read', element: <ActivityPage /> },
-  { key: 'modules', label: 'Modules', path: '/modules', icon: 'modules', permission: 'modules.read', element: <ModuleManagerPage /> },
-  { key: 'settings', label: 'Settings', path: '/settings', icon: 'settings', permission: 'settings.read', element: <SettingsModule /> },
+  { key: 'dashboard', section: 'main', label: 'Dashboard', path: '/', icon: 'dashboard', permission: 'dashboard.read', element: <DashboardPage /> },
+  { key: 'projects', section: 'main', label: 'Projects', path: '/projects', icon: 'projects', permission: 'projects.read', element: <ProjectsModule /> },
+  { key: 'finance', section: 'finance', label: 'Finance', path: '/finance', icon: 'finance', permission: 'finance.read', element: <FinanceModule /> },
+  { key: 'users', section: 'profile', label: 'User Manager', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
+  { key: 'settings', section: 'profile', label: 'Settings', path: '/settings', icon: 'settings', permission: 'settings.read', element: <SettingsModule /> },
+
+  // Admin screens — routed but hidden from the sidebar (reachable via Settings).
+  { key: 'roles', section: null, hidden: true, label: 'Roles', path: '/roles', icon: 'roles', permission: 'roles.read', element: <RolesPage /> },
+  { key: 'activity', section: null, hidden: true, label: 'Activity', path: '/activity', icon: 'activity', permission: 'activity.read', element: <ActivityPage /> },
+  { key: 'modules', section: null, hidden: true, label: 'Modules', path: '/modules', icon: 'modules', permission: 'modules.read', element: <ModuleManagerPage /> },
 ];
 
-// The nav items visible to this user given enabled modules + permissions.
-export function visibleModules(enabledKeys, can) {
+// Nav-only links (not routed modules of their own).
+const EXTRA_NAV = [
+  { key: 'add-project', section: 'main', label: 'Add Project', path: '/projects/new', icon: 'add', permission: 'projects.create', moduleKey: 'projects' },
+];
+
+export const SECTIONS = [
+  { key: 'main', label: 'Dashboard' },
+  { key: 'finance', label: 'Finance' },
+  { key: 'profile', label: 'Profile' },
+];
+
+// Builds the grouped, filtered nav for the sidebar.
+export function buildNav(enabledKeys, can) {
   const enabled = new Set(enabledKeys);
-  return MODULE_DEFS.filter((m) => enabled.has(m.key) && (!m.permission || can(m.permission)));
+  const navItems = [
+    ...MODULE_DEFS.filter((m) => !m.hidden && m.section).map((m) => ({ ...m, moduleKey: m.key })),
+    ...EXTRA_NAV,
+  ].filter((m) => enabled.has(m.moduleKey) && (!m.permission || can(m.permission)));
+
+  return SECTIONS.map((s) => ({
+    ...s,
+    items: navItems.filter((i) => i.section === s.key),
+  })).filter((s) => s.items.length > 0);
 }

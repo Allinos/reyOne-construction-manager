@@ -1,7 +1,10 @@
 'use strict';
 
+const { Prisma } = require('@prisma/client');
 const repo = require('./dashboard.repository');
 const financeService = require('../finance/finance.service');
+
+const D = (v) => new Prisma.Decimal(v ?? 0);
 
 // --- chart helpers -------------------------------------------------------
 
@@ -32,15 +35,21 @@ function alignSeries(labels, rows) {
 
 const dashboardService = {
   async summary() {
-    const [totalProjects, statusCounts, totalUsers, finance] = await Promise.all([
+    const [totalProjects, statusCounts, totalUsers, finance, projectValueAgg] = await Promise.all([
       repo.totalProjects(),
       repo.projectStatusCounts(),
       repo.totalUsers(),
       financeService.overview({}),
+      repo.sumProjectAmount(),
     ]);
 
     const projectStatus = {};
     for (const row of statusCounts) projectStatus[row.status] = row._count._all;
+
+    // Pending payments = total contracted project value − total received (never below 0).
+    const totalProjectValue = D(projectValueAgg._sum.projectAmount);
+    const pending = totalProjectValue.minus(D(finance.totalReceived));
+    const pendingPayments = (pending.isNegative() ? D(0) : pending).toFixed(2);
 
     return {
       stats: {
@@ -53,6 +62,8 @@ const dashboardService = {
         totalRevenue: finance.totalReceived,
         totalExpenses: finance.totalExpenses,
         totalProfit: finance.profit,
+        totalProjectValue: totalProjectValue.toFixed(2),
+        pendingPayments,
       },
       projectStatus,
       finance: { byType: finance.byType, accounts: finance.accounts },
