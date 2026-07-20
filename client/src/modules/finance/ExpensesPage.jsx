@@ -5,6 +5,8 @@ import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDate } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
 import Modal from '../../components/Modal';
+import AnalyticsModal, { AnalyticsButton } from '../../components/AnalyticsModal';
+import { ExpenseAnalytics } from './analytics';
 
 const blank = { scope: 'COMPANY', projectId: '', category: '', amount: '', date: '', method: '', account: '', expenseBy: '', notes: '' };
 
@@ -24,6 +26,7 @@ export default function ExpensesPage() {
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [analytics, setAnalytics] = useState(false);
 
   const projectMap = Object.fromEntries(projects.map((p) => [p.id, p]));
 
@@ -109,7 +112,12 @@ export default function ExpensesPage() {
       <PageHeader
         title="Expenses"
         subtitle="Project and company expenses"
-        actions={can('finance.create') && <button className="btn-primary" onClick={openNew}>+ Add Expense</button>}
+        actions={
+          <div className="flex gap-2">
+            <AnalyticsButton onClick={() => setAnalytics(true)} />
+            {can('finance.create') && <button className="btn-primary" onClick={openNew}>+ Add Expense</button>}
+          </div>
+        }
       />
 
       <Card className="mb-4">
@@ -244,6 +252,10 @@ export default function ExpensesPage() {
           </form>
         )}
       </Modal>
+
+      <AnalyticsModal open={analytics} onClose={() => setAnalytics(false)} title="Expense Analytics">
+        <ExpenseAnalytics open={analytics} />
+      </AnalyticsModal>
     </div>
   );
 }

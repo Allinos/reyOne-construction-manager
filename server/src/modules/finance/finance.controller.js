@@ -44,6 +44,9 @@ const financeController = {
   async overview(req, res) {
     return ok(res, await service.overview(req.query));
   },
+  async analytics(req, res) {
+    return ok(res, await service.analytics());
+  },
 };
 
 module.exports = financeController;

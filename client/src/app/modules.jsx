@@ -1,6 +1,7 @@
 import DashboardPage from '../modules/dashboard/DashboardPage';
 import ProjectsModule from '../modules/projects/ProjectsModule';
 import FinanceModule from '../modules/finance/FinanceModule';
+import ExpensesPage from '../modules/finance/ExpensesPage';
 import UsersPage from '../modules/users/UsersPage';
 import RolesPage from '../modules/roles/RolesPage';
 import SettingsModule from '../modules/settings/SettingsModule';
@@ -15,6 +16,7 @@ export const MODULE_DEFS = [
   { key: 'dashboard', section: 'main', label: 'Dashboard', path: '/', icon: 'dashboard', permission: 'dashboard.read', element: <DashboardPage /> },
   { key: 'projects', section: 'main', label: 'Projects', path: '/projects', icon: 'projects', permission: 'projects.read', element: <ProjectsModule /> },
   { key: 'finance', section: 'finance', label: 'Finance', path: '/finance', icon: 'finance', permission: 'finance.read', element: <FinanceModule /> },
+  { key: 'expenses', section: 'finance', label: 'Expenses', path: '/expenses', icon: 'expenses', permission: 'finance.read', element: <ExpensesPage />, moduleKey: 'finance' },
   { key: 'users', section: 'profile', label: 'User Manager', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
   { key: 'settings', section: 'profile', label: 'Settings', path: '/settings', icon: 'settings', permission: 'settings.read', element: <SettingsModule /> },
 
@@ -39,7 +41,7 @@ export const SECTIONS = [
 export function buildNav(enabledKeys, can) {
   const enabled = new Set(enabledKeys);
   const navItems = [
-    ...MODULE_DEFS.filter((m) => !m.hidden && m.section).map((m) => ({ ...m, moduleKey: m.key })),
+    ...MODULE_DEFS.filter((m) => !m.hidden && m.section).map((m) => ({ ...m, moduleKey: m.moduleKey || m.key })),
     ...EXTRA_NAV,
   ].filter((m) => enabled.has(m.moduleKey) && (!m.permission || can(m.permission)));
 

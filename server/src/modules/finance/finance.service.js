@@ -51,6 +51,24 @@ function dateWhere(query) {
   return range;
 }
 
+// Last-N-months labels (YYYY-MM) and gap-filling for time-series charts.
+function monthLabels(count) {
+  const labels = [];
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - (count - 1));
+  for (let i = 0; i < count; i += 1) {
+    labels.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    d.setMonth(d.getMonth() + 1);
+  }
+  return labels;
+}
+
+function alignSeries(labels, rows) {
+  const map = new Map(rows.map((r) => [String(r.period), Number(r.total || 0)]));
+  return labels.map((l) => Number((map.get(l) || 0).toFixed(2)));
+}
+
 // --- service -------------------------------------------------------------
 
 const financeService = {
@@ -228,6 +246,38 @@ const financeService = {
       projectExpenses: money(projectExpAgg._sum.amount),
       phaseWise,
       payments: payments.rows,
+    };
+  },
+
+  // Analytics payload for the Finance and Expenses analytics popups.
+  async analytics() {
+    const labels = monthLabels(12);
+    const from = new Date(`${labels[0]}-01T00:00:00`);
+    const fmt = '%Y-%m';
+    const [revRows, expRows, overview, projAgg] = await Promise.all([
+      repo.revenueSeries(from, fmt),
+      repo.expenseSeries(from, fmt),
+      this.overview({}),
+      repo.sumProjectAmount(),
+    ]);
+
+    const received = D(overview.totalReceived);
+    const pendingRaw = D(projAgg._sum.projectAmount).minus(received);
+    const pending = pendingRaw.isNegative() ? D(0) : pendingRaw;
+
+    return {
+      monthly: {
+        labels,
+        revenue: alignSeries(labels, revRows),
+        expenses: alignSeries(labels, expRows),
+      },
+      byCategory: overview.expenseByCategory,
+      totals: {
+        received: overview.totalReceived,
+        expenses: overview.totalExpenses,
+        profit: overview.profit,
+        pending: pending.toFixed(2),
+      },
     };
   },
 

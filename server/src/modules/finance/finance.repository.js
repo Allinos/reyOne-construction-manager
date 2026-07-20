@@ -63,6 +63,19 @@ const financeRepository = {
     return prisma.expense.groupBy({ by: ['category'], where, _sum: { amount: true } });
   },
 
+  // --- analytics ---
+  sumProjectAmount() {
+    return prisma.project.aggregate({ where: { deletedAt: null }, _sum: { projectAmount: true } });
+  },
+  revenueSeries(fromDate, fmt) {
+    return prisma.$queryRaw`SELECT DATE_FORMAT(date, ${fmt}) period, SUM(amount) total
+      FROM payments WHERE date >= ${fromDate} GROUP BY period ORDER BY period`;
+  },
+  expenseSeries(fromDate, fmt) {
+    return prisma.$queryRaw`SELECT DATE_FORMAT(date, ${fmt}) period, SUM(amount) total
+      FROM expenses WHERE date >= ${fromDate} GROUP BY period ORDER BY period`;
+  },
+
   // --- cross-references (read-only) ---
   findProject(id) {
     return prisma.project.findFirst({ where: { id, deletedAt: null } });

@@ -14,6 +14,7 @@ export const deleteExpense = (id) => unwrap(api.delete(`/finance/expenses/${id}`
 
 export const getAccounts = () => unwrap(api.get('/finance/accounts'));
 export const getOverview = (params) => unwrap(api.get('/finance/overview', { params }));
+export const getAnalytics = () => unwrap(api.get('/finance/analytics'));
 export const getProjectSummary = (projectId) => unwrap(api.get(`/finance/projects/${projectId}/summary`));
 
 // Lightweight project options for the payment/expense selectors.
