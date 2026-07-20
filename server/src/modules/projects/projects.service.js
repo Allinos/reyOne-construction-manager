@@ -4,6 +4,7 @@ const prisma = require('../../config/prisma');
 const repo = require('./projects.repository');
 const AppError = require('../../core/errors/AppError');
 const activity = require('../../core/services/activityLog');
+const { notifyMany } = require('../../core/services/notify');
 const { getPagination, buildMeta } = require('../../core/utils/pagination');
 
 // --- helpers -------------------------------------------------------------
@@ -60,6 +61,7 @@ async function validateAssignees(ids) {
 
 function collectUserIds(project) {
   const ids = new Set();
+  for (const a of project.assignees || []) ids.add(a.userId);
   for (const phase of project.phases || []) {
     for (const a of phase.assignees || []) ids.add(a.userId);
     for (const task of phase.tasks || []) {
@@ -78,6 +80,7 @@ async function decorate(project) {
 
   return {
     ...project,
+    assignees: mapAssignees(project.assignees),
     phases: (project.phases || []).map((phase) => ({
       ...phase,
       assignees: mapAssignees(phase.assignees),
@@ -92,11 +95,15 @@ async function decorate(project) {
 // --- service -------------------------------------------------------------
 
 const projectsService = {
-  async list(query) {
+  async list(query, actor) {
     const { page, limit, skip, take } = getPagination(query);
     const where = { deletedAt: null };
     if (query.category) where.category = query.category;
     if (query.status) where.status = query.status;
+    // "mine" restricts to projects the current user is assigned to (employee panel).
+    if ((query.mine === 'true' || query.mine === true) && actor) {
+      where.assignees = { some: { userId: actor.id } };
+    }
     if (query.search) {
       where.OR = [
         { referenceNumber: { contains: query.search } },
@@ -106,6 +113,26 @@ const projectsService = {
     }
     const { rows, total } = await repo.list({ where, skip, take });
     return { data: rows, meta: buildMeta(page, limit, total) };
+  },
+
+  async assignEmployees(projectId, userIds, actor, req) {
+    const project = await this.assertProject(projectId);
+    const ids = await validateAssignees(userIds);
+    const existing = await repo.projectAssigneeUserIds(projectId);
+    await repo.setProjectAssignees(projectId, ids);
+
+    const added = ids.filter((id) => !existing.includes(id));
+    if (added.length) {
+      notifyMany(added, {
+        type: 'project.assigned',
+        title: 'New project assigned',
+        message: `You have been assigned to ${project.name} (${project.referenceNumber}).`,
+        entityType: 'project',
+        entityId: projectId,
+      });
+    }
+    activity.record({ userId: actor.id, action: 'project.assignees_updated', entityType: 'project', entityId: projectId, req });
+    return this.get(projectId);
   },
 
   async get(id) {
@@ -215,6 +242,18 @@ const projectsService = {
 
     const project = await repo.update(id, data);
     activity.record({ userId: actor.id, action: 'project.updated', entityType: 'project', entityId: id, req });
+
+    // Notify assigned employees when the project status changes.
+    if (payload.status && payload.status !== existing.status) {
+      const assignees = await repo.projectAssigneeUserIds(id);
+      notifyMany(assignees, {
+        type: 'project.status',
+        title: 'Project status updated',
+        message: `${existing.name} status changed to "${payload.status}".`,
+        entityType: 'project',
+        entityId: id,
+      });
+    }
     return decorate(project);
   },
 

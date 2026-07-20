@@ -14,6 +14,7 @@ const MODULE_CATALOG = [
   { key: 'settings', name: 'Settings', isCore: true, enabled: true, sortOrder: 4, description: 'Company & app configuration' },
   { key: 'modules', name: 'Module Manager', isCore: true, enabled: true, sortOrder: 5, description: 'Enable/disable modules' },
   { key: 'activity', name: 'Activity Logs', isCore: true, enabled: true, sortOrder: 6, description: 'Audit trail' },
+  { key: 'notifications', name: 'Notifications', isCore: true, enabled: true, sortOrder: 7, description: 'In-app notifications' },
 
   // Feature modules — toggleable
   { key: 'dashboard', name: 'Dashboard', isCore: false, enabled: true, sortOrder: 10, description: 'Company overview' },

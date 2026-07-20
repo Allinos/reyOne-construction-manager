@@ -45,6 +45,7 @@ const createExpenseSchema = z
     method: z.string().min(1).max(50),
     account: z.string().min(1).max(50),
     expenseBy: z.string().max(100).optional(),
+    paidTo: z.string().max(150).optional(),
     notes: z.string().max(1000).optional(),
   })
   .refine((d) => d.scope !== 'PROJECT' || d.projectId != null, {
@@ -60,6 +61,7 @@ const updateExpenseSchema = z
     method: z.string().min(1).max(50).optional(),
     account: z.string().min(1).max(50).optional(),
     expenseBy: z.string().max(100).nullable().optional(),
+    paidTo: z.string().max(150).nullable().optional(),
     notes: z.string().max(1000).nullable().optional(),
   })
   .refine((d) => Object.keys(d).length > 0, { message: 'No fields to update' });

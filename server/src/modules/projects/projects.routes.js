@@ -13,6 +13,7 @@ const {
   updatePhaseSchema,
   addTaskSchema,
   updateTaskSchema,
+  assignEmployeesSchema,
   idParam,
   phaseParams,
   taskParams,
@@ -36,6 +37,14 @@ function registerRoutes(router) {
     asyncHandler(controller.update),
   );
   router.delete('/:id', authorize('projects.delete'), validate({ params: idParam }), asyncHandler(controller.remove));
+
+  // Employee assignment
+  router.post(
+    '/:id/assignees',
+    authorize('projects.update'),
+    validate({ params: idParam, body: assignEmployeesSchema }),
+    asyncHandler(controller.assignEmployees),
+  );
 
   // Phases
   router.post(

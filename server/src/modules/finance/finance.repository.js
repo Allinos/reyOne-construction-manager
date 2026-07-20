@@ -80,6 +80,17 @@ const financeRepository = {
   findProject(id) {
     return prisma.project.findFirst({ where: { id, deletedAt: null } });
   },
+  async projectAssigneeUserIds(projectId) {
+    const rows = await prisma.projectAssignee.findMany({ where: { projectId }, select: { userId: true } });
+    return rows.map((r) => r.userId);
+  },
+  projectExpenses(projectId) {
+    return prisma.expense.findMany({
+      where: { scope: 'PROJECT', projectId },
+      orderBy: { date: 'desc' },
+      take: 200,
+    });
+  },
   findPhase(id) {
     return prisma.projectPhase.findUnique({ where: { id } });
   },

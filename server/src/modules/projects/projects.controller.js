@@ -5,8 +5,11 @@ const { ok, created } = require('../../core/http/response');
 
 const projectsController = {
   async list(req, res) {
-    const { data, meta } = await service.list(req.query);
+    const { data, meta } = await service.list(req.query, req.user);
     return ok(res, data, meta);
+  },
+  async assignEmployees(req, res) {
+    return ok(res, await service.assignEmployees(req.params.id, req.body.userIds, req.user, req));
   },
   async get(req, res) {
     return ok(res, await service.get(req.params.id));

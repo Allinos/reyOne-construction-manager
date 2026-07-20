@@ -60,6 +60,11 @@ const listProjectsQuery = z.object({
   search: z.string().trim().optional(),
   category: z.string().max(100).optional(),
   status: z.string().max(40).optional(),
+  mine: z.enum(['true', 'false']).optional(),
+});
+
+const assignEmployeesSchema = z.object({
+  userIds: z.array(z.coerce.number().int().positive()),
 });
 
 const addPhaseSchema = phaseInput;
@@ -100,6 +105,7 @@ module.exports = {
   createProjectSchema,
   updateProjectSchema,
   listProjectsQuery,
+  assignEmployeesSchema,
   addPhaseSchema,
   updatePhaseSchema,
   addTaskSchema,

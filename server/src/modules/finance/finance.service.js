@@ -4,6 +4,7 @@ const { Prisma } = require('@prisma/client');
 const repo = require('./finance.repository');
 const AppError = require('../../core/errors/AppError');
 const activity = require('../../core/services/activityLog');
+const { notifyMany } = require('../../core/services/notify');
 const { getPagination, buildMeta } = require('../../core/utils/pagination');
 
 // Exact decimal arithmetic — never floats for money.
@@ -103,6 +104,16 @@ const financeService = {
       createdById: actor.id,
     });
     activity.record({ userId: actor.id, action: 'payment.created', entityType: 'payment', entityId: payment.id, req });
+
+    // Notify assigned employees that a payment was received.
+    const assignees = await repo.projectAssigneeUserIds(payload.projectId);
+    notifyMany(assignees, {
+      type: 'payment.received',
+      title: 'Payment received',
+      message: `A payment of ${money(payload.amount)} was recorded.`,
+      entityType: 'project',
+      entityId: payload.projectId,
+    });
     return payment;
   },
 
@@ -157,6 +168,7 @@ const financeService = {
       method: payload.method,
       account: payload.account,
       expenseBy: payload.expenseBy,
+      paidTo: payload.paidTo,
       notes: payload.notes,
       createdById: actor.id,
     });
@@ -219,12 +231,13 @@ const financeService = {
     const project = await repo.findProject(projectId);
     if (!project) throw AppError.notFound('Project not found');
 
-    const [receivedAgg, projectExpAgg, payments, phaseGroups, phases] = await Promise.all([
+    const [receivedAgg, projectExpAgg, payments, phaseGroups, phases, expenses] = await Promise.all([
       repo.sumPayments({ projectId }),
       repo.sumExpenses({ scope: 'PROJECT', projectId }),
       repo.listPayments({ where: { projectId }, skip: 0, take: 500 }),
       repo.paymentsByPhase(projectId),
       repo.projectPhases(projectId),
+      repo.projectExpenses(projectId),
     ]);
 
     const total = D(project.projectAmount);
@@ -246,6 +259,7 @@ const financeService = {
       projectExpenses: money(projectExpAgg._sum.amount),
       phaseWise,
       payments: payments.rows,
+      expenses,
     };
   },
 

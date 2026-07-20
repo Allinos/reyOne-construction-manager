@@ -15,8 +15,9 @@ const listSelect = {
   createdAt: true,
 };
 
-// Full detail include: phases -> tasks + assignees, ordered.
+// Full detail include: project assignees + phases -> tasks + assignees, ordered.
 const detailInclude = {
+  assignees: true,
   phases: {
     orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     include: {
@@ -93,6 +94,21 @@ const projectsRepository = {
 
   softDelete(id) {
     return prisma.project.update({ where: { id }, data: { deletedAt: new Date() } });
+  },
+
+  // --- Project-level assignees ---
+  async projectAssigneeUserIds(projectId) {
+    const rows = await prisma.projectAssignee.findMany({ where: { projectId }, select: { userId: true } });
+    return rows.map((r) => r.userId);
+  },
+  async setProjectAssignees(projectId, userIds) {
+    await prisma.$transaction([
+      prisma.projectAssignee.deleteMany({ where: { projectId } }),
+      prisma.projectAssignee.createMany({
+        data: userIds.map((userId) => ({ projectId, userId })),
+        skipDuplicates: true,
+      }),
+    ]);
   },
 
   // --- Phases ---
