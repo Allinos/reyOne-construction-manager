@@ -22,6 +22,9 @@ const WRITE = authorize('settings.update');
 function registerRoutes(router) {
   router.use(authenticate);
 
+  // Database backup download (declared before "/:group").
+  router.get('/backup', WRITE, asyncHandler(controller.backup));
+
   // Company (declared before "/:group" so it isn't treated as a group).
   router.get('/company', READ, asyncHandler(controller.getCompany));
   router.put('/company', WRITE, validate({ body: updateCompanySchema }), asyncHandler(controller.updateCompany));
