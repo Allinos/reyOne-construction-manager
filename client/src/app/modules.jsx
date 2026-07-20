@@ -1,5 +1,6 @@
 import DashboardPage from '../modules/dashboard/DashboardPage';
 import ProjectsModule from '../modules/projects/ProjectsModule';
+import FinanceModule from '../modules/finance/FinanceModule';
 import Placeholder from '../pages/Placeholder';
 
 // Frontend module registry — mirrors the backend modules. Each entry declares
@@ -9,7 +10,7 @@ import Placeholder from '../pages/Placeholder';
 export const MODULE_DEFS = [
   { key: 'dashboard', label: 'Dashboard', path: '/', icon: 'dashboard', permission: 'dashboard.read', element: <DashboardPage /> },
   { key: 'projects', label: 'Projects', path: '/projects', icon: 'projects', permission: 'projects.read', element: <ProjectsModule /> },
-  { key: 'finance', label: 'Finance', path: '/finance', icon: 'finance', permission: 'finance.read', element: <Placeholder title="Finance" /> },
+  { key: 'finance', label: 'Finance', path: '/finance', icon: 'finance', permission: 'finance.read', element: <FinanceModule /> },
   { key: 'users', label: 'Users', path: '/users', icon: 'users', permission: 'users.read', element: <Placeholder title="Users" /> },
   { key: 'roles', label: 'Roles', path: '/roles', icon: 'roles', permission: 'roles.read', element: <Placeholder title="Roles & Permissions" /> },
   { key: 'activity', label: 'Activity', path: '/activity', icon: 'activity', permission: 'activity.read', element: <Placeholder title="Activity Logs" /> },
