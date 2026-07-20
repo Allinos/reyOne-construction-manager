@@ -16,6 +16,10 @@ export const addPhase = (id, body) => unwrap(api.post(`/projects/${id}/phases`, 
 export const updatePhase = (id, phaseId, body) => unwrap(api.patch(`/projects/${id}/phases/${phaseId}`, body));
 export const deletePhase = (id, phaseId) => unwrap(api.delete(`/projects/${id}/phases/${phaseId}`));
 
+export const assignProjectEmployees = (id, userIds) => unwrap(api.post(`/projects/${id}/assignees`, { userIds }));
+export const listEmployees = () =>
+  api.get('/users', { params: { limit: 100, status: 'ACTIVE' } }).then((r) => r.data.data).catch(() => []);
+
 export const addTask = (id, phaseId, body) => unwrap(api.post(`/projects/${id}/phases/${phaseId}/tasks`, body));
 export const updateTask = (id, phaseId, taskId, body) =>
   unwrap(api.patch(`/projects/${id}/phases/${phaseId}/tasks/${taskId}`, body));

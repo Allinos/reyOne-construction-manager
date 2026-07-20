@@ -1,19 +1,54 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getProject, deleteProject, updatePhase, getFieldDefs } from './api';
+import {
+  getProject, deleteProject, updateProject, updatePhase, deletePhase, addPhase,
+  addTask, updateTask, deleteTask, getFieldDefs,
+  assignProjectEmployees, listEmployees,
+} from './api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDate } from '../../lib/format';
-import { PageHeader, Card, FullPageLoader, StatusBadge, Alert } from '../../components/ui';
+import { PageHeader, FullPageLoader, SectionCard, Alert, StatusBadge } from '../../components/ui';
 import Modal from '../../components/Modal';
+import Icon from '../../components/Icon';
 
 function Info({ label, value }) {
   return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-slate-400">{label}</dt>
-      <dd className="mt-0.5 text-sm text-slate-700">{value ?? '—'}</dd>
+    <div className="flex gap-2 text-sm">
+      <span className="text-slate-500">{label}:</span>
+      <span className="font-medium text-slate-700 dark:text-slate-200">{value ?? '—'}</span>
     </div>
+  );
+}
+
+// Inline deadline: shows formatted date (DD-MM-YYYY) or "not set yet", edits via a date input.
+function DeadlineField({ value, canEdit, onChange }) {
+  const [editing, setEditing] = useState(false);
+  if (editing) {
+    return (
+      <input
+        type="date"
+        autoFocus
+        className="input w-auto py-1"
+        defaultValue={value ? value.slice(0, 10) : ''}
+        onBlur={() => setEditing(false)}
+        onChange={(e) => {
+          onChange(e.target.value || null);
+          setEditing(false);
+        }}
+      />
+    );
+  }
+  return (
+    <button
+      className="rounded-md bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 dark:bg-slate-700 dark:text-brand-300"
+      onClick={() => canEdit && setEditing(true)}
+      disabled={!canEdit}
+    >
+      {value ? formatDate(value) : 'not set yet'}
+    </button>
   );
 }
 
@@ -22,14 +57,18 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const { bootstrap, can } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
   const currency = bootstrap?.company?.currency || 'INR';
   const statuses = bootstrap?.settings?.projects?.statuses || [];
   const statusLabel = (key) => statuses.find((s) => s.key === key)?.label || key;
+  const canEdit = can('projects.update');
 
   const [project, setProject] = useState(null);
   const [customDefs, setCustomDefs] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [error, setError] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [empModal, setEmpModal] = useState(null); // { scope, phaseId, selected:Set }
+  const [taskModal, setTaskModal] = useState(null); // { phaseId, taskId, title }
 
   const load = useCallback(async () => {
     try {
@@ -43,26 +82,72 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     load();
+    if (can('users.read')) listEmployees().then(setEmployees);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
-  const onPhaseStatus = async (phaseId, status) => {
+  const guard = async (fn, msg) => {
     try {
-      await updatePhase(id, phaseId, { status });
-      toast.success('Phase status updated successfully');
-      load();
+      await fn();
+      if (msg) toast.success(msg);
+      await load();
     } catch (err) {
       toast.error(errorMessage(err));
     }
   };
 
+  // --- project ---
+  const changeStatus = (status) => guard(() => updateProject(id, { status }), 'Status updated successfully');
   const onDelete = async () => {
-    try {
-      await deleteProject(id);
-      toast.success('Project deleted');
-      navigate('/projects');
-    } catch (err) {
-      toast.error(errorMessage(err));
-    }
+    const ok = await confirm({ title: 'Delete project?', message: `This will remove ${project.name}.`, confirmLabel: 'Delete' });
+    if (ok) guard(() => deleteProject(id), 'Project deleted').then(() => navigate('/projects'));
+  };
+
+  // --- employees ---
+  const openProjectEmp = () => setEmpModal({ scope: 'project', selected: new Set((project.assignees || []).map((a) => a.id)) });
+  const openPhaseEmp = (phase) => setEmpModal({ scope: 'phase', phaseId: phase.id, selected: new Set((phase.assignees || []).map((a) => a.id)) });
+  const toggleEmp = (uid) => setEmpModal((m) => {
+    const selected = new Set(m.selected);
+    selected.has(uid) ? selected.delete(uid) : selected.add(uid);
+    return { ...m, selected };
+  });
+  const saveEmp = () => {
+    const ids = [...empModal.selected];
+    const fn = empModal.scope === 'project'
+      ? () => assignProjectEmployees(id, ids)
+      : () => updatePhase(id, empModal.phaseId, { assigneeIds: ids });
+    const msg = empModal.scope === 'project' ? 'Employees assigned & notified' : 'Phase employees updated';
+    guard(fn, msg).then(() => setEmpModal(null));
+  };
+  const removePhaseAssignee = (phase, uid) =>
+    guard(() => updatePhase(id, phase.id, { assigneeIds: phase.assignees.filter((a) => a.id !== uid).map((a) => a.id) }), 'Employee removed');
+
+  // --- phases ---
+  const changePhaseStatus = (phase, status) => guard(() => updatePhase(id, phase.id, { status }), 'Phase status updated successfully');
+  const setPhaseDeadline = (phase, deadline) => guard(() => updatePhase(id, phase.id, { deadline }), 'Deadline updated');
+  const onAddPhase = () => {
+    const name = window.prompt('New stage name');
+    if (name?.trim()) guard(() => addPhase(id, { name: name.trim() }), 'Stage added');
+  };
+  const onDeletePhase = async (phase) => {
+    const ok = await confirm({ title: 'Delete stage?', message: `Remove "${phase.name}" and its tasks.`, confirmLabel: 'Delete' });
+    if (ok) guard(() => deletePhase(id, phase.id), 'Stage deleted');
+  };
+
+  // --- tasks ---
+  const toggleTask = (phase, task) =>
+    guard(() => updateTask(id, phase.id, task.id, { status: task.status === 'completed' ? 'pending' : 'completed' }));
+  const saveTask = () => {
+    const title = taskModal.title.trim();
+    if (!title) return;
+    const fn = taskModal.taskId
+      ? () => updateTask(id, taskModal.phaseId, taskModal.taskId, { title })
+      : () => addTask(id, taskModal.phaseId, { title });
+    guard(fn, taskModal.taskId ? 'Task updated' : 'Task added').then(() => setTaskModal(null));
+  };
+  const onDeleteTask = async (phase, task) => {
+    const ok = await confirm({ title: 'Delete task?', message: `Remove "${task.title}".`, confirmLabel: 'Delete' });
+    if (ok) guard(() => deleteTask(id, phase.id, task.id), 'Task deleted');
   };
 
   if (error) return <Alert>{error}</Alert>;
@@ -72,126 +157,190 @@ export default function ProjectDetailPage() {
     <div>
       <PageHeader
         title={project.name}
-        subtitle={`${project.referenceNumber} · ${project.clientName}`}
+        subtitle={`Reference no: ${project.referenceNumber} · Category: ${project.category || '—'}`}
         actions={
-          <div className="flex gap-2">
-            <Link to="/projects" className="btn-secondary">
-              Back
-            </Link>
-            {can('projects.update') && (
-              <Link to={`/projects/${id}/edit`} className="btn-secondary">
-                Edit
-              </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/projects" className="btn-secondary">Back</Link>
+            {canEdit && (
+              <select className="input w-auto py-1.5" value={project.status} onChange={(e) => changeStatus(e.target.value)}>
+                {statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+              </select>
             )}
-            {can('projects.delete') && (
-              <button className="btn-secondary text-red-600" onClick={() => setConfirmDelete(true)}>
-                Delete
-              </button>
-            )}
+            {canEdit && <button className="btn-secondary" onClick={openProjectEmp}>Assign Employees</button>}
+            {canEdit && <Link to={`/projects/${id}/edit`} className="btn-secondary">Edit</Link>}
+            {can('projects.delete') && <button className="btn-secondary text-red-600" onClick={onDelete}>Delete</button>}
           </div>
         }
       />
 
-      <Card className="mb-6">
+      {/* Project info */}
+      <div className="card mb-6 p-5">
         <div className="mb-3 flex items-center gap-3">
           <StatusBadge status={project.status} label={statusLabel(project.status)} />
-          <span className="text-sm text-slate-400">{project.category || 'Uncategorized'}</span>
+          {project.assignees?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {project.assignees.map((u) => (
+                <span key={u.id} className="badge bg-cream-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200">{u.name}</span>
+              ))}
+            </div>
+          )}
         </div>
-        <dl className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <Info label="Client" value={project.clientName} />
-          <Info label="Phone" value={project.clientPhone} />
-          <Info label="Email" value={project.clientEmail} />
+        <div className="grid grid-cols-1 gap-y-2 md:grid-cols-2">
+          <Info label="Client Name" value={project.clientName} />
+          <Info label="Phone Number" value={project.clientPhone} />
+          <Info label="Email ID" value={project.clientEmail} />
           <Info label="Address" value={project.clientAddress} />
           <Info label="Project Amount" value={formatMoney(project.projectAmount, currency)} />
-          <Info label="Advance" value={formatMoney(project.advanceAmount, currency)} />
           <Info label="Agreement Date" value={formatDate(project.agreementDate)} />
-          {customDefs.map((d) => (
-            <Info key={d.key} label={d.label} value={project.customFields?.[d.key]} />
-          ))}
-        </dl>
-      </Card>
+          {customDefs.map((d) => <Info key={d.key} label={d.label} value={project.customFields?.[d.key]} />)}
+        </div>
+      </div>
 
-      <h2 className="mb-3 text-lg font-semibold text-slate-800">Phases</h2>
+      {/* Stages */}
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Stages</h2>
+        {canEdit && <button className="btn-ghost text-brand-600" onClick={onAddPhase}>+ Add Stage</button>}
+      </div>
+
       {project.phases.length === 0 ? (
-        <Card className="text-sm text-slate-400">No phases.</Card>
+        <div className="card p-6 text-sm text-slate-400">No stages.</div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {project.phases.map((phase) => (
-            <Card key={phase.id}>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-medium text-slate-800">{phase.name}</h3>
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="text-slate-400">Deadline: {formatDate(phase.deadline)}</span>
-                  {can('projects.update') ? (
-                    <select
-                      className="input w-auto py-1"
-                      value={phase.status}
-                      onChange={(e) => onPhaseStatus(phase.id, e.target.value)}
-                    >
-                      {statuses.map((s) => (
-                        <option key={s.key} value={s.key}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <StatusBadge status={phase.status} label={statusLabel(phase.status)} />
-                  )}
-                </div>
+            <SectionCard
+              key={phase.id}
+              title={phase.name}
+              actions={
+                canEdit && (
+                  <button className="text-xs text-red-500 hover:underline" onClick={() => onDeletePhase(phase)}>Remove</button>
+                )
+              }
+            >
+              {/* Controls */}
+              <div className="mb-4 grid grid-cols-3 gap-2">
+                {canEdit ? (
+                  <select className="input py-1.5 text-sm" value={phase.status} onChange={(e) => changePhaseStatus(phase, e.target.value)}>
+                    {statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                  </select>
+                ) : (
+                  <StatusBadge status={phase.status} label={statusLabel(phase.status)} />
+                )}
+                <button className="btn-secondary py-1.5" onClick={() => canEdit && openPhaseEmp(phase)} disabled={!canEdit}>Employee</button>
+                <button className="btn-secondary py-1.5" onClick={() => canEdit && setTaskModal({ phaseId: phase.id, taskId: null, title: '' })} disabled={!canEdit}>+ Task</button>
               </div>
 
-              {phase.assignees?.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-1.5">
+              {/* Assigned employees */}
+              <p className="mb-1 text-sm font-medium text-brand-700 dark:text-brand-300">Assigned To</p>
+              {phase.assignees?.length ? (
+                <ul className="mb-4 divide-y divide-cream-200 dark:divide-slate-700">
                   {phase.assignees.map((u) => (
-                    <span key={u.id} className="badge bg-cream-200 text-slate-600">
-                      {u.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {phase.tasks?.length > 0 ? (
-                <ul className="divide-y divide-cream-200 rounded-lg border border-cream-200">
-                  {phase.tasks.map((task) => (
-                    <li key={task.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                      <span className="text-slate-700">{task.title}</span>
-                      <div className="flex items-center gap-2">
-                        {task.assignees?.map((u) => (
-                          <span key={u.id} className="text-xs text-slate-400">
-                            {u.name}
-                          </span>
-                        ))}
-                        <StatusBadge status={task.status} label={statusLabel(task.status)} />
-                      </div>
+                    <li key={u.id} className="flex items-center justify-between py-1.5 text-sm">
+                      <span className="text-slate-700 dark:text-slate-200">{u.name}</span>
+                      {canEdit && (
+                        <button className="text-slate-400 hover:text-red-500" onClick={() => removePhaseAssignee(phase, u.id)} aria-label="Remove">
+                          <Icon name="trash" className="h-4 w-4" />
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-slate-400">No tasks.</p>
+                <p className="mb-4 text-sm text-slate-400">No employees assigned.</p>
               )}
-            </Card>
+
+              {/* Tasks */}
+              <p className="mb-1 text-sm font-medium text-brand-700 dark:text-brand-300">Tasks</p>
+              {phase.tasks?.length ? (
+                <ul className="mb-4 space-y-1">
+                  {phase.tasks.map((task) => (
+                    <li key={task.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={task.status === 'completed'}
+                        disabled={!canEdit}
+                        onChange={() => toggleTask(phase, task)}
+                      />
+                      <span className={task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}>
+                        {task.title}
+                      </span>
+                      {canEdit && (
+                        <span className="ml-auto flex gap-2">
+                          <button className="text-xs text-brand-600 hover:underline" onClick={() => setTaskModal({ phaseId: phase.id, taskId: task.id, title: task.title })}>Edit</button>
+                          <button className="text-xs text-red-500 hover:underline" onClick={() => onDeleteTask(phase, task)}>Delete</button>
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mb-4 text-sm text-slate-400">No tasks.</p>
+              )}
+
+              {/* Deadline */}
+              <div className="flex items-center justify-between border-t border-cream-200 pt-3 dark:border-slate-700">
+                <span className="text-sm font-medium text-brand-700 dark:text-brand-300">Deadline</span>
+                <DeadlineField value={phase.deadline} canEdit={canEdit} onChange={(d) => setPhaseDeadline(phase, d)} />
+              </div>
+            </SectionCard>
           ))}
         </div>
       )}
 
+      {/* Employee picker modal (project or phase) */}
       <Modal
-        open={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
-        title="Delete project?"
+        open={Boolean(empModal)}
+        onClose={() => setEmpModal(null)}
+        title={empModal?.scope === 'project' ? 'Assign Employees to Project' : 'Phase Employees'}
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setConfirmDelete(false)}>
-              Cancel
-            </button>
-            <button className="btn-primary bg-red-600 hover:bg-red-700" onClick={onDelete}>
-              Delete
-            </button>
+            <button className="btn-secondary" onClick={() => setEmpModal(null)}>Cancel</button>
+            <button className="btn-primary" onClick={saveEmp}>Update</button>
           </>
         }
       >
-        <p className="text-sm text-slate-600">
-          This will remove <strong>{project.name}</strong>. This action cannot be undone from the UI.
-        </p>
+        {empModal && (
+          employees.length === 0 ? (
+            <p className="text-sm text-slate-400">No employees available.</p>
+          ) : (
+            <ul className="space-y-2">
+              {employees.map((u) => (
+                <li key={u.id}>
+                  <label className="flex items-center gap-3 rounded-lg border border-cream-300 px-3 py-2 dark:border-slate-700">
+                    <input type="checkbox" checked={empModal.selected.has(u.id)} onChange={() => toggleEmp(u.id)} />
+                    <span className="text-sm text-slate-700 dark:text-slate-200">{u.name}</span>
+                    <span className="ml-auto text-xs text-slate-400">{u.designation || u.role?.name}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )
+        )}
+      </Modal>
+
+      {/* Task add/edit modal */}
+      <Modal
+        open={Boolean(taskModal)}
+        onClose={() => setTaskModal(null)}
+        title={taskModal?.taskId ? 'Edit Task' : 'Add Task'}
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setTaskModal(null)}>Cancel</button>
+            <button className="btn-primary" onClick={saveTask}>Save</button>
+          </>
+        }
+      >
+        {taskModal && (
+          <div>
+            <label className="label">Task title</label>
+            <input
+              className="input"
+              autoFocus
+              value={taskModal.title}
+              onChange={(e) => setTaskModal((m) => ({ ...m, title: e.target.value }))}
+              onKeyDown={(e) => e.key === 'Enter' && saveTask()}
+            />
+          </div>
+        )}
       </Modal>
     </div>
   );
