@@ -20,7 +20,7 @@ customized entirely through configuration — not code changes.
 ```
 reyOne-construction-manager/
 ├── server/          Node/Express API (modular)
-├── client/          React SPA (added in a later step)
+├── client/          React SPA (Vite + Tailwind, bootstrap-driven)
 └── docs/            Architecture & decisions
 ```
 
@@ -54,3 +54,16 @@ npm run dev                   # http://localhost:4000/api/v1/health
 
 Default super-admin after seeding: `admin@reyone.local` / `Admin@123`
 (change immediately in production).
+
+## Getting Started (client)
+
+```bash
+cd client
+cp .env.example .env
+npm install
+npm run dev                   # http://localhost:5173 (proxies /api to :4000)
+```
+
+The client fetches `/api/v1/bootstrap` on login and renders its sidebar and
+routes from the enabled-module list — disabling a module in the backend hides
+it in the UI with no frontend change.
