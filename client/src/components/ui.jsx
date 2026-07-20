@@ -42,6 +42,36 @@ export function EmptyState({ title = 'Nothing here yet', hint }) {
   );
 }
 
+export function Pagination({ meta, onPage }) {
+  if (!meta || meta.totalPages <= 1) return null;
+  const { page, totalPages, total } = meta;
+  return (
+    <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+      <span>{total} total</span>
+      <div className="flex items-center gap-2">
+        <button className="btn-secondary px-3 py-1" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          Prev
+        </button>
+        <span>
+          Page {page} of {totalPages}
+        </span>
+        <button className="btn-secondary px-3 py-1" disabled={page >= totalPages} onClick={() => onPage(page + 1)}>
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function Alert({ type = 'error', children }) {
+  const styles = {
+    error: 'bg-red-50 text-red-600',
+    success: 'bg-green-50 text-green-700',
+    info: 'bg-blue-50 text-blue-700',
+  };
+  return <div className={`rounded-lg px-3 py-2 text-sm ${styles[type]}`}>{children}</div>;
+}
+
 const STATUS_STYLES = {
   completed: 'bg-green-100 text-green-700',
   in_progress: 'bg-blue-100 text-blue-700',

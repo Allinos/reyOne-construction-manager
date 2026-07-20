@@ -1,4 +1,5 @@
 import DashboardPage from '../modules/dashboard/DashboardPage';
+import ProjectsModule from '../modules/projects/ProjectsModule';
 import Placeholder from '../pages/Placeholder';
 
 // Frontend module registry — mirrors the backend modules. Each entry declares
@@ -7,7 +8,7 @@ import Placeholder from '../pages/Placeholder';
 // the user holds the permission, so the UI stays in lockstep with the config.
 export const MODULE_DEFS = [
   { key: 'dashboard', label: 'Dashboard', path: '/', icon: 'dashboard', permission: 'dashboard.read', element: <DashboardPage /> },
-  { key: 'projects', label: 'Projects', path: '/projects', icon: 'projects', permission: 'projects.read', element: <Placeholder title="Projects" /> },
+  { key: 'projects', label: 'Projects', path: '/projects', icon: 'projects', permission: 'projects.read', element: <ProjectsModule /> },
   { key: 'finance', label: 'Finance', path: '/finance', icon: 'finance', permission: 'finance.read', element: <Placeholder title="Finance" /> },
   { key: 'users', label: 'Users', path: '/users', icon: 'users', permission: 'users.read', element: <Placeholder title="Users" /> },
   { key: 'roles', label: 'Roles', path: '/roles', icon: 'roles', permission: 'roles.read', element: <Placeholder title="Roles & Permissions" /> },

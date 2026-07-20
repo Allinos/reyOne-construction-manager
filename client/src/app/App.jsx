@@ -22,7 +22,8 @@ export default function App() {
               m.path === '/' ? (
                 <Route key={m.key} index element={m.element} />
               ) : (
-                <Route key={m.key} path={m.path} element={m.element} />
+                // "/*" so modules can define their own nested routes.
+                <Route key={m.key} path={`${m.path}/*`} element={m.element} />
               ),
             )}
             <Route path="*" element={<Navigate to="/" replace />} />
