@@ -114,6 +114,42 @@ const projectsService = {
     return decorate(project);
   },
 
+  listClients() {
+    return repo.distinctClients().then((rows) =>
+      rows.map((r) => ({
+        name: r.clientName,
+        phone: r.clientPhone,
+        email: r.clientEmail,
+        address: r.clientAddress,
+      })),
+    );
+  },
+
+  async lastReference() {
+    const [latest, prefix] = await Promise.all([
+      repo.latestReference(),
+      getSetting('projects', 'reference_prefix', 'PRJ-'),
+    ]);
+    return { last: latest?.referenceNumber || null, prefix };
+  },
+
+  async analytics() {
+    const [statusRows, categoryRows, total, amountAgg] = await Promise.all([
+      repo.statusCounts(),
+      repo.categoryCounts(),
+      repo.countActive(),
+      repo.sumAmount(),
+    ]);
+    const byStatus = statusRows.map((r) => ({ label: r.status, value: r._count._all }));
+    const byCategory = categoryRows.map((r) => ({ label: r.category || 'Uncategorized', value: r._count._all }));
+    return {
+      totalProjects: total,
+      totalValue: (amountAgg._sum.projectAmount || 0).toString(),
+      byStatus,
+      byCategory,
+    };
+  },
+
   async create(payload, actor, req) {
     await validateCustomFields(payload.customFields);
 

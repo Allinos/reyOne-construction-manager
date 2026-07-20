@@ -5,6 +5,9 @@ export const listProjects = (params) =>
   api.get('/projects', { params }).then((r) => ({ items: r.data.data, meta: r.data.meta }));
 
 export const getProject = (id) => unwrap(api.get(`/projects/${id}`));
+export const listClients = () => unwrap(api.get('/projects/clients'));
+export const lastReference = () => unwrap(api.get('/projects/last-reference'));
+export const projectAnalytics = () => unwrap(api.get('/projects/analytics'));
 export const createProject = (body) => unwrap(api.post('/projects', body));
 export const updateProject = (id, body) => unwrap(api.patch(`/projects/${id}`, body));
 export const deleteProject = (id) => unwrap(api.delete(`/projects/${id}`));

@@ -23,6 +23,10 @@ function registerRoutes(router) {
 
   // Projects
   router.get('/', authorize('projects.read'), validate({ query: listProjectsQuery }), asyncHandler(controller.list));
+  // Static sub-routes declared before "/:id" so they aren't captured by it.
+  router.get('/clients', authorize('projects.read'), asyncHandler(controller.clients));
+  router.get('/last-reference', authorize('projects.read'), asyncHandler(controller.lastReference));
+  router.get('/analytics', authorize('projects.read'), asyncHandler(controller.analytics));
   router.get('/:id', authorize('projects.read'), validate({ params: idParam }), asyncHandler(controller.get));
   router.post('/', authorize('projects.create'), validate({ body: createProjectSchema }), asyncHandler(controller.create));
   router.patch(

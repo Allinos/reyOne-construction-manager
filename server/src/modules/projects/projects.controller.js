@@ -11,6 +11,15 @@ const projectsController = {
   async get(req, res) {
     return ok(res, await service.get(req.params.id));
   },
+  async clients(req, res) {
+    return ok(res, await service.listClients());
+  },
+  async lastReference(req, res) {
+    return ok(res, await service.lastReference());
+  },
+  async analytics(req, res) {
+    return ok(res, await service.analytics());
+  },
   async create(req, res) {
     return created(res, await service.create(req.body, req.user, req));
   },

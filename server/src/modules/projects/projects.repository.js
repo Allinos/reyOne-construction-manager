@@ -43,6 +43,34 @@ const projectsRepository = {
     return prisma.project.count();
   },
 
+  // Distinct existing clients (one row per client name) for the picker.
+  distinctClients() {
+    return prisma.project.findMany({
+      where: { deletedAt: null },
+      distinct: ['clientName'],
+      select: { clientName: true, clientPhone: true, clientEmail: true, clientAddress: true },
+      orderBy: { clientName: 'asc' },
+    });
+  },
+
+  latestReference() {
+    return prisma.project.findFirst({ orderBy: { id: 'desc' }, select: { referenceNumber: true } });
+  },
+
+  countActive() {
+    return prisma.project.count({ where: { deletedAt: null } });
+  },
+
+  statusCounts() {
+    return prisma.project.groupBy({ by: ['status'], where: { deletedAt: null }, _count: { _all: true } });
+  },
+  categoryCounts() {
+    return prisma.project.groupBy({ by: ['category'], where: { deletedAt: null }, _count: { _all: true } });
+  },
+  sumAmount() {
+    return prisma.project.aggregate({ where: { deletedAt: null }, _sum: { projectAmount: true } });
+  },
+
   findByReference(referenceNumber) {
     return prisma.project.findUnique({ where: { referenceNumber } });
   },

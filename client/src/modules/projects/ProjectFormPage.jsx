@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProject, createProject, updateProject, getFieldDefs } from './api';
+import { getProject, createProject, updateProject, getFieldDefs, listClients, lastReference } from './api';
 import FieldConfigModal from './FieldConfigModal';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
 import { PageHeader, Card, Spinner, Alert } from '../../components/ui';
 import Icon from '../../components/Icon';
@@ -37,15 +38,17 @@ export default function ProjectFormPage() {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const { bootstrap } = useAuth();
+  const toast = useToast();
   const settings = bootstrap?.settings?.projects || {};
   const categories = settings.categories || [];
   const statuses = settings.statuses || [];
-  const phaseTemplate = settings.phase_templates || [];
 
   const [form, setForm] = useState(emptyForm);
   const [customFields, setCustomFields] = useState({});
-  const [phases, setPhases] = useState([]);
   const [defs, setDefs] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [clientMode, setClientMode] = useState('new'); // 'new' | 'existing'
+  const [lastRef, setLastRef] = useState(null);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -76,7 +79,9 @@ export default function ProjectFormPage() {
         .catch((err) => setError(errorMessage(err)))
         .finally(() => setLoading(false));
     } else {
-      setPhases(phaseTemplate.map((name) => ({ name, deadline: '' })));
+      // Create mode: load existing clients and the last generated reference.
+      listClients().then(setClients).catch(() => {});
+      lastReference().then(setLastRef).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -84,9 +89,25 @@ export default function ProjectFormPage() {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setCustom = (k, v) => setCustomFields((c) => ({ ...c, [k]: v }));
 
-  const updatePhase = (i, patch) => setPhases((ps) => ps.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
-  const addPhaseRow = () => setPhases((ps) => [...ps, { name: '', deadline: '' }]);
-  const removePhaseRow = (i) => setPhases((ps) => ps.filter((_, idx) => idx !== i));
+  // Prefill client fields when an existing client is chosen.
+  const pickClient = (name) => {
+    const c = clients.find((x) => x.name === name);
+    if (!c) return;
+    setForm((f) => ({
+      ...f,
+      clientName: c.name || '',
+      clientPhone: c.phone || '',
+      clientEmail: c.email || '',
+      clientAddress: c.address || '',
+    }));
+  };
+
+  const switchClientMode = (mode) => {
+    setClientMode(mode);
+    if (mode === 'new') {
+      setForm((f) => ({ ...f, clientName: '', clientPhone: '', clientEmail: '', clientAddress: '' }));
+    }
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -104,12 +125,12 @@ export default function ProjectFormPage() {
 
       if (isEdit) {
         await updateProject(id, body);
+        toast.success('Project updated successfully');
         navigate(`/projects/${id}`);
       } else {
-        body.phases = phases
-          .filter((p) => p.name.trim())
-          .map((p, i) => ({ name: p.name.trim(), sortOrder: i, ...(p.deadline ? { deadline: p.deadline } : {}) }));
+        // Phases are instantiated from the configured template (managed in Settings).
         const created = await createProject(body);
+        toast.success('Project created successfully');
         navigate(`/projects/${created.id}`);
       }
     } catch (err) {
@@ -136,7 +157,44 @@ export default function ProjectFormPage() {
 
       <form onSubmit={onSubmit} className="space-y-6">
         <Card>
-          <h2 className="mb-4 font-semibold text-slate-700">Client Details</h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-semibold text-slate-700">Client Details</h2>
+            {!isEdit && (
+              <div className="flex overflow-hidden rounded-lg border border-cream-300 text-sm">
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 ${clientMode === 'new' ? 'bg-brand-500 text-white' : 'bg-white text-slate-600'}`}
+                  onClick={() => switchClientMode('new')}
+                >
+                  New Client
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 ${clientMode === 'existing' ? 'bg-brand-500 text-white' : 'bg-white text-slate-600'}`}
+                  onClick={() => switchClientMode('existing')}
+                >
+                  Existing Client
+                </button>
+              </div>
+            )}
+          </div>
+
+          {!isEdit && clientMode === 'existing' && (
+            <div className="mb-4">
+              <label className="label">Select Client</label>
+              <select className="input md:w-1/2" value={form.clientName} onChange={(e) => pickClient(e.target.value)}>
+                <option value="">Choose an existing client…</option>
+                {clients.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.name}
+                    {c.phone ? ` · ${c.phone}` : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-400">Their stored details fill in below — complete the project details and create.</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Client Name" required>
               <input className="input" value={form.clientName} onChange={(e) => set('clientName', e.target.value)} required />
@@ -154,7 +212,15 @@ export default function ProjectFormPage() {
         </Card>
 
         <Card>
-          <h2 className="mb-4 font-semibold text-slate-700">Project Details</h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold text-slate-700">Project Details</h2>
+            {!isEdit && (
+              <span className="text-xs text-slate-500">
+                Last Reference Number:{' '}
+                <span className="font-semibold text-brand-600">{lastRef?.last || '—'}</span>
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Reference Number">
               <input className="input" placeholder="Auto-generated if blank" value={form.referenceNumber} onChange={(e) => set('referenceNumber', e.target.value)} />
@@ -211,29 +277,6 @@ export default function ProjectFormPage() {
             </div>
           )}
         </Card>
-
-        {!isEdit && (
-          <Card>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-semibold text-slate-700">Project Phases</h2>
-              <button type="button" className="btn-ghost text-brand-600" onClick={addPhaseRow}>
-                + Add Phase
-              </button>
-            </div>
-            <p className="mb-3 text-xs text-slate-400">Prefilled from your configured template. Adjust as needed.</p>
-            <div className="space-y-2">
-              {phases.map((p, i) => (
-                <div key={i} className="flex flex-wrap items-center gap-2">
-                  <input className="input flex-1 min-w-[180px]" placeholder="Phase name" value={p.name} onChange={(e) => updatePhase(i, { name: e.target.value })} />
-                  <input type="date" className="input w-auto" value={p.deadline} onChange={(e) => updatePhase(i, { deadline: e.target.value })} />
-                  <button type="button" className="btn-ghost text-red-500" onClick={() => removePhaseRow(i)}>
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
 
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={() => navigate('/projects')}>

@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/api';
 import { formatDate } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, StatusBadge, Alert } from '../../components/ui';
+import AnalyticsModal, { AnalyticsButton } from '../../components/AnalyticsModal';
+import { ProjectAnalytics } from './analytics';
 
 export default function ProjectsListPage() {
   const { bootstrap, can } = useAuth();
@@ -17,6 +19,7 @@ export default function ProjectsListPage() {
   const [result, setResult] = useState({ items: [], meta: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [analytics, setAnalytics] = useState(false);
 
   const load = useCallback(async (params) => {
     setLoading(true);
@@ -43,11 +46,14 @@ export default function ProjectsListPage() {
         title="Projects"
         subtitle="All projects"
         actions={
-          can('projects.create') && (
-            <Link to="/projects/new" className="btn-primary">
-              + Add Project
-            </Link>
-          )
+          <div className="flex gap-2">
+            <AnalyticsButton onClick={() => setAnalytics(true)} />
+            {can('projects.create') && (
+              <Link to="/projects/new" className="btn-primary">
+                + Add Project
+              </Link>
+            )}
+          </div>
         }
       />
 
@@ -126,6 +132,10 @@ export default function ProjectsListPage() {
       </Card>
 
       <Pagination meta={result.meta} onPage={(page) => update({ page })} />
+
+      <AnalyticsModal open={analytics} onClose={() => setAnalytics(false)} title="Project Analytics">
+        <ProjectAnalytics open={analytics} />
+      </AnalyticsModal>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getProject, deleteProject, updatePhase, getFieldDefs } from './api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDate } from '../../lib/format';
 import { PageHeader, Card, FullPageLoader, StatusBadge, Alert } from '../../components/ui';
@@ -20,6 +21,7 @@ export default function ProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { bootstrap, can } = useAuth();
+  const toast = useToast();
   const currency = bootstrap?.company?.currency || 'INR';
   const statuses = bootstrap?.settings?.projects?.statuses || [];
   const statusLabel = (key) => statuses.find((s) => s.key === key)?.label || key;
@@ -44,13 +46,23 @@ export default function ProjectDetailPage() {
   }, [load]);
 
   const onPhaseStatus = async (phaseId, status) => {
-    await updatePhase(id, phaseId, { status });
-    load();
+    try {
+      await updatePhase(id, phaseId, { status });
+      toast.success('Phase status updated successfully');
+      load();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
   };
 
   const onDelete = async () => {
-    await deleteProject(id);
-    navigate('/projects');
+    try {
+      await deleteProject(id);
+      toast.success('Project deleted');
+      navigate('/projects');
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
   };
 
   if (error) return <Alert>{error}</Alert>;
