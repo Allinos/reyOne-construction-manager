@@ -1,10 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getAllSettings } from './api';
 import { StringListEditor, ObjectListEditor } from './editors';
 import { Spinner, Alert } from '../../components/ui';
 import { errorMessage } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
+import RolesPage from '../roles/RolesPage';
+import ActivityPage from '../activity/ActivityPage';
+import ModuleManagerPage from '../modulemanager/ModuleManagerPage';
+
+// Left-nav sections inside Configuration. Each shows only its own settings.
+const SECTIONS = [
+  { key: 'projects', label: 'Projects', perm: 'settings.read' },
+  { key: 'finance', label: 'Finance', perm: 'settings.read' },
+  { key: 'expenses', label: 'Expense Categories', perm: 'settings.read' },
+  { key: 'roles', label: 'Roles', perm: 'roles.read' },
+  { key: 'activities', label: 'Activities', perm: 'activity.read' },
+  { key: 'modules', label: 'Modules', perm: 'modules.read' },
+  { key: 'other', label: 'Other Settings', perm: 'settings.read' },
+];
 
 export default function ConfigurationPage() {
+  const { can } = useAuth();
+  const available = useMemo(() => SECTIONS.filter((s) => can(s.perm)), [can]);
+  const [active, setActive] = useState(available[0]?.key || 'projects');
   const [settings, setSettings] = useState(null);
   const [error, setError] = useState('');
 
@@ -12,54 +30,79 @@ export default function ConfigurationPage() {
     getAllSettings().then(setSettings).catch((err) => setError(errorMessage(err)));
   }, []);
 
-  if (error) return <Alert>{error}</Alert>;
-  if (!settings) return <div className="flex justify-center p-10"><Spinner /></div>;
+  const renderSection = () => {
+    // Embedded admin screens manage their own data.
+    if (active === 'roles') return <RolesPage />;
+    if (active === 'activities') return <ActivityPage />;
+    if (active === 'modules') return <ModuleManagerPage />;
 
-  const p = settings.projects || {};
-  const f = settings.finance || {};
-  const u = settings.users || {};
+    if (!settings) return <div className="flex justify-center p-10"><Spinner /></div>;
+    const p = settings.projects || {};
+    const f = settings.finance || {};
+    const u = settings.users || {};
+
+    switch (active) {
+      case 'projects':
+        return (
+          <div className="space-y-4">
+            <StringListEditor title="Project Categories" group="projects" settingKey="categories" initial={p.categories} />
+            <StringListEditor title="Project Phases" group="projects" settingKey="phase_templates" initial={p.phase_templates} />
+            <ObjectListEditor
+              title="Project Statuses"
+              group="projects"
+              settingKey="statuses"
+              initial={p.statuses}
+              columns={[{ key: 'key', label: 'key' }, { key: 'label', label: 'Label' }]}
+            />
+          </div>
+        );
+      case 'finance':
+        return (
+          <div className="space-y-4">
+            <StringListEditor title="Payment Methods" group="finance" settingKey="payment_methods" initial={f.payment_methods} />
+            <ObjectListEditor
+              title="Accounts"
+              group="finance"
+              settingKey="accounts"
+              initial={f.accounts}
+              columns={[
+                { key: 'key', label: 'key' },
+                { key: 'name', label: 'Name' },
+                { key: 'type', label: 'type (cash/bank/…)' },
+                { key: 'openingBalance', label: 'Opening balance' },
+              ]}
+            />
+          </div>
+        );
+      case 'expenses':
+        return <StringListEditor title="Expense Categories" group="finance" settingKey="expense_categories" initial={f.expense_categories} />;
+      case 'other':
+        return <StringListEditor title="Designations" group="users" settingKey="designations" initial={u.designations} />;
+      default:
+        return null;
+    }
+  };
+
+  if (error) return <Alert>{error}</Alert>;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="mb-3 text-lg font-semibold text-slate-800">Projects</h2>
-        <div className="space-y-4">
-          <StringListEditor title="Project Categories" group="projects" settingKey="categories" initial={p.categories} />
-          <StringListEditor title="Phase Templates" group="projects" settingKey="phase_templates" initial={p.phase_templates} />
-          <ObjectListEditor
-            title="Project Statuses"
-            group="projects"
-            settingKey="statuses"
-            initial={p.statuses}
-            columns={[{ key: 'key', label: 'key' }, { key: 'label', label: 'Label' }]}
-          />
+    <div className="flex flex-col gap-6 md:flex-row">
+      <nav className="shrink-0 md:w-52">
+        <div className="flex gap-1 overflow-x-auto md:flex-col">
+          {available.map((s) => (
+            <button
+              key={s.key}
+              onClick={() => setActive(s.key)}
+              className={`whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
+                active === s.key ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-cream-200'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-lg font-semibold text-slate-800">Finance</h2>
-        <div className="space-y-4">
-          <StringListEditor title="Payment Methods" group="finance" settingKey="payment_methods" initial={f.payment_methods} />
-          <StringListEditor title="Expense Categories" group="finance" settingKey="expense_categories" initial={f.expense_categories} />
-          <ObjectListEditor
-            title="Accounts"
-            group="finance"
-            settingKey="accounts"
-            initial={f.accounts}
-            columns={[
-              { key: 'key', label: 'key' },
-              { key: 'name', label: 'Name' },
-              { key: 'type', label: 'type (cash/bank/…)' },
-              { key: 'openingBalance', label: 'Opening balance' },
-            ]}
-          />
-        </div>
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-lg font-semibold text-slate-800">Users</h2>
-        <StringListEditor title="Designations" group="users" settingKey="designations" initial={u.designations} />
-      </div>
+      </nav>
+      <div className="min-w-0 flex-1">{renderSection()}</div>
     </div>
   );
 }

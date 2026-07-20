@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Card, Spinner, Alert } from '../../components/ui';
 import { errorMessage } from '../../lib/api';
+import { useToast } from '../../context/ToastContext';
 import { updateSetting } from './api';
 
 // Editor for a setting whose value is a list of strings (categories, phases…).
 export function StringListEditor({ title, group, settingKey, initial }) {
+  const toast = useToast();
   const [items, setItems] = useState(initial || []);
   const [draft, setDraft] = useState('');
   const [state, setState] = useState({ saving: false, error: '', saved: false });
@@ -21,6 +23,7 @@ export function StringListEditor({ title, group, settingKey, initial }) {
     try {
       await updateSetting(group, settingKey, items);
       setState({ saving: false, error: '', saved: true });
+      toast.success(`${title} saved`);
     } catch (err) {
       setState({ saving: false, error: errorMessage(err), saved: false });
     }
@@ -58,6 +61,7 @@ export function StringListEditor({ title, group, settingKey, initial }) {
 
 // Editor for a list of objects with a fixed set of text columns.
 export function ObjectListEditor({ title, group, settingKey, initial, columns }) {
+  const toast = useToast();
   const [rows, setRows] = useState(initial || []);
   const [state, setState] = useState({ saving: false, error: '', saved: false });
 
@@ -70,6 +74,7 @@ export function ObjectListEditor({ title, group, settingKey, initial, columns })
     try {
       await updateSetting(group, settingKey, rows);
       setState({ saving: false, error: '', saved: true });
+      toast.success(`${title} saved`);
     } catch (err) {
       setState({ saving: false, error: errorMessage(err), saved: false });
     }
