@@ -53,6 +53,7 @@ const authService = {
     if (!valid) throw AppError.unauthorized('Invalid email or password');
 
     const tokens = await issueTokens(user);
+    await repo.touchLastLogin(user.id);
     activity.record({ userId: user.id, action: 'auth.login', entityType: 'user', entityId: user.id, req });
     return { user: toProfile(user), ...tokens };
   },

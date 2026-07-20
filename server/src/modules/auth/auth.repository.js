@@ -46,6 +46,10 @@ const authRepository = {
   updatePassword(userId, passwordHash) {
     return prisma.user.update({ where: { id: userId }, data: { passwordHash } });
   },
+
+  touchLastLogin(userId) {
+    return prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
+  },
 };
 
 module.exports = authRepository;

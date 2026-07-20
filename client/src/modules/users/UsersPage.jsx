@@ -1,15 +1,59 @@
-import { useEffect, useState, useCallback } from 'react';
+import { Fragment, useEffect, useState, useCallback } from 'react';
 import { listUsers, createUser, updateUser, deleteUser, resetPassword, rolesForSelect } from './api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
+import { formatMoney, formatDateTime, formatDate } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
 import Modal from '../../components/Modal';
+import Icon from '../../components/Icon';
+
+// Expanded row content. Built as independent sections so more (Attendance,
+// Payments…) can be added later without touching the layout.
+function UserDetails({ user, currency }) {
+  const Section = ({ title, children }) => (
+    <div className="rounded-lg border border-cream-300 bg-white p-4">
+      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</h4>
+      {children}
+    </div>
+  );
+  const Row = ({ label, value }) => (
+    <div className="flex justify-between py-1 text-sm">
+      <span className="text-slate-500">{label}</span>
+      <span className="text-slate-700">{value ?? '—'}</span>
+    </div>
+  );
+  return (
+    <div className="grid grid-cols-1 gap-3 bg-cream-100 p-4 md:grid-cols-2 lg:grid-cols-4">
+      <Section title="User Details">
+        <Row label="Email" value={user.email} />
+        <Row label="Phone" value={user.phone} />
+        <Row label="Designation" value={user.designation} />
+        <Row label="Salary" value={user.salary != null ? formatMoney(user.salary, currency) : '—'} />
+        <Row label="Member since" value={formatDate(user.createdAt)} />
+      </Section>
+      <Section title="Last Login">
+        <p className="text-sm text-slate-700">{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}</p>
+      </Section>
+      <Section title="Attendance">
+        <p className="text-sm text-slate-400">Coming soon</p>
+      </Section>
+      <Section title="Payments">
+        <p className="text-sm text-slate-400">Coming soon</p>
+      </Section>
+    </div>
+  );
+}
 
 const STATUSES = ['ACTIVE', 'INACTIVE', 'SUSPENDED'];
 const blank = { name: '', email: '', password: '', phone: '', designation: '', roleId: '', salary: '', status: 'ACTIVE' };
 
 export default function UsersPage() {
   const { bootstrap, can } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const currency = bootstrap?.company?.currency || 'INR';
   const designations = bootstrap?.settings?.users?.designations || [];
 
   const [roles, setRoles] = useState([]);
@@ -20,6 +64,7 @@ export default function UsersPage() {
   const [modal, setModal] = useState(null);
   const [pwModal, setPwModal] = useState(null); // { id, name, password }
   const [saving, setSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
 
   const roleMap = Object.fromEntries(roles.map((r) => [r.id, r.name]));
 
@@ -69,8 +114,10 @@ export default function UsersPage() {
       if (modal.editingId) {
         body.email = f.email;
         await updateUser(modal.editingId, body);
+        toast.success('User updated successfully');
       } else {
         await createUser({ ...body, email: f.email, password: f.password });
+        toast.success('User created successfully');
       }
       setModal(null);
       load();
@@ -87,6 +134,7 @@ export default function UsersPage() {
     try {
       await resetPassword(pwModal.id, pwModal.password);
       setPwModal(null);
+      toast.success('Password reset successfully');
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -94,9 +142,20 @@ export default function UsersPage() {
     }
   };
 
-  const remove = async (id) => {
-    await deleteUser(id);
-    load();
+  const remove = async (user) => {
+    const okToDelete = await confirm({
+      title: 'Delete user?',
+      message: `This will remove ${user.name}.`,
+      confirmLabel: 'Delete',
+    });
+    if (!okToDelete) return;
+    try {
+      await deleteUser(user.id);
+      toast.success('User deleted');
+      load();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
   };
 
   return (
@@ -133,6 +192,7 @@ export default function UsersPage() {
             <table className="w-full text-sm">
               <thead className="bg-cream-100 text-left text-slate-500">
                 <tr>
+                  <th className="w-8 px-4 py-3" />
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="px-4 py-3 font-medium">Designation</th>
@@ -142,30 +202,48 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-cream-200">
-                {result.items.map((u) => (
-                  <tr key={u.id}>
-                    <td className="px-4 py-3 font-medium text-slate-800">{u.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                    <td className="px-4 py-3 text-slate-600">{u.designation || '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">{roleMap[u.roleId] || u.role?.name || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`badge ${u.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>
-                        {u.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {can('users.update') && (
-                        <>
-                          <button className="text-xs text-brand-600 hover:underline" onClick={() => openEdit(u)}>Edit</button>
-                          <button className="ml-3 text-xs text-slate-500 hover:underline" onClick={() => setPwModal({ id: u.id, name: u.name, password: '' })}>Reset PW</button>
-                        </>
+                {result.items.map((u) => {
+                  const expanded = expandedId === u.id;
+                  return (
+                    <Fragment key={u.id}>
+                      <tr
+                        className="cursor-pointer hover:bg-cream-100"
+                        onClick={() => setExpandedId(expanded ? null : u.id)}
+                      >
+                        <td className="px-4 py-3 text-slate-400">
+                          <Icon name="chart" className={`h-4 w-4 transition-transform ${expanded ? 'rotate-90' : ''}`} strokeWidth={2} />
+                        </td>
+                        <td className="px-4 py-3 font-medium text-slate-800">{u.name}</td>
+                        <td className="px-4 py-3 text-slate-600">{u.email}</td>
+                        <td className="px-4 py-3 text-slate-600">{u.designation || '—'}</td>
+                        <td className="px-4 py-3 text-slate-600">{roleMap[u.roleId] || u.role?.name || '—'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`badge ${u.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>
+                            {u.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          {can('users.update') && (
+                            <>
+                              <button className="text-xs text-brand-600 hover:underline" onClick={() => openEdit(u)}>Edit</button>
+                              <button className="ml-3 text-xs text-slate-500 hover:underline" onClick={() => setPwModal({ id: u.id, name: u.name, password: '' })}>Reset PW</button>
+                            </>
+                          )}
+                          {can('users.delete') && (
+                            <button className="ml-3 text-xs text-red-500 hover:underline" onClick={() => remove(u)}>Delete</button>
+                          )}
+                        </td>
+                      </tr>
+                      {expanded && (
+                        <tr>
+                          <td colSpan={7} className="p-0">
+                            <UserDetails user={u} currency={currency} />
+                          </td>
+                        </tr>
                       )}
-                      {can('users.delete') && (
-                        <button className="ml-3 text-xs text-red-500 hover:underline" onClick={() => remove(u.id)}>Delete</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

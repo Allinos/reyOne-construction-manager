@@ -12,6 +12,7 @@ const publicSelect = {
   designation: true,
   salary: true,
   status: true,
+  lastLoginAt: true,
   roleId: true,
   role: roleSelect,
   createdAt: true,
