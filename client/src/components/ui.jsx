@@ -33,6 +33,22 @@ export function Card({ children, className = '' }) {
   return <div className={`card p-5 ${className}`}>{children}</div>;
 }
 
+// Card with an orange section-header bar (dot + title + optional actions).
+export function SectionCard({ title, actions, children, className = '', bodyClassName = 'p-4' }) {
+  return (
+    <div className={`card overflow-hidden ${className}`}>
+      <div className="section-head">
+        <span className="section-title">
+          <span className="h-2 w-2 rounded-full bg-brand-500" />
+          {title}
+        </span>
+        {actions}
+      </div>
+      <div className={bodyClassName}>{children}</div>
+    </div>
+  );
+}
+
 export function EmptyState({ title = 'Nothing here yet', hint }) {
   return (
     <div className="rounded-xl border border-dashed border-cream-300 bg-cream-100 p-10 text-center">

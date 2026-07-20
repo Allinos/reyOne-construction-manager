@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getCompany, updateCompany } from './api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
 import { Card, Spinner, Alert } from '../../components/ui';
 
@@ -15,6 +16,7 @@ const fields = [
 
 export default function CompanyPage() {
   const { reloadBootstrap } = useAuth();
+  const toast = useToast();
   const [form, setForm] = useState(null);
   const [state, setState] = useState({ saving: false, error: '', saved: false });
 
@@ -36,6 +38,7 @@ export default function CompanyPage() {
       await updateCompany(body);
       await reloadBootstrap(); // refresh branding in the shell
       setState({ saving: false, error: '', saved: true });
+      toast.success('Company profile saved');
     } catch (err) {
       setState({ saving: false, error: errorMessage(err), saved: false });
     }

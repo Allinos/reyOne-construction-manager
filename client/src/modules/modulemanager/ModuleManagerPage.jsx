@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listModules, toggleModule } from './api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
 import { PageHeader, Card, Spinner, Alert } from '../../components/ui';
 
@@ -21,6 +22,7 @@ function Toggle({ checked, disabled, onChange }) {
 
 export default function ModuleManagerPage() {
   const { can, reloadBootstrap } = useAuth();
+  const toast = useToast();
   const canManage = can('modules.update');
   const [modules, setModules] = useState(null);
   const [error, setError] = useState('');
@@ -38,11 +40,13 @@ export default function ModuleManagerPage() {
       const res = await toggleModule(mod.key, enabled);
       await load();
       await reloadBootstrap(); // reflect nav changes immediately
+      toast.success(`${mod.name} ${enabled ? 'enabled' : 'disabled'}`);
       if (res.requiresRestart) {
         setNotice('Saved. Restart the server (pm2 restart) for API routes to fully apply.');
       }
     } catch (err) {
       setError(errorMessage(err));
+      toast.error(errorMessage(err));
     }
   };
 

@@ -41,4 +41,21 @@
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
+  /* Small action pills used in table rows (match the reference Edit/Delete). */
+  .pill {
+    @apply inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors;
+  }
+  .pill-edit {
+    @apply pill bg-brand-100 text-brand-700 hover:bg-brand-200;
+  }
+  .pill-delete {
+    @apply pill bg-red-100 text-red-600 hover:bg-red-200;
+  }
+  /* Orange section header bar (PHASE_1 / PROJECT PAYMENTS style). */
+  .section-head {
+    @apply flex items-center justify-between rounded-t-xl bg-brand-50 px-4 py-3;
+  }
+  .section-title {
+    @apply flex items-center gap-2 font-semibold text-brand-800;
+  }
 }

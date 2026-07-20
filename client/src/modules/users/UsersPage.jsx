@@ -225,12 +225,12 @@ export default function UsersPage() {
                         <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           {can('users.update') && (
                             <>
-                              <button className="text-xs text-brand-600 hover:underline" onClick={() => openEdit(u)}>Edit</button>
-                              <button className="ml-3 text-xs text-slate-500 hover:underline" onClick={() => setPwModal({ id: u.id, name: u.name, password: '' })}>Reset PW</button>
+                              <button className="pill-edit" onClick={() => openEdit(u)}>Edit</button>
+                              <button className="pill ml-2 bg-cream-200 text-slate-600 hover:bg-cream-300" onClick={() => setPwModal({ id: u.id, name: u.name, password: '' })}>Reset PW</button>
                             </>
                           )}
                           {can('users.delete') && (
-                            <button className="ml-3 text-xs text-red-500 hover:underline" onClick={() => remove(u)}>Delete</button>
+                            <button className="pill-delete ml-2" onClick={() => remove(u)}>Delete</button>
                           )}
                         </td>
                       </tr>

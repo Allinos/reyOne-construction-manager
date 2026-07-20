@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { listPayments, createPayment, updatePayment, deletePayment, projectOptions } from './api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDate } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
@@ -10,6 +12,8 @@ const blank = { projectId: '', amount: '', date: '', method: '', account: '', no
 
 export default function PaymentsPage() {
   const { bootstrap, can } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
   const currency = bootstrap?.company?.currency || 'INR';
   const finance = bootstrap?.settings?.finance || {};
   const methods = finance.payment_methods || [];
@@ -72,8 +76,10 @@ export default function PaymentsPage() {
       };
       if (modal.editingId) {
         await updatePayment(modal.editingId, body);
+        toast.success('Payment updated successfully');
       } else {
         await createPayment({ ...body, projectId: Number(f.projectId) });
+        toast.success('Payment recorded successfully');
       }
       setModal(null);
       load();
@@ -85,8 +91,15 @@ export default function PaymentsPage() {
   };
 
   const remove = async (id) => {
-    await deletePayment(id);
-    load();
+    const okToDelete = await confirm({ title: 'Delete payment?', message: 'This payment record will be removed.', confirmLabel: 'Delete' });
+    if (!okToDelete) return;
+    try {
+      await deletePayment(id);
+      toast.success('Payment deleted');
+      load();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
   };
 
   const setField = (k, v) => setModal((m) => ({ ...m, form: { ...m.form, [k]: v } }));
@@ -128,16 +141,12 @@ export default function PaymentsPage() {
                     <td className="px-4 py-3 text-slate-500">{formatDate(p.date)}</td>
                     <td className="px-4 py-3 text-slate-600">{p.method}</td>
                     <td className="px-4 py-3 text-slate-600">{p.account}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
                       {can('finance.update') && (
-                        <button className="text-xs text-brand-600 hover:underline" onClick={() => openEdit(p)}>
-                          Edit
-                        </button>
+                        <button className="pill-edit" onClick={() => openEdit(p)}>Edit</button>
                       )}
                       {can('finance.delete') && (
-                        <button className="ml-3 text-xs text-red-500 hover:underline" onClick={() => remove(p.id)}>
-                          Delete
-                        </button>
+                        <button className="pill-delete ml-2" onClick={() => remove(p.id)}>Delete</button>
                       )}
                     </td>
                   </tr>

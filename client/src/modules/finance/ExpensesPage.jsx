@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { listExpenses, createExpense, updateExpense, deleteExpense, projectOptions } from './api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDate } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
@@ -12,6 +14,8 @@ const blank = { scope: 'COMPANY', projectId: '', category: '', amount: '', date:
 
 export default function ExpensesPage() {
   const { bootstrap, can } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
   const currency = bootstrap?.company?.currency || 'INR';
   const finance = bootstrap?.settings?.finance || {};
   const methods = finance.payment_methods || [];
@@ -84,12 +88,14 @@ export default function ExpensesPage() {
       };
       if (modal.editingId) {
         await updateExpense(modal.editingId, common);
+        toast.success('Expense updated successfully');
       } else {
         await createExpense({
           ...common,
           scope: f.scope,
           projectId: f.scope === 'PROJECT' ? Number(f.projectId) : undefined,
         });
+        toast.success('Expense added successfully');
       }
       setModal(null);
       load();
@@ -101,8 +107,15 @@ export default function ExpensesPage() {
   };
 
   const remove = async (id) => {
-    await deleteExpense(id);
-    load();
+    const okToDelete = await confirm({ title: 'Delete expense?', message: 'This expense record will be removed.', confirmLabel: 'Delete' });
+    if (!okToDelete) return;
+    try {
+      await deleteExpense(id);
+      toast.success('Expense deleted');
+      load();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
   };
 
   const setField = (k, v) => setModal((m) => ({ ...m, form: { ...m.form, [k]: v } }));
@@ -158,12 +171,12 @@ export default function ExpensesPage() {
                     <td className="px-4 py-3 font-medium text-red-600">{formatMoney(x.amount, currency)}</td>
                     <td className="px-4 py-3 text-slate-500">{formatDate(x.date)}</td>
                     <td className="px-4 py-3 text-slate-600">{x.account}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
                       {can('finance.update') && (
-                        <button className="text-xs text-brand-600 hover:underline" onClick={() => openEdit(x)}>Edit</button>
+                        <button className="pill-edit" onClick={() => openEdit(x)}>Edit</button>
                       )}
                       {can('finance.delete') && (
-                        <button className="ml-3 text-xs text-red-500 hover:underline" onClick={() => remove(x.id)}>Delete</button>
+                        <button className="pill-delete ml-2" onClick={() => remove(x.id)}>Delete</button>
                       )}
                     </td>
                   </tr>

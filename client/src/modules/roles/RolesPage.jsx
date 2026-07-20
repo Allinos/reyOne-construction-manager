@@ -1,12 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { listRoles, createRole, updateRole, deleteRole, listPermissions } from './api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
 import { PageHeader, Card, Spinner, Alert } from '../../components/ui';
 import Modal from '../../components/Modal';
 
 export default function RolesPage() {
   const { can } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [roles, setRoles] = useState([]);
   const [permGroups, setPermGroups] = useState({});
   const [loading, setLoading] = useState(true);
@@ -64,8 +68,13 @@ export default function RolesPage() {
     try {
       const permissionKeys = modal.isOwner ? ['*'] : [...modal.perms];
       const body = { name: modal.name, description: modal.description || undefined, permissionKeys };
-      if (modal.editingId) await updateRole(modal.editingId, body);
-      else await createRole(body);
+      if (modal.editingId) {
+        await updateRole(modal.editingId, body);
+        toast.success('Role updated successfully');
+      } else {
+        await createRole(body);
+        toast.success('Role created successfully');
+      }
       setModal(null);
       load();
     } catch (err) {
@@ -75,12 +84,19 @@ export default function RolesPage() {
     }
   };
 
-  const remove = async (id) => {
+  const remove = async (role) => {
+    const okToDelete = await confirm({
+      title: 'Delete role?',
+      message: `This will remove the "${role.name}" role.`,
+      confirmLabel: 'Delete',
+    });
+    if (!okToDelete) return;
     try {
-      await deleteRole(id);
+      await deleteRole(role.id);
+      toast.success('Role deleted');
       load();
     } catch (err) {
-      setError(errorMessage(err));
+      toast.error(errorMessage(err));
     }
   };
 
@@ -115,7 +131,7 @@ export default function RolesPage() {
                   <button className="text-xs text-brand-600 hover:underline" onClick={() => openEdit(r)}>Edit</button>
                 )}
                 {can('roles.delete') && !r.isSystem && (
-                  <button className="ml-3 text-xs text-red-500 hover:underline" onClick={() => remove(r.id)}>Delete</button>
+                  <button className="ml-3 text-xs text-red-500 hover:underline" onClick={() => remove(r)}>Delete</button>
                 )}
               </div>
             </div>
