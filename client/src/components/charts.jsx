@@ -1,4 +1,81 @@
-// Lightweight, dependency-free charts (CSS/flex based).
+import { useEffect, useState } from 'react';
+
+// Lightweight, dependency-free charts (CSS/flex/SVG based).
+
+// A shared color palette for categorical charts.
+export const CHART_COLORS = ['#F97316', '#3b82f6', '#16a34a', '#f59e0b', '#8b5cf6', '#ef4444', '#0ea5e9', '#94a3b8'];
+
+// Animated ring chart. Pass thicknessRatio = 1 for a full pie, ~0.32 for a donut.
+function Ring({ data, size = 180, thicknessRatio = 0.32, centerTop, centerBottom }) {
+  const total = data.reduce((s, d) => s + Number(d.value || 0), 0);
+  const thickness = size * thicknessRatio;
+  const r = (size - thickness) / 2;
+  const c = 2 * Math.PI * r;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 60);
+    return () => clearTimeout(t);
+  }, []);
+
+  let offset = 0;
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-5">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={thickness} className="stroke-cream-200 dark:stroke-slate-700" />
+          {total > 0 &&
+            data.map((d, i) => {
+              const len = (Number(d.value || 0) / total) * c;
+              const dash = mounted ? `${len} ${c - len}` : `0 ${c}`;
+              const el = (
+                <circle
+                  key={i}
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={r}
+                  fill="none"
+                  stroke={d.color}
+                  strokeWidth={thickness}
+                  strokeDasharray={dash}
+                  strokeDashoffset={-offset}
+                  style={{ transition: 'stroke-dasharray 0.9s cubic-bezier(0.4,0,0.2,1)' }}
+                >
+                  <title>{`${d.label}: ${d.value}`}</title>
+                </circle>
+              );
+              offset += len;
+              return el;
+            })}
+        </svg>
+        {(centerTop || centerBottom) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            {centerTop && <span className="text-xl font-semibold text-slate-800 dark:text-slate-100">{centerTop}</span>}
+            {centerBottom && <span className="text-xs text-slate-400">{centerBottom}</span>}
+          </div>
+        )}
+      </div>
+      <ul className="space-y-1.5">
+        {data.map((d) => (
+          <li key={d.label} className="flex items-center gap-2 text-sm">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+            <span className="text-slate-600 dark:text-slate-300">{d.label}</span>
+            <span className="ml-auto pl-3 font-medium text-slate-800 dark:text-slate-100">{d.value}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function DonutChart({ data, size, centerTop, centerBottom }) {
+  return <Ring data={data} size={size} thicknessRatio={0.32} centerTop={centerTop} centerBottom={centerBottom} />;
+}
+
+export function PieChart({ data, size }) {
+  return <Ring data={data} size={size} thicknessRatio={1} />;
+}
+
 
 // Grouped vertical bar chart. series = [{ name, color, values:number[] }]
 export function BarChart({ labels = [], series = [], height = 180, formatValue = (v) => v }) {

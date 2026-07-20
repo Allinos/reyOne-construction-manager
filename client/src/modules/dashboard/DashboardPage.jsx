@@ -3,6 +3,14 @@ import api, { unwrap, errorMessage } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { PageHeader, Card, FullPageLoader, StatusBadge } from '../../components/ui';
 import { formatMoney, formatDate } from '../../lib/format';
+import { DonutChart, PieChart, BarChart, CHART_COLORS } from '../../components/charts';
+
+const STATUS_COLORS = {
+  pending: '#f59e0b',
+  in_progress: '#3b82f6',
+  on_hold: '#94a3b8',
+  completed: '#16a34a',
+};
 
 function StatCard({ label, value, accent }) {
   return (
@@ -18,13 +26,21 @@ export default function DashboardPage() {
   const currency = bootstrap?.company?.currency || 'INR';
   const [data, setData] = useState(null);
   const [activity, setActivity] = useState(null);
+  const [charts, setCharts] = useState(null);
   const [error, setError] = useState('');
+  const statuses = bootstrap?.settings?.projects?.statuses || [];
+  const statusLabel = (key) => statuses.find((st) => st.key === key)?.label || key;
 
   useEffect(() => {
-    Promise.all([unwrap(api.get('/dashboard/summary')), unwrap(api.get('/dashboard/activity'))])
-      .then(([summary, act]) => {
+    Promise.all([
+      unwrap(api.get('/dashboard/summary')),
+      unwrap(api.get('/dashboard/activity')),
+      unwrap(api.get('/dashboard/charts', { params: { period: 'monthly' } })),
+    ])
+      .then(([summary, act, ch]) => {
         setData(summary);
         setActivity(act);
+        setCharts(ch);
       })
       .catch((err) => setError(errorMessage(err)));
   }, []);
@@ -41,6 +57,23 @@ export default function DashboardPage() {
 
   const s = data.stats;
 
+  const statusData = Object.entries(data.projectStatus || {})
+    .filter(([, v]) => v > 0)
+    .map(([key, value], i) => ({
+      label: statusLabel(key),
+      value,
+      color: STATUS_COLORS[key] || CHART_COLORS[i % CHART_COLORS.length],
+    }));
+  const paymentData = [
+    { label: 'Received', value: Number(s.totalRevenue || 0), color: '#16a34a' },
+    { label: 'Pending', value: Number(s.pendingPayments || 0), color: '#f59e0b' },
+  ];
+  const expenseCats = (data.expenseByCategory || []).map((cat, i) => ({
+    label: cat.category,
+    value: Number(cat.amount || 0),
+    color: CHART_COLORS[i % CHART_COLORS.length],
+  }));
+
   return (
     <div>
       <PageHeader title="Dashboard" subtitle="Company overview" />
@@ -55,6 +88,53 @@ export default function DashboardPage() {
         <StatCard label="Total Profit" value={formatMoney(s.totalProfit, currency)} accent="text-brand-600" />
         <StatCard label="Pending Payments" value={formatMoney(s.pendingPayments, currency)} accent="text-amber-600" />
         <StatCard label="Total Users" value={s.totalUsers} />
+      </div>
+
+      {/* Analytics charts */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+        <Card>
+          <h2 className="mb-4 font-semibold text-slate-700 dark:text-slate-200">Project Status Distribution</h2>
+          {statusData.length ? (
+            <DonutChart data={statusData} centerTop={s.totalProjects} centerBottom="Projects" />
+          ) : (
+            <p className="text-sm text-slate-400">No projects yet.</p>
+          )}
+        </Card>
+
+        <Card>
+          <h2 className="mb-4 font-semibold text-slate-700 dark:text-slate-200">Payment Status</h2>
+          {Number(s.totalRevenue) + Number(s.pendingPayments) > 0 ? (
+            <DonutChart data={paymentData} centerTop={`${Math.round((Number(s.totalRevenue) / (Number(s.totalRevenue) + Number(s.pendingPayments) || 1)) * 100)}%`} centerBottom="Collected" />
+          ) : (
+            <p className="text-sm text-slate-400">No payment data.</p>
+          )}
+        </Card>
+
+        <Card>
+          <h2 className="mb-4 font-semibold text-slate-700 dark:text-slate-200">Expense Breakdown</h2>
+          {expenseCats.length ? (
+            <PieChart data={expenseCats} />
+          ) : (
+            <p className="text-sm text-slate-400">No expenses recorded.</p>
+          )}
+        </Card>
+
+        <Card className="lg:col-span-2 xl:col-span-3">
+          <h2 className="mb-4 font-semibold text-slate-700 dark:text-slate-200">Revenue vs Expenses (Monthly)</h2>
+          {charts ? (
+            <BarChart
+              labels={charts.labels}
+              formatValue={(v) => formatMoney(v, currency)}
+              series={[
+                { name: 'Revenue', color: '#16a34a', values: charts.revenue },
+                { name: 'Expenses', color: '#ef4444', values: charts.expenses },
+              ]}
+              height={220}
+            />
+          ) : (
+            <p className="text-sm text-slate-400">Loading…</p>
+          )}
+        </Card>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
