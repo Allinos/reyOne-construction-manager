@@ -10,7 +10,7 @@ import Modal from '../../components/Modal';
 import AnalyticsModal, { AnalyticsButton } from '../../components/AnalyticsModal';
 import { ExpenseAnalytics } from './analytics';
 
-const blank = { scope: 'COMPANY', projectId: '', category: '', amount: '', date: '', method: '', account: '', expenseBy: '', notes: '' };
+const blank = { scope: 'COMPANY', projectId: '', category: '', amount: '', date: '', method: '', account: '', expenseBy: '', paidTo: '', notes: '' };
 
 export default function ExpensesPage() {
   const { bootstrap, can } = useAuth();
@@ -67,6 +67,7 @@ export default function ExpensesPage() {
         method: x.method,
         account: x.account,
         expenseBy: x.expenseBy || '',
+        paidTo: x.paidTo || '',
         notes: x.notes || '',
       },
     });
@@ -84,6 +85,7 @@ export default function ExpensesPage() {
         method: f.method,
         account: f.account,
         expenseBy: f.expenseBy || undefined,
+        paidTo: f.paidTo || undefined,
         notes: f.notes || undefined,
       };
       if (modal.editingId) {
@@ -256,6 +258,10 @@ export default function ExpensesPage() {
               <div>
                 <label className="label">Expense By</label>
                 <input className="input" value={modal.form.expenseBy} onChange={(e) => setField('expenseBy', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Paid To (person / vendor)</label>
+                <input className="input" value={modal.form.paidTo} onChange={(e) => setField('paidTo', e.target.value)} />
               </div>
             </div>
             <div>

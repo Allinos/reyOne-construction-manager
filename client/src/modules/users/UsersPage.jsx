@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { listUsers, createUser, updateUser, deleteUser, resetPassword, rolesForSelect } from './api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -7,13 +7,12 @@ import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDateTime, formatDate } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
 import Modal from '../../components/Modal';
-import Icon from '../../components/Icon';
 
-// Expanded row content. Built as independent sections so more (Attendance,
-// Payments…) can be added later without touching the layout.
-function UserDetails({ user, currency }) {
+// Spacious user-detail view (rendered in a wide modal). Built as independent
+// sections so more (Attendance, Payments…) can be added later.
+function UserDetail({ user, currency }) {
   const Section = ({ title, children }) => (
-    <div className="rounded-lg border border-cream-300 bg-white p-4">
+    <div className="rounded-lg border border-cream-300 bg-cream-100 p-4 dark:border-slate-700">
       <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</h4>
       {children}
     </div>
@@ -21,27 +20,43 @@ function UserDetails({ user, currency }) {
   const Row = ({ label, value }) => (
     <div className="flex justify-between py-1 text-sm">
       <span className="text-slate-500">{label}</span>
-      <span className="text-slate-700">{value ?? '—'}</span>
+      <span className="text-slate-700 dark:text-slate-200">{value ?? '—'}</span>
     </div>
   );
+  const initials = (user.name || '?').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+
   return (
-    <div className="grid grid-cols-1 gap-3 bg-cream-100 p-4 md:grid-cols-2 lg:grid-cols-4">
-      <Section title="User Details">
-        <Row label="Email" value={user.email} />
-        <Row label="Phone" value={user.phone} />
-        <Row label="Designation" value={user.designation} />
-        <Row label="Salary" value={user.salary != null ? formatMoney(user.salary, currency) : '—'} />
-        <Row label="Member since" value={formatDate(user.createdAt)} />
-      </Section>
-      <Section title="Last Login">
-        <p className="text-sm text-slate-700">{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}</p>
-      </Section>
-      <Section title="Attendance">
-        <p className="text-sm text-slate-400">Coming soon</p>
-      </Section>
-      <Section title="Payments">
-        <p className="text-sm text-slate-400">Coming soon</p>
-      </Section>
+    <div>
+      <div className="mb-5 flex items-center gap-4">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-xl font-semibold text-brand-700">
+          {initials}
+        </span>
+        <div>
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{user.name}</h3>
+          <p className="text-sm text-slate-500">{user.email}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="badge bg-brand-100 text-brand-700">{user.role?.name || '—'}</span>
+            <span className={`badge ${user.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>{user.status}</span>
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <Section title="Profile Information">
+          <Row label="Phone" value={user.phone} />
+          <Row label="Designation" value={user.designation} />
+          <Row label="Salary" value={user.salary != null ? formatMoney(user.salary, currency) : '—'} />
+          <Row label="Member since" value={formatDate(user.createdAt)} />
+        </Section>
+        <Section title="Last Login">
+          <p className="text-sm text-slate-700 dark:text-slate-200">{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}</p>
+        </Section>
+        <Section title="Attendance">
+          <p className="text-sm text-slate-400">Attendance tracking coming soon.</p>
+        </Section>
+        <Section title="Payments">
+          <p className="text-sm text-slate-400">Payroll & payments coming soon.</p>
+        </Section>
+      </div>
     </div>
   );
 }
@@ -64,7 +79,7 @@ export default function UsersPage() {
   const [modal, setModal] = useState(null);
   const [pwModal, setPwModal] = useState(null); // { id, name, password }
   const [saving, setSaving] = useState(false);
-  const [expandedId, setExpandedId] = useState(null);
+  const [detailUser, setDetailUser] = useState(null);
 
   const roleMap = Object.fromEntries(roles.map((r) => [r.id, r.name]));
 
@@ -192,7 +207,6 @@ export default function UsersPage() {
             <table className="w-full text-sm">
               <thead className="bg-cream-100 text-left text-slate-500">
                 <tr>
-                  <th className="w-8 px-4 py-3" />
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="px-4 py-3 font-medium">Designation</th>
@@ -202,48 +216,30 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-cream-200">
-                {result.items.map((u) => {
-                  const expanded = expandedId === u.id;
-                  return (
-                    <Fragment key={u.id}>
-                      <tr
-                        className="cursor-pointer hover:bg-cream-100"
-                        onClick={() => setExpandedId(expanded ? null : u.id)}
-                      >
-                        <td className="px-4 py-3 text-slate-400">
-                          <Icon name="chart" className={`h-4 w-4 transition-transform ${expanded ? 'rotate-90' : ''}`} strokeWidth={2} />
-                        </td>
-                        <td className="px-4 py-3 font-medium text-slate-800">{u.name}</td>
-                        <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                        <td className="px-4 py-3 text-slate-600">{u.designation || '—'}</td>
-                        <td className="px-4 py-3 text-slate-600">{roleMap[u.roleId] || u.role?.name || '—'}</td>
-                        <td className="px-4 py-3">
-                          <span className={`badge ${u.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>
-                            {u.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          {can('users.update') && (
-                            <>
-                              <button className="pill-edit" onClick={() => openEdit(u)}>Edit</button>
-                              <button className="pill ml-2 bg-cream-200 text-slate-600 hover:bg-cream-300" onClick={() => setPwModal({ id: u.id, name: u.name, password: '' })}>Reset PW</button>
-                            </>
-                          )}
-                          {can('users.delete') && (
-                            <button className="pill-delete ml-2" onClick={() => remove(u)}>Delete</button>
-                          )}
-                        </td>
-                      </tr>
-                      {expanded && (
-                        <tr>
-                          <td colSpan={7} className="p-0">
-                            <UserDetails user={u} currency={currency} />
-                          </td>
-                        </tr>
+                {result.items.map((u) => (
+                  <tr key={u.id} className="cursor-pointer hover:bg-cream-100" onClick={() => setDetailUser(u)}>
+                    <td className="px-4 py-3 font-medium text-slate-800">{u.name}</td>
+                    <td className="px-4 py-3 text-slate-600">{u.email}</td>
+                    <td className="px-4 py-3 text-slate-600">{u.designation || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">{roleMap[u.roleId] || u.role?.name || '—'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`badge ${u.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>
+                        {u.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      {can('users.update') && (
+                        <>
+                          <button className="pill-edit" onClick={() => openEdit(u)}>Edit</button>
+                          <button className="pill ml-2 bg-cream-200 text-slate-600 hover:bg-cream-300" onClick={() => setPwModal({ id: u.id, name: u.name, password: '' })}>Reset PW</button>
+                        </>
                       )}
-                    </Fragment>
-                  );
-                })}
+                      {can('users.delete') && (
+                        <button className="pill-delete ml-2" onClick={() => remove(u)}>Delete</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -330,6 +326,24 @@ export default function UsersPage() {
             <p className="mt-2 text-xs text-slate-400">The user's other sessions will be signed out.</p>
           </form>
         )}
+      </Modal>
+
+      {/* User detail */}
+      <Modal
+        open={Boolean(detailUser)}
+        onClose={() => setDetailUser(null)}
+        title="User Details"
+        wide
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setDetailUser(null)}>Close</button>
+            {can('users.update') && detailUser && (
+              <button className="btn-primary" onClick={() => { openEdit(detailUser); setDetailUser(null); }}>Edit</button>
+            )}
+          </>
+        }
+      >
+        {detailUser && <UserDetail user={detailUser} currency={currency} />}
       </Modal>
     </div>
   );
