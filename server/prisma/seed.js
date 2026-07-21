@@ -58,6 +58,33 @@ const DEFAULT_SETTINGS = [
 
   // Users
   { group: 'users', key: 'designations', value: ['Manager', 'Engineer', 'Accountant', 'Supervisor', 'Worker'] },
+
+  // Invoices & Quotations
+  { group: 'invoices', key: 'quotation_prefix', value: 'QTN-' },
+  { group: 'invoices', key: 'invoice_prefix', value: 'INV-' },
+  {
+    group: 'invoices',
+    key: 'config',
+    value: {
+      companyName: 'reyOne Construction',
+      logoUrl: '',
+      address: '',
+      email: '',
+      phone: '',
+      website: '',
+      gstNumber: '',
+      registrationNumber: '',
+      bankName: '',
+      accountHolder: '',
+      accountNumber: '',
+      ifsc: '',
+      branch: '',
+      upiId: '',
+      signatureUrl: '',
+      terms: 'Payment due within 15 days. Goods once sold will not be taken back.',
+      defaultNotes: 'Thank you for your business.',
+    },
+  },
 ];
 
 async function seedCompany() {

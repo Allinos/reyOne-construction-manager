@@ -43,6 +43,12 @@ const PERMISSIONS = [
   { key: 'finance.create', module: 'finance', action: 'create', description: 'Record payments/expenses' },
   { key: 'finance.update', module: 'finance', action: 'update', description: 'Edit finance records' },
   { key: 'finance.delete', module: 'finance', action: 'delete', description: 'Delete finance records' },
+
+  // Invoices & Quotations
+  { key: 'invoices.read', module: 'invoices', action: 'read', description: 'View invoices & quotations' },
+  { key: 'invoices.create', module: 'invoices', action: 'create', description: 'Create invoices & quotations' },
+  { key: 'invoices.update', module: 'invoices', action: 'update', description: 'Edit invoices, quotations & config' },
+  { key: 'invoices.delete', module: 'invoices', action: 'delete', description: 'Delete invoices & quotations' },
 ];
 
 const WILDCARD = '*';
@@ -91,6 +97,7 @@ const DEFAULT_ROLES = [
       'dashboard.read',
       'finance.read', 'finance.create', 'finance.update', 'finance.delete',
       'projects.read',
+      'invoices.read', 'invoices.create', 'invoices.update', 'invoices.delete',
       'activity.read',
     ],
   },

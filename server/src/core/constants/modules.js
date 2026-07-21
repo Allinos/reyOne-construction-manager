@@ -20,6 +20,7 @@ const MODULE_CATALOG = [
   { key: 'dashboard', name: 'Dashboard', isCore: false, enabled: true, sortOrder: 10, description: 'Company overview' },
   { key: 'projects', name: 'Projects', isCore: false, enabled: true, sortOrder: 11, description: 'Project & phase management' },
   { key: 'finance', name: 'Finance', isCore: false, enabled: true, sortOrder: 12, description: 'Project & company finance' },
+  { key: 'invoices', name: 'Invoices & Quotations', isCore: false, enabled: true, sortOrder: 13, description: 'Quotations & invoices with PDF' },
 
   // Future modules — seeded disabled so they appear in the Module Manager
   { key: 'attendance', name: 'Attendance', isCore: false, enabled: false, sortOrder: 20, description: 'Coming soon' },
