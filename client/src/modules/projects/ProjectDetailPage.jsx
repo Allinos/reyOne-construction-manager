@@ -14,6 +14,15 @@ import { PageHeader, FullPageLoader, SectionCard, Alert, StatusBadge } from '../
 import Modal from '../../components/Modal';
 import Icon from '../../components/Icon';
 
+// Returns a deadline warning message (and tone) when a deadline is near/past.
+function deadlineWarning(deadline) {
+  if (!deadline) return null;
+  const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
+  if (days < 0) return { text: 'Deadline passed', tone: 'text-red-600' };
+  if (days <= 7) return { text: 'Deadline within 7 days', tone: 'text-amber-600' };
+  return null;
+}
+
 function Info({ label, value }) {
   return (
     <div className="flex gap-2 text-sm">
@@ -60,6 +69,7 @@ export default function ProjectDetailPage() {
   const confirm = useConfirm();
   const currency = bootstrap?.company?.currency || 'INR';
   const statuses = bootstrap?.settings?.projects?.statuses || [];
+  const masterTasks = bootstrap?.settings?.projects?.task_templates || [];
   const statusLabel = (key) => statuses.find((s) => s.key === key)?.label || key;
   const canEdit = can('projects.update');
 
@@ -160,7 +170,9 @@ export default function ProjectDetailPage() {
         subtitle={`Reference no: ${project.referenceNumber} · Category: ${project.category || '—'}`}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link to="/projects" className="btn-secondary">Back</Link>
+            <Link to="/projects" className="btn-secondary" title="Back" aria-label="Back">
+              <Icon name="arrowLeft" className="h-4 w-4" />
+            </Link>
             {canEdit && (
               <select className="input w-auto py-1.5" value={project.status} onChange={(e) => changeStatus(e.target.value)}>
                 {statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
@@ -277,9 +289,15 @@ export default function ProjectDetailPage() {
               )}
 
               {/* Deadline */}
-              <div className="flex items-center justify-between border-t border-cream-200 pt-3 dark:border-slate-700">
-                <span className="text-sm font-medium text-brand-700 dark:text-brand-300">Deadline</span>
-                <DeadlineField value={phase.deadline} canEdit={canEdit} onChange={(d) => setPhaseDeadline(phase, d)} />
+              <div className="border-t border-cream-200 pt-3 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-brand-700 dark:text-brand-300">Deadline</span>
+                  <DeadlineField value={phase.deadline} canEdit={canEdit} onChange={(d) => setPhaseDeadline(phase, d)} />
+                </div>
+                {(() => {
+                  const w = deadlineWarning(phase.deadline);
+                  return w ? <p className={`mt-1 text-xs font-medium ${w.tone}`}>⚠ {w.text}</p> : null;
+                })()}
               </div>
             </SectionCard>
           ))}
@@ -335,10 +353,16 @@ export default function ProjectDetailPage() {
             <input
               className="input"
               autoFocus
+              list="master-tasks"
+              placeholder="Pick a predefined task or type a custom one"
               value={taskModal.title}
               onChange={(e) => setTaskModal((m) => ({ ...m, title: e.target.value }))}
               onKeyDown={(e) => e.key === 'Enter' && saveTask()}
             />
+            <datalist id="master-tasks">
+              {masterTasks.map((t) => <option key={t} value={t} />)}
+            </datalist>
+            <p className="mt-1 text-xs text-slate-400">Choose from the master list or enter a temporary task for this project only.</p>
           </div>
         )}
       </Modal>

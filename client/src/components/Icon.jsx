@@ -23,6 +23,7 @@ const PATHS = {
   trash: 'M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6',
   check: 'M20 6L9 17l-5-5',
   close: 'M18 6 6 18M6 6l12 12',
+  arrowLeft: 'M19 12H5M12 19l-7-7 7-7',
 };
 
 export default function Icon({ name, className = 'w-5 h-5', strokeWidth = 2 }) {

@@ -47,6 +47,7 @@ export default function ConfigurationPage() {
           <div className="space-y-4">
             <StringListEditor title="Project Categories" group="projects" settingKey="categories" initial={p.categories} />
             <StringListEditor title="Project Phases" group="projects" settingKey="phase_templates" initial={p.phase_templates} />
+            <StringListEditor title="Task Management (master tasks)" group="projects" settingKey="task_templates" initial={p.task_templates} />
             <ObjectListEditor
               title="Project Statuses"
               group="projects"

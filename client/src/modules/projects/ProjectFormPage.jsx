@@ -42,6 +42,8 @@ export default function ProjectFormPage() {
   const settings = bootstrap?.settings?.projects || {};
   const categories = settings.categories || [];
   const statuses = settings.statuses || [];
+  const phaseTemplates = settings.phase_templates || [];
+  const masterTasks = settings.task_templates || [];
 
   const [form, setForm] = useState(emptyForm);
   const [customFields, setCustomFields] = useState({});
@@ -49,6 +51,9 @@ export default function ProjectFormPage() {
   const [clients, setClients] = useState([]);
   const [clientMode, setClientMode] = useState('new'); // 'new' | 'existing'
   const [lastRef, setLastRef] = useState(null);
+  const [selectedStages, setSelectedStages] = useState([]);
+  const [taskChips, setTaskChips] = useState([]);
+  const [taskDraft, setTaskDraft] = useState('');
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -82,6 +87,7 @@ export default function ProjectFormPage() {
       // Create mode: load existing clients and the last generated reference.
       listClients().then(setClients).catch(() => {});
       lastReference().then(setLastRef).catch(() => {});
+      setSelectedStages([...phaseTemplates]); // all predefined stages selected by default
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -109,6 +115,15 @@ export default function ProjectFormPage() {
     }
   };
 
+  const toggleStage = (name) =>
+    setSelectedStages((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
+  const addTaskChip = () => {
+    const v = taskDraft.trim();
+    if (v && !taskChips.includes(v)) setTaskChips([...taskChips, v]);
+    setTaskDraft('');
+  };
+  const removeTaskChip = (t) => setTaskChips(taskChips.filter((x) => x !== t));
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -128,7 +143,14 @@ export default function ProjectFormPage() {
         toast.success('Project updated successfully');
         navigate(`/projects/${id}`);
       } else {
-        // Phases are instantiated from the configured template (managed in Settings).
+        // Build the selected stages, each seeded with the chosen tasks (master
+        // + temporary). If no stage is selected, the backend falls back to the
+        // configured template.
+        body.phases = selectedStages.map((name, i) => ({
+          name,
+          sortOrder: i,
+          tasks: taskChips.map((title) => ({ title })),
+        }));
         const created = await createProject(body);
         toast.success('Project created successfully');
         navigate(`/projects/${created.id}`);
@@ -277,6 +299,58 @@ export default function ProjectFormPage() {
             </div>
           )}
         </Card>
+
+        {!isEdit && (
+          <Card>
+            <h2 className="mb-4 font-semibold text-slate-700 dark:text-slate-200">Project Stages</h2>
+            <p className="mb-3 text-xs text-slate-400">Select one or more predefined stages for this project.</p>
+            <div className="flex flex-wrap gap-2">
+              {phaseTemplates.map((name) => {
+                const on = selectedStages.includes(name);
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => toggleStage(name)}
+                    className={`rounded-lg border px-3 py-1.5 text-sm ${
+                      on ? 'border-brand-400 bg-brand-50 text-brand-700 dark:bg-slate-700' : 'border-cream-300 text-slate-600 dark:border-slate-600'
+                    }`}
+                  >
+                    {on ? '✓ ' : ''}{name}
+                  </button>
+                );
+              })}
+              {phaseTemplates.length === 0 && <span className="text-sm text-slate-400">No stages configured in Settings.</span>}
+            </div>
+
+            <div className="mt-5 border-t border-cream-200 pt-4 dark:border-slate-700">
+              <h3 className="mb-1 font-medium text-slate-700 dark:text-slate-200">Tasks</h3>
+              <p className="mb-2 text-xs text-slate-400">Added to each selected stage. Pick from the master list or type a temporary task.</p>
+              <div className="mb-2 flex flex-wrap gap-2">
+                {taskChips.map((t) => (
+                  <span key={t} className="badge bg-cream-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                    {t}
+                    <button type="button" className="ml-1 text-slate-400 hover:text-red-500" onClick={() => removeTaskChip(t)}>&times;</button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  className="input flex-1"
+                  list="master-task-list"
+                  placeholder="Add a task and press Enter"
+                  value={taskDraft}
+                  onChange={(e) => setTaskDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTaskChip())}
+                />
+                <datalist id="master-task-list">
+                  {masterTasks.map((t) => <option key={t} value={t} />)}
+                </datalist>
+                <button type="button" className="btn-secondary" onClick={addTaskChip}>Add</button>
+              </div>
+            </div>
+          </Card>
+        )}
 
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={() => navigate('/projects')}>
