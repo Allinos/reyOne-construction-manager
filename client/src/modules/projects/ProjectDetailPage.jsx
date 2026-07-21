@@ -11,8 +11,26 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDate } from '../../lib/format';
 import { PageHeader, FullPageLoader, SectionCard, Alert, StatusBadge } from '../../components/ui';
+import { statusColor, statusSelectClass } from '../../lib/status';
 import Modal from '../../components/Modal';
 import Icon from '../../components/Icon';
+
+// Colors <option> text and applies a status-tinted class to a <select>.
+function StatusSelect({ value, statuses, onChange, className = '' }) {
+  return (
+    <select
+      className={`input py-1.5 font-medium ${statusSelectClass(value)} ${className}`}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {statuses.map((s) => (
+        <option key={s.key} value={s.key} style={{ color: statusColor(s.key) }}>
+          {s.label}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 // Returns a deadline warning message (and tone) when a deadline is near/past.
 function deadlineWarning(deadline) {
@@ -147,13 +165,41 @@ export default function ProjectDetailPage() {
   // --- tasks ---
   const toggleTask = (phase, task) =>
     guard(() => updateTask(id, phase.id, task.id, { status: task.status === 'completed' ? 'pending' : 'completed' }));
+
+  const openAddTask = (phase) =>
+    setTaskModal({ phaseId: phase.id, taskId: null, existing: new Set(), tempChips: [], tempDraft: '' });
+  const openEditTask = (phase, task) => setTaskModal({ phaseId: phase.id, taskId: task.id, title: task.title });
+
+  const toggleExisting = (name) => setTaskModal((m) => {
+    const existing = new Set(m.existing);
+    existing.has(name) ? existing.delete(name) : existing.add(name);
+    return { ...m, existing };
+  });
+  const addTempChip = () => setTaskModal((m) => {
+    const v = (m.tempDraft || '').trim();
+    if (!v || m.tempChips.includes(v)) return { ...m, tempDraft: '' };
+    return { ...m, tempChips: [...m.tempChips, v], tempDraft: '' };
+  });
+  const removeTempChip = (t) => setTaskModal((m) => ({ ...m, tempChips: m.tempChips.filter((x) => x !== t) }));
+
   const saveTask = () => {
-    const title = taskModal.title.trim();
-    if (!title) return;
-    const fn = taskModal.taskId
-      ? () => updateTask(id, taskModal.phaseId, taskModal.taskId, { title })
-      : () => addTask(id, taskModal.phaseId, { title });
-    guard(fn, taskModal.taskId ? 'Task updated' : 'Task added').then(() => setTaskModal(null));
+    // Edit mode: rename a single task.
+    if (taskModal.taskId) {
+      const title = (taskModal.title || '').trim();
+      if (!title) return;
+      guard(() => updateTask(id, taskModal.phaseId, taskModal.taskId, { title }), 'Task updated').then(() => setTaskModal(null));
+      return;
+    }
+    // Add mode: create selected predefined + temporary tasks in one go.
+    const titles = [...taskModal.existing, ...taskModal.tempChips];
+    if (taskModal.tempDraft?.trim()) titles.push(taskModal.tempDraft.trim());
+    if (!titles.length) return;
+    guard(async () => {
+      for (const title of titles) {
+        // eslint-disable-next-line no-await-in-loop
+        await addTask(id, taskModal.phaseId, { title });
+      }
+    }, `${titles.length} task(s) added`).then(() => setTaskModal(null));
   };
   const onDeleteTask = async (phase, task) => {
     const ok = await confirm({ title: 'Delete task?', message: `Remove "${task.title}".`, confirmLabel: 'Delete' });
@@ -170,14 +216,15 @@ export default function ProjectDetailPage() {
         subtitle={`Reference no: ${project.referenceNumber} · Category: ${project.category || '—'}`}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link to="/projects" className="btn-secondary" title="Back" aria-label="Back">
+            <Link
+              to="/projects"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm hover:bg-brand-600"
+              title="Back"
+              aria-label="Back"
+            >
               <Icon name="arrowLeft" className="h-4 w-4" />
             </Link>
-            {canEdit && (
-              <select className="input w-auto py-1.5" value={project.status} onChange={(e) => changeStatus(e.target.value)}>
-                {statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-              </select>
-            )}
+            {canEdit && <StatusSelect value={project.status} statuses={statuses} onChange={changeStatus} className="w-auto" />}
             {canEdit && <button className="btn-secondary" onClick={openProjectEmp}>Assign Employees</button>}
             {canEdit && <Link to={`/projects/${id}/edit`} className="btn-secondary">Edit</Link>}
             {can('projects.delete') && <button className="btn-secondary text-red-600" onClick={onDelete}>Delete</button>}
@@ -231,14 +278,12 @@ export default function ProjectDetailPage() {
               {/* Controls */}
               <div className="mb-4 grid grid-cols-3 gap-2">
                 {canEdit ? (
-                  <select className="input py-1.5 text-sm" value={phase.status} onChange={(e) => changePhaseStatus(phase, e.target.value)}>
-                    {statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-                  </select>
+                  <StatusSelect value={phase.status} statuses={statuses} onChange={(v) => changePhaseStatus(phase, v)} />
                 ) : (
                   <StatusBadge status={phase.status} label={statusLabel(phase.status)} />
                 )}
                 <button className="btn-secondary py-1.5" onClick={() => canEdit && openPhaseEmp(phase)} disabled={!canEdit}>Employee</button>
-                <button className="btn-secondary py-1.5" onClick={() => canEdit && setTaskModal({ phaseId: phase.id, taskId: null, title: '' })} disabled={!canEdit}>+ Task</button>
+                <button className="btn-secondary py-1.5" onClick={() => canEdit && openAddTask(phase)} disabled={!canEdit}>+ Task</button>
               </div>
 
               {/* Assigned employees */}
@@ -277,7 +322,7 @@ export default function ProjectDetailPage() {
                       </span>
                       {canEdit && (
                         <span className="ml-auto flex gap-2">
-                          <button className="text-xs text-brand-600 hover:underline" onClick={() => setTaskModal({ phaseId: phase.id, taskId: task.id, title: task.title })}>Edit</button>
+                          <button className="text-xs text-brand-600 hover:underline" onClick={() => openEditTask(phase, task)}>Edit</button>
                           <button className="text-xs text-red-500 hover:underline" onClick={() => onDeleteTask(phase, task)}>Delete</button>
                         </span>
                       )}
@@ -339,30 +384,69 @@ export default function ProjectDetailPage() {
       <Modal
         open={Boolean(taskModal)}
         onClose={() => setTaskModal(null)}
-        title={taskModal?.taskId ? 'Edit Task' : 'Add Task'}
+        title={taskModal?.taskId ? 'Edit Task' : 'Add Tasks'}
         footer={
           <>
             <button className="btn-secondary" onClick={() => setTaskModal(null)}>Cancel</button>
-            <button className="btn-primary" onClick={saveTask}>Save</button>
+            <button className="btn-primary" onClick={saveTask}>{taskModal?.taskId ? 'Save' : 'Update'}</button>
           </>
         }
       >
-        {taskModal && (
+        {taskModal && taskModal.taskId && (
           <div>
             <label className="label">Task title</label>
             <input
               className="input"
               autoFocus
-              list="master-tasks"
-              placeholder="Pick a predefined task or type a custom one"
               value={taskModal.title}
               onChange={(e) => setTaskModal((m) => ({ ...m, title: e.target.value }))}
               onKeyDown={(e) => e.key === 'Enter' && saveTask()}
             />
-            <datalist id="master-tasks">
-              {masterTasks.map((t) => <option key={t} value={t} />)}
-            </datalist>
-            <p className="mt-1 text-xs text-slate-400">Choose from the master list or enter a temporary task for this project only.</p>
+          </div>
+        )}
+        {taskModal && !taskModal.taskId && (
+          <div className="space-y-5">
+            <div>
+              <p className="label">Existing Tasks</p>
+              <p className="mb-2 text-xs text-slate-400">From Settings → Task Management. Select one or more.</p>
+              {masterTasks.length === 0 ? (
+                <p className="text-sm text-slate-400">No predefined tasks. Create some in Settings.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {masterTasks.map((t) => (
+                    <label key={t} className="flex items-center gap-2 rounded-lg border border-cream-300 px-3 py-2 text-sm dark:border-slate-700">
+                      <input type="checkbox" checked={taskModal.existing.has(t)} onChange={() => toggleExisting(t)} />
+                      <span className="text-slate-700 dark:text-slate-200">{t}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-cream-200 pt-4 dark:border-slate-700">
+              <p className="label">Create Temporary Task</p>
+              <p className="mb-2 text-xs text-slate-400">Only for this project — not saved to the master list.</p>
+              {taskModal.tempChips.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {taskModal.tempChips.map((t) => (
+                    <span key={t} className="badge bg-cream-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                      {t}
+                      <button type="button" className="ml-1 text-slate-400 hover:text-red-500" onClick={() => removeTempChip(t)}>&times;</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  className="input flex-1"
+                  placeholder="Temporary task name"
+                  value={taskModal.tempDraft}
+                  onChange={(e) => setTaskModal((m) => ({ ...m, tempDraft: e.target.value }))}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTempChip())}
+                />
+                <button type="button" className="btn-secondary" onClick={addTempChip}>Add</button>
+              </div>
+            </div>
           </div>
         )}
       </Modal>

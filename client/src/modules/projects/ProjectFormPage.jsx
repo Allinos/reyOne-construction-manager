@@ -43,7 +43,6 @@ export default function ProjectFormPage() {
   const categories = settings.categories || [];
   const statuses = settings.statuses || [];
   const phaseTemplates = settings.phase_templates || [];
-  const masterTasks = settings.task_templates || [];
 
   const [form, setForm] = useState(emptyForm);
   const [customFields, setCustomFields] = useState({});
@@ -52,8 +51,6 @@ export default function ProjectFormPage() {
   const [clientMode, setClientMode] = useState('new'); // 'new' | 'existing'
   const [lastRef, setLastRef] = useState(null);
   const [selectedStages, setSelectedStages] = useState([]);
-  const [taskChips, setTaskChips] = useState([]);
-  const [taskDraft, setTaskDraft] = useState('');
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -117,12 +114,6 @@ export default function ProjectFormPage() {
 
   const toggleStage = (name) =>
     setSelectedStages((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
-  const addTaskChip = () => {
-    const v = taskDraft.trim();
-    if (v && !taskChips.includes(v)) setTaskChips([...taskChips, v]);
-    setTaskDraft('');
-  };
-  const removeTaskChip = (t) => setTaskChips(taskChips.filter((x) => x !== t));
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -143,14 +134,9 @@ export default function ProjectFormPage() {
         toast.success('Project updated successfully');
         navigate(`/projects/${id}`);
       } else {
-        // Build the selected stages, each seeded with the chosen tasks (master
-        // + temporary). If no stage is selected, the backend falls back to the
-        // configured template.
-        body.phases = selectedStages.map((name, i) => ({
-          name,
-          sortOrder: i,
-          tasks: taskChips.map((title) => ({ title })),
-        }));
+        // Build the selected stages. Tasks are added later inside the project.
+        // If no stage is selected, the backend falls back to the template.
+        body.phases = selectedStages.map((name, i) => ({ name, sortOrder: i }));
         const created = await createProject(body);
         toast.success('Project created successfully');
         navigate(`/projects/${created.id}`);
@@ -322,33 +308,7 @@ export default function ProjectFormPage() {
               })}
               {phaseTemplates.length === 0 && <span className="text-sm text-slate-400">No stages configured in Settings.</span>}
             </div>
-
-            <div className="mt-5 border-t border-cream-200 pt-4 dark:border-slate-700">
-              <h3 className="mb-1 font-medium text-slate-700 dark:text-slate-200">Tasks</h3>
-              <p className="mb-2 text-xs text-slate-400">Added to each selected stage. Pick from the master list or type a temporary task.</p>
-              <div className="mb-2 flex flex-wrap gap-2">
-                {taskChips.map((t) => (
-                  <span key={t} className="badge bg-cream-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-                    {t}
-                    <button type="button" className="ml-1 text-slate-400 hover:text-red-500" onClick={() => removeTaskChip(t)}>&times;</button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  className="input flex-1"
-                  list="master-task-list"
-                  placeholder="Add a task and press Enter"
-                  value={taskDraft}
-                  onChange={(e) => setTaskDraft(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTaskChip())}
-                />
-                <datalist id="master-task-list">
-                  {masterTasks.map((t) => <option key={t} value={t} />)}
-                </datalist>
-                <button type="button" className="btn-secondary" onClick={addTaskChip}>Add</button>
-              </div>
-            </div>
+            <p className="mt-3 text-xs text-slate-400">Tasks are added later, inside each stage after the project is created.</p>
           </Card>
         )}
 
