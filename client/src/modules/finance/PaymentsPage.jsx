@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { listPayments, createPayment, updatePayment, deletePayment, projectOptions } from './api';
+import { listPayments, createPayment, updatePayment, deletePayment, projectOptions, getProjectsFinance } from './api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -26,6 +26,7 @@ export default function PaymentsPage() {
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null); // { form, editingId }
   const [saving, setSaving] = useState(false);
+  const [financeMap, setFinanceMap] = useState({});
 
   const projectMap = Object.fromEntries(projects.map((p) => [p.id, p]));
 
@@ -42,6 +43,7 @@ export default function PaymentsPage() {
 
   useEffect(() => {
     projectOptions().then(setProjects).catch(() => {});
+    getProjectsFinance().then((list) => setFinanceMap(Object.fromEntries(list.map((p) => [p.id, p])))).catch(() => {});
   }, []);
   useEffect(() => {
     load();
@@ -134,8 +136,11 @@ export default function PaymentsPage() {
               <tbody className="divide-y divide-cream-200">
                 {result.items.map((p) => (
                   <tr key={p.id}>
-                    <td className="px-4 py-3 text-slate-700">
-                      {projectMap[p.projectId]?.name || `#${p.projectId}`}
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-slate-800 dark:text-slate-100">{projectMap[p.projectId]?.name || `#${p.projectId}`}</div>
+                      {projectMap[p.projectId]?.clientName && (
+                        <div className="text-xs text-slate-500">{projectMap[p.projectId].clientName}</div>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-medium text-green-700">{formatMoney(p.amount, currency)}</td>
                     <td className="px-4 py-3 text-slate-500">{formatDate(p.date)}</td>
@@ -182,6 +187,22 @@ export default function PaymentsPage() {
                     <option key={p.id} value={p.id}>{p.referenceNumber} — {p.name}</option>
                   ))}
                 </select>
+                {modal.form.projectId && financeMap[modal.form.projectId] && (
+                  <div className="mt-2 grid grid-cols-3 gap-2 rounded-lg bg-cream-100 p-2 text-center text-xs dark:bg-slate-700">
+                    <div>
+                      <p className="text-slate-500">Total Value</p>
+                      <p className="font-semibold text-slate-800 dark:text-slate-100">{formatMoney(financeMap[modal.form.projectId].totalAmount, currency)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Received</p>
+                      <p className="font-semibold text-green-600">{formatMoney(financeMap[modal.form.projectId].receivedAmount, currency)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Balance</p>
+                      <p className="font-semibold text-red-600">{formatMoney(financeMap[modal.form.projectId].balanceAmount, currency)}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { listExpenses, createExpense, updateExpense, deleteExpense, projectOptions } from './api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -156,10 +157,11 @@ export default function ExpensesPage() {
               <thead className="bg-cream-100 text-left text-slate-500">
                 <tr>
                   <th className="px-4 py-3 font-medium">Category</th>
-                  <th className="px-4 py-3 font-medium">Scope</th>
+                  <th className="px-4 py-3 font-medium">Project</th>
+                  <th className="px-4 py-3 font-medium">Expense By</th>
+                  <th className="px-4 py-3 font-medium">Paid To</th>
                   <th className="px-4 py-3 font-medium">Amount</th>
                   <th className="px-4 py-3 font-medium">Date</th>
-                  <th className="px-4 py-3 font-medium">Account</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -168,11 +170,19 @@ export default function ExpensesPage() {
                   <tr key={x.id}>
                     <td className="px-4 py-3 text-slate-700">{x.category}</td>
                     <td className="px-4 py-3 text-slate-500">
-                      {x.scope === 'PROJECT' ? projectMap[x.projectId]?.name || 'Project' : 'Company'}
+                      {x.scope === 'PROJECT' && x.projectId ? (
+                        <Link to={`/projects/${x.projectId}`} className="text-brand-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                          {projectMap[x.projectId]?.name || 'Project'}
+                          <span className="ml-1 text-xs text-slate-400">#{x.projectId}</span>
+                        </Link>
+                      ) : (
+                        'Company'
+                      )}
                     </td>
+                    <td className="px-4 py-3 text-slate-600">{x.expenseBy || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">{x.paidTo || '—'}</td>
                     <td className="px-4 py-3 font-medium text-red-600">{formatMoney(x.amount, currency)}</td>
                     <td className="px-4 py-3 text-slate-500">{formatDate(x.date)}</td>
-                    <td className="px-4 py-3 text-slate-600">{x.account}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {can('finance.update') && (
                         <button className="pill-edit" onClick={() => openEdit(x)}>Edit</button>

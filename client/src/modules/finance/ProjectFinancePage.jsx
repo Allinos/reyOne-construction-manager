@@ -96,7 +96,7 @@ export default function ProjectFinancePage() {
         <div className="space-y-4">
           {grouped.map((g) => (
             <div key={g.key}>
-              {g.label && <p className="mb-1 px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{g.label}</p>}
+              {g.label && <p className="mb-2 px-1 text-base font-semibold text-slate-800 dark:text-slate-100">{g.label}</p>}
               <div className="space-y-2">
                 {g.items.map((p) => (
                   <ProjectRow key={p.id} p={p} currency={currency} active={selected === p.id} onClick={() => setSelected(p.id)} />
@@ -123,45 +123,40 @@ export default function ProjectFinancePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <Card>
-                <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">Stage-wise Payments</h3>
-                {summary.phaseWise.length ? (
-                  <ul className="divide-y divide-cream-200 dark:divide-slate-700">
-                    {summary.phaseWise.map((ph, i) => (
-                      <li key={i} className="flex justify-between py-2 text-sm">
-                        <span className="text-slate-600 dark:text-slate-300">{ph.phaseName}</span>
-                        <span className="font-medium text-slate-800 dark:text-slate-100">{formatMoney(ph.received, currency)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-slate-400">No stage payments.</p>
-                )}
-              </Card>
-
-              <Card>
-                <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">
-                  Expense Summary
-                  <span className="ml-2 text-sm font-normal text-red-600">{formatMoney(summary.projectExpenses, currency)}</span>
-                </h3>
-                {summary.expenses?.length ? (
-                  <ul className="divide-y divide-cream-200 dark:divide-slate-700">
-                    {summary.expenses.map((x) => (
-                      <li key={x.id} className="flex justify-between py-2 text-sm">
-                        <span className="text-slate-600 dark:text-slate-300">
-                          {x.category}
-                          {x.paidTo ? <span className="text-slate-400"> · {x.paidTo}</span> : ''}
-                        </span>
-                        <span className="font-medium text-red-600">{formatMoney(x.amount, currency)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-slate-400">No expenses.</p>
-                )}
-              </Card>
-            </div>
+            <Card>
+              <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">
+                Expense Summary
+                <span className="ml-2 text-sm font-normal text-red-600">{formatMoney(summary.projectExpenses, currency)}</span>
+              </h3>
+              {summary.expenses?.length ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-slate-400">
+                      <tr>
+                        <th className="py-2 font-medium">Date</th>
+                        <th className="py-2 font-medium">Category</th>
+                        <th className="py-2 font-medium">Paid To</th>
+                        <th className="py-2 font-medium">Expense By</th>
+                        <th className="py-2 text-right font-medium">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-cream-200 dark:divide-slate-700">
+                      {summary.expenses.map((x) => (
+                        <tr key={x.id}>
+                          <td className="py-2 text-slate-500">{formatDate(x.date)}</td>
+                          <td className="py-2 text-slate-600 dark:text-slate-300">{x.category}</td>
+                          <td className="py-2 text-slate-600 dark:text-slate-300">{x.paidTo || '—'}</td>
+                          <td className="py-2 text-slate-600 dark:text-slate-300">{x.expenseBy || '—'}</td>
+                          <td className="py-2 text-right font-medium text-red-600">{formatMoney(x.amount, currency)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No expenses.</p>
+              )}
+            </Card>
 
             <Card>
               <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">Payment History</h3>
