@@ -4,13 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { PageHeader, Card, FullPageLoader, StatusBadge } from '../../components/ui';
 import { formatMoney, formatDate } from '../../lib/format';
 import { DonutChart, PieChart, BarChart, CHART_COLORS } from '../../components/charts';
-
-const STATUS_COLORS = {
-  pending: '#f59e0b',
-  in_progress: '#3b82f6',
-  on_hold: '#94a3b8',
-  completed: '#16a34a',
-};
+import { statusColor } from '../../lib/status';
 
 function StatCard({ label, value, accent }) {
   return (
@@ -59,10 +53,10 @@ export default function DashboardPage() {
 
   const statusData = Object.entries(data.projectStatus || {})
     .filter(([, v]) => v > 0)
-    .map(([key, value], i) => ({
+    .map(([key, value]) => ({
       label: statusLabel(key),
       value,
-      color: STATUS_COLORS[key] || CHART_COLORS[i % CHART_COLORS.length],
+      color: statusColor(key),
     }));
   const paymentData = [
     { label: 'Received', value: Number(s.totalRevenue || 0), color: '#16a34a' },

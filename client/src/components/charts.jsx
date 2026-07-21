@@ -132,8 +132,8 @@ export function HBars({ items = [], color = '#F97316', formatValue = (v) => v })
             <span>{it.label}</span>
             <span className="font-medium text-slate-700">{formatValue(it.value)}</span>
           </div>
-          <div className="h-2 rounded-full bg-cream-200">
-            <div className="h-2 rounded-full" style={{ width: `${(Number(it.value) / max) * 100}%`, backgroundColor: color }} />
+          <div className="h-2 rounded-full bg-cream-200 dark:bg-slate-700">
+            <div className="h-2 rounded-full" style={{ width: `${(Number(it.value) / max) * 100}%`, backgroundColor: it.color || color }} />
           </div>
         </div>
       ))}

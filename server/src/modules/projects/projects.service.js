@@ -229,6 +229,33 @@ const projectsService = {
 
     const project = await repo.create(data);
     activity.record({ userId: actor.id, action: 'project.created', entityType: 'project', entityId: project.id, req });
+
+    // An advance amount is money already received — record it as a payment so it
+    // flows into finance totals automatically (never fails project creation).
+    if (Number(payload.advanceAmount) > 0) {
+      try {
+        const [methods, accounts] = await Promise.all([
+          getSetting('finance', 'payment_methods', []),
+          getSetting('finance', 'accounts', []),
+        ]);
+        const method = (Array.isArray(methods) && methods[0]) || 'Cash';
+        const accList = Array.isArray(accounts) ? accounts : [];
+        const account = (accList[0] && (accList[0].key || accList[0])) || 'cash';
+        await prisma.payment.create({
+          data: {
+            projectId: project.id,
+            amount: payload.advanceAmount,
+            date: payload.agreementDate || new Date(),
+            method,
+            account,
+            notes: 'Advance Payment',
+            createdById: actor.id,
+          },
+        });
+      } catch {
+        /* advance payment is best-effort */
+      }
+    }
     return decorate(project);
   },
 

@@ -1,4 +1,5 @@
 // Small shared UI building blocks reused across every module.
+import { statusBadgeClass } from '../lib/status';
 
 export function Spinner({ className = 'w-6 h-6' }) {
   return (
@@ -88,14 +89,6 @@ export function Alert({ type = 'error', children }) {
   return <div className={`rounded-lg px-3 py-2 text-sm ${styles[type]}`}>{children}</div>;
 }
 
-const STATUS_STYLES = {
-  completed: 'bg-green-100 text-green-700',
-  in_progress: 'bg-blue-100 text-blue-700',
-  pending: 'bg-amber-100 text-amber-700',
-  on_hold: 'bg-slate-200 text-slate-600',
-};
-
 export function StatusBadge({ status, label }) {
-  const cls = STATUS_STYLES[status] || 'bg-cream-200 text-slate-600';
-  return <span className={`badge ${cls}`}>{label || status}</span>;
+  return <span className={`badge ${statusBadgeClass(status)}`}>{label || status}</span>;
 }

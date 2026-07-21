@@ -5,6 +5,7 @@ import { errorMessage } from '../../lib/api';
 import { formatMoney } from '../../lib/format';
 import { Spinner, Alert, Card } from '../../components/ui';
 import { HBars } from '../../components/charts';
+import { statusColor } from '../../lib/status';
 
 export function ProjectAnalytics({ open }) {
   const { bootstrap } = useAuth();
@@ -38,7 +39,7 @@ export function ProjectAnalytics({ open }) {
       </div>
       <Card>
         <h3 className="mb-3 font-semibold text-slate-700">Projects by Status</h3>
-        <HBars items={data.byStatus.map((s) => ({ label: statusLabel(s.label), value: s.value }))} />
+        <HBars items={data.byStatus.map((s) => ({ label: statusLabel(s.label), value: s.value, color: statusColor(s.label) }))} />
       </Card>
       <Card>
         <h3 className="mb-3 font-semibold text-slate-700">Projects by Category</h3>

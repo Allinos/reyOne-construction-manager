@@ -37,6 +37,8 @@ const DEFAULT_SETTINGS = [
     value: ['Planning', 'Foundation', 'Structure', 'Electrical', 'Finishing', 'Interior'],
   },
   { group: 'projects', key: 'reference_prefix', value: 'PRJ-' },
+  // Master task list — admins manage these in Settings; projects pick from them.
+  { group: 'projects', key: 'task_templates', value: ['Planning', 'Structure', 'Electrical', 'Interior 3D', 'Exterior 3D', 'Finishing'] },
 
   // Finance
   { group: 'finance', key: 'payment_methods', value: ['Cash', 'Bank', 'Online', 'UPI', 'Cheque'] },
