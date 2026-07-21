@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { listExpenses, createExpense, updateExpense, deleteExpense, projectOptions } from './api';
+import { listExpenses, createExpense, updateExpense, deleteExpense, projectOptions, getExpenseStats } from './api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -32,8 +32,14 @@ export default function ExpensesPage() {
   const [modal, setModal] = useState(null);
   const [saving, setSaving] = useState(false);
   const [analytics, setAnalytics] = useState(false);
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [stats, setStats] = useState(null);
 
   const projectMap = Object.fromEntries(projects.map((p) => [p.id, p]));
+
+  const refreshStats = useCallback(() => {
+    getExpenseStats(month).then(setStats).catch(() => {});
+  }, [month]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,6 +60,9 @@ export default function ExpensesPage() {
   useEffect(() => {
     load();
   }, [load]);
+  useEffect(() => {
+    refreshStats();
+  }, [refreshStats]);
 
   const openNew = () => setModal({ form: { ...blank }, editingId: null });
   const openEdit = (x) =>
@@ -102,6 +111,7 @@ export default function ExpensesPage() {
       }
       setModal(null);
       load();
+      refreshStats();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -116,6 +126,7 @@ export default function ExpensesPage() {
       await deleteExpense(id);
       toast.success('Expense deleted');
       load();
+      refreshStats();
     } catch (err) {
       toast.error(errorMessage(err));
     }
@@ -136,13 +147,44 @@ export default function ExpensesPage() {
         }
       />
 
+      {/* Statistics header: month selector + compact totals */}
       <Card className="mb-4">
-        <select className="input w-auto" value={scopeFilter} onChange={(e) => { setScopeFilter(e.target.value); setPage(1); }}>
-          <option value="">All expenses</option>
-          <option value="COMPANY">Company</option>
-          <option value="PROJECT">Project</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div>
+            <label className="mb-0.5 block text-xs text-slate-500">Month</label>
+            <input type="month" className="input w-auto py-1.5" value={month} onChange={(e) => setMonth(e.target.value)} />
+          </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <div>
+              <p className="text-xs text-slate-500">Project Expenses</p>
+              <p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.project, currency) : '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Company Expenses</p>
+              <p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.company, currency) : '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Total Expenses</p>
+              <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{stats ? formatMoney(stats.total, currency) : '—'}</p>
+            </div>
+          </div>
+        </div>
       </Card>
+
+      {/* Scope tabs (top-right of the list) */}
+      <div className="mb-3 flex justify-end">
+        <div className="flex overflow-hidden rounded-lg border border-cream-300 text-sm dark:border-slate-700">
+          {[{ v: '', l: 'All' }, { v: 'PROJECT', l: 'Project Expenses' }, { v: 'COMPANY', l: 'Company Expenses' }].map((t) => (
+            <button
+              key={t.v}
+              className={`px-3 py-1.5 ${scopeFilter === t.v ? 'bg-brand-500 text-white' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
+              onClick={() => { setScopeFilter(t.v); setPage(1); }}
+            >
+              {t.l}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {error && <Alert>{error}</Alert>}
 

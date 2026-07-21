@@ -50,6 +50,9 @@ const financeController = {
   async analytics(req, res) {
     return ok(res, await service.analytics());
   },
+  async expenseStats(req, res) {
+    return ok(res, await service.expenseStats(req.query.month));
+  },
 };
 
 module.exports = financeController;

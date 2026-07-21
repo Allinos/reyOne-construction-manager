@@ -315,6 +315,22 @@ const financeService = {
     };
   },
 
+  // Expense totals (project / company / all) for a given month (YYYY-MM).
+  async expenseStats(month) {
+    let where = {};
+    if (/^\d{4}-\d{2}$/.test(month || '')) {
+      const [y, m] = month.split('-').map(Number);
+      where = { date: { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) } };
+    }
+    const [proj, comp] = await Promise.all([
+      repo.sumExpenses({ ...where, scope: 'PROJECT' }),
+      repo.sumExpenses({ ...where, scope: 'COMPANY' }),
+    ]);
+    const p = D(proj._sum.amount);
+    const c = D(comp._sum.amount);
+    return { project: money(p), company: money(c), total: money(p.plus(c)) };
+  },
+
   // Company-wide finance overview.
   async overview(query) {
     const d = dateWhere(query);

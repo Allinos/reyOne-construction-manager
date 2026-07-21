@@ -14,8 +14,11 @@ function Stat({ label, value, accent }) {
   );
 }
 
-function ProjectRow({ p, currency, active, onClick }) {
+function ProjectRow({ p, view, currency, active, onClick }) {
   const pct = Number(p.totalAmount) > 0 ? Math.min(100, Math.round((Number(p.receivedAmount) / Number(p.totalAmount)) * 100)) : 0;
+  // Typography hierarchy flips by view — no names displayed outside the card.
+  const primary = view === 'client' ? p.clientName : p.name;
+  const secondary = view === 'client' ? p.name : p.clientName;
   return (
     <button
       onClick={onClick}
@@ -27,8 +30,8 @@ function ProjectRow({ p, currency, active, onClick }) {
         <span className="text-xs font-medium text-brand-700 dark:text-brand-300">{p.referenceNumber}</span>
         <StatusBadge status={p.status} />
       </div>
-      <p className="mt-0.5 font-medium text-slate-800 dark:text-slate-100">{p.name}</p>
-      <p className="text-xs text-slate-500">{p.clientName}</p>
+      <p className="mt-0.5 text-base font-semibold text-slate-800 dark:text-slate-100">{primary}</p>
+      <p className="text-xs text-slate-500">{secondary}</p>
       <div className="mt-2 h-1.5 rounded-full bg-cream-200 dark:bg-slate-700">
         <div className="h-1.5 rounded-full bg-green-500" style={{ width: `${pct}%` }} />
       </div>
@@ -64,14 +67,10 @@ export default function ProjectFinancePage() {
     getProjectSummary(selected).then(setSummary).catch((err) => setError(errorMessage(err)));
   }, [selected]);
 
-  const grouped = useMemo(() => {
+  const sorted = useMemo(() => {
     if (!projects) return [];
-    if (view === 'project') return [{ key: 'all', label: null, items: projects }];
-    const byClient = {};
-    projects.forEach((p) => {
-      (byClient[p.clientName] ||= []).push(p);
-    });
-    return Object.entries(byClient).map(([label, items]) => ({ key: label, label, items }));
+    if (view === 'client') return [...projects].sort((a, b) => (a.clientName || '').localeCompare(b.clientName || ''));
+    return projects;
   }, [projects, view]);
 
   if (error) return <Alert>{error}</Alert>;
@@ -93,16 +92,9 @@ export default function ProjectFinancePage() {
             </button>
           ))}
         </div>
-        <div className="space-y-4">
-          {grouped.map((g) => (
-            <div key={g.key}>
-              {g.label && <p className="mb-2 px-1 text-base font-semibold text-slate-800 dark:text-slate-100">{g.label}</p>}
-              <div className="space-y-2">
-                {g.items.map((p) => (
-                  <ProjectRow key={p.id} p={p} currency={currency} active={selected === p.id} onClick={() => setSelected(p.id)} />
-                ))}
-              </div>
-            </div>
+        <div className="space-y-2">
+          {sorted.map((p) => (
+            <ProjectRow key={p.id} p={p} view={view} currency={currency} active={selected === p.id} onClick={() => setSelected(p.id)} />
           ))}
         </div>
       </div>
