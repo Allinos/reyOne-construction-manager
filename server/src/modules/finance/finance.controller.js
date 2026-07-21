@@ -38,6 +38,9 @@ const financeController = {
   async accounts(req, res) {
     return ok(res, await service.accounts());
   },
+  async projectsFinance(req, res) {
+    return ok(res, await service.projectsFinance());
+  },
   async projectSummary(req, res) {
     return ok(res, await service.projectSummary(req.params.projectId));
   },

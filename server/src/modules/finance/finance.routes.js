@@ -36,6 +36,7 @@ function registerRoutes(router) {
   router.get('/accounts', authorize('finance.read'), asyncHandler(controller.accounts));
   router.get('/overview', authorize('finance.read'), validate({ query: overviewQuery }), asyncHandler(controller.overview));
   router.get('/analytics', authorize('finance.read'), asyncHandler(controller.analytics));
+  router.get('/projects', authorize('finance.read'), asyncHandler(controller.projectsFinance));
   router.get('/projects/:projectId/summary', authorize('finance.read'), validate({ params: projectIdParam }), asyncHandler(controller.projectSummary));
 }
 

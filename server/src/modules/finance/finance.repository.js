@@ -32,6 +32,16 @@ const financeRepository = {
   paymentsByPhase(projectId) {
     return prisma.payment.groupBy({ by: ['phaseId'], where: { projectId }, _sum: { amount: true } });
   },
+  paymentsByProject() {
+    return prisma.payment.groupBy({ by: ['projectId'], _sum: { amount: true } });
+  },
+  listProjectsBasic() {
+    return prisma.project.findMany({
+      where: { deletedAt: null },
+      select: { id: true, referenceNumber: true, name: true, clientName: true, status: true, projectAmount: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
 
   // --- Expenses ---
   createExpense(data) {

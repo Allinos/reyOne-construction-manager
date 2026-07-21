@@ -226,6 +226,26 @@ const financeService = {
     return { accounts, byType };
   },
 
+  // All projects with a financial rollup (drives the Project Finance list).
+  async projectsFinance() {
+    const [projects, payAgg] = await Promise.all([repo.listProjectsBasic(), repo.paymentsByProject()]);
+    const received = new Map(payAgg.map((r) => [r.projectId, D(r._sum.amount)]));
+    return projects.map((p) => {
+      const total = D(p.projectAmount);
+      const recv = received.get(p.id) || D(0);
+      return {
+        id: p.id,
+        referenceNumber: p.referenceNumber,
+        name: p.name,
+        clientName: p.clientName,
+        status: p.status,
+        totalAmount: money(total),
+        receivedAmount: money(recv),
+        balanceAmount: money(total.minus(recv)),
+      };
+    });
+  },
+
   // Full project finance detail.
   async projectSummary(projectId) {
     const project = await repo.findProject(projectId);
