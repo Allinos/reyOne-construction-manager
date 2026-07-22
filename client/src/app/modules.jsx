@@ -7,6 +7,7 @@ import RolesPage from '../modules/roles/RolesPage';
 import SettingsModule from '../modules/settings/SettingsModule';
 import ModuleManagerPage from '../modules/modulemanager/ModuleManagerPage';
 import ActivityPage from '../modules/activity/ActivityPage';
+import InvoicesPage from '../modules/invoices/InvoicesPage';
 
 // Frontend module registry — mirrors the backend modules. `section` groups the
 // item in the sidebar; `hidden` keeps a routed module out of the nav (used for
@@ -19,6 +20,9 @@ export const MODULE_DEFS = [
   { key: 'expenses', section: 'finance', label: 'Expenses', path: '/expenses', icon: 'expenses', permission: 'finance.read', element: <ExpensesPage />, moduleKey: 'finance' },
   { key: 'users', section: 'profile', label: 'User Manager', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
   { key: 'settings', section: 'profile', label: 'Settings', path: '/settings', icon: 'settings', permission: 'settings.read', element: <SettingsModule /> },
+
+  // Invoices — routed but reached from the top nav (hidden from sidebar).
+  { key: 'invoices', section: null, hidden: true, label: 'Invoices & Quotations', path: '/invoices', icon: 'invoice', permission: 'invoices.read', element: <InvoicesPage /> },
 
   // Admin screens — routed but hidden from the sidebar (reachable via Settings).
   { key: 'roles', section: null, hidden: true, label: 'Roles', path: '/roles', icon: 'roles', permission: 'roles.read', element: <RolesPage /> },

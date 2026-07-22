@@ -24,6 +24,7 @@ const PATHS = {
   check: 'M20 6L9 17l-5-5',
   close: 'M18 6 6 18M6 6l12 12',
   arrowLeft: 'M19 12H5M12 19l-7-7 7-7',
+  invoice: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM14 2v6h6M9 13h6M9 17h6',
 };
 
 export default function Icon({ name, className = 'w-5 h-5', strokeWidth = 2 }) {

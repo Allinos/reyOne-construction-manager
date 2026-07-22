@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import NotificationBell from '../../modules/notifications/NotificationBell';
 import Icon from '../Icon';
 
@@ -29,12 +31,25 @@ function ThemeToggle() {
 }
 
 export default function TopNav({ onMenu }) {
+  const { bootstrap, can } = useAuth();
+  const invoicesEnabled = (bootstrap?.modules || []).some((m) => m.key === 'invoices') && can('invoices.read');
+
   return (
     <header className="flex items-center justify-between border-b border-cream-300 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-800">
       <button className="btn-ghost md:invisible" onClick={onMenu} aria-label="Open menu">
         <Icon name="menu" />
       </button>
       <div className="flex items-center gap-1">
+        {invoicesEnabled && (
+          <Link
+            to="/invoices"
+            className="rounded-lg p-2 text-slate-500 hover:bg-cream-200 dark:text-slate-300"
+            title="Invoices & Quotations"
+            aria-label="Invoices & Quotations"
+          >
+            <Icon name="invoice" className="h-5 w-5" />
+          </Link>
+        )}
         <ThemeToggle />
         <NotificationBell />
       </div>
