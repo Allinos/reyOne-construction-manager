@@ -8,6 +8,7 @@ import SettingsModule from '../modules/settings/SettingsModule';
 import ModuleManagerPage from '../modules/modulemanager/ModuleManagerPage';
 import ActivityPage from '../modules/activity/ActivityPage';
 import InvoicesPage from '../modules/invoices/InvoicesPage';
+import VendorsModule from '../modules/vendors/VendorsModule';
 
 // Frontend module registry — mirrors the backend modules. `section` groups the
 // item in the sidebar; `hidden` keeps a routed module out of the nav (used for
@@ -18,6 +19,7 @@ export const MODULE_DEFS = [
   { key: 'projects', section: 'main', label: 'Projects', path: '/projects', icon: 'projects', permission: 'projects.read', element: <ProjectsModule /> },
   { key: 'finance', section: 'finance', label: 'Finance', path: '/finance', icon: 'finance', permission: 'finance.read', element: <FinanceModule /> },
   { key: 'expenses', section: 'finance', label: 'Expenses', path: '/expenses', icon: 'expenses', permission: 'finance.read', element: <ExpensesPage />, moduleKey: 'finance' },
+  { key: 'vendors', section: 'finance', label: 'Vendors', path: '/vendors', icon: 'vendors', permission: 'vendors.read', element: <VendorsModule /> },
   { key: 'users', section: 'profile', label: 'User Manager', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
   { key: 'settings', section: 'profile', label: 'Settings', path: '/settings', icon: 'settings', permission: 'settings.read', element: <SettingsModule /> },
 
