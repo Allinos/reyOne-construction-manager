@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getDocument, createDocument, updateDocument, nextNumber, listProjectsLite } from './api';
+import { listClients } from '../clients/api';
 import { generateDocumentPdf } from './pdf';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -13,15 +14,18 @@ const STATUS_OPTIONS = {
   INVOICE: ['unpaid', 'partial', 'paid'],
 };
 
-const emptyItem = () => ({ description: '', quantity: 1, unitPrice: '' });
+const emptyItem = () => ({ description: '', hsnCode: '', quantity: 1, unitPrice: '', gstRate: 18 });
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function DocumentFormModal({ open, onClose, type, docId, config, onSaved }) {
   const { bootstrap } = useAuth();
   const toast = useToast();
   const currency = bootstrap?.company?.currency || 'INR';
+  const gstRates = bootstrap?.settings?.invoices?.gst_rates || [0, 5, 12, 18, 28];
+
   const [form, setForm] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [clients, setClients] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,10 +34,13 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
     setError('');
     setForm(null);
     listProjectsLite().then(setProjects);
+    listClients({ limit: 200 }).then((r) => setClients(r.items)).catch(() => setClients([]));
+
     if (docId) {
       getDocument(docId)
         .then((d) =>
           setForm({
+            template: d.template || 'standard',
             number: d.number,
             projectId: d.projectId || '',
             clientName: d.clientName || '',
@@ -42,7 +49,9 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
             clientAddress: d.clientAddress || '',
             issueDate: d.issueDate ? d.issueDate.slice(0, 10) : today(),
             dueDate: d.dueDate ? d.dueDate.slice(0, 10) : '',
-            items: (d.items || []).map((it) => ({ description: it.description, quantity: it.quantity, unitPrice: it.unitPrice })),
+            items: (d.items || []).map((it) => ({
+              description: it.description, hsnCode: it.hsnCode || '', quantity: it.quantity, unitPrice: it.unitPrice, gstRate: it.gstRate ?? 18,
+            })),
             taxRate: d.taxRate ?? 0,
             status: d.status,
             notes: d.notes || '',
@@ -54,14 +63,11 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
       nextNumber(type)
         .then((r) =>
           setForm({
+            template: 'standard',
             number: r.number,
             projectId: '',
-            clientName: '',
-            clientPhone: '',
-            clientEmail: '',
-            clientAddress: '',
-            issueDate: today(),
-            dueDate: '',
+            clientName: '', clientPhone: '', clientEmail: '', clientAddress: '',
+            issueDate: today(), dueDate: '',
             items: [emptyItem()],
             taxRate: 0,
             status: STATUS_OPTIONS[type][0],
@@ -79,17 +85,32 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
   const addItem = () => setForm((f) => ({ ...f, items: [...f.items, emptyItem()] }));
   const removeItem = (i) => setForm((f) => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }));
 
+  const prefillClient = (patch) => setForm((f) => ({ ...f, ...patch }));
   const pickProject = (id) => {
     const p = projects.find((x) => String(x.id) === String(id));
-    setForm((f) => ({
-      ...f,
-      projectId: id,
-      ...(p ? { clientName: p.clientName || f.clientName, clientPhone: p.clientPhone || f.clientPhone, clientEmail: p.clientEmail || f.clientEmail, clientAddress: p.clientAddress || f.clientAddress } : {}),
-    }));
+    prefillClient({ projectId: id, ...(p ? { clientName: p.clientName || '', clientPhone: p.clientPhone || '', clientEmail: p.clientEmail || '', clientAddress: p.clientAddress || '' } : {}) });
+  };
+  const pickClient = (name) => {
+    const c = clients.find((x) => x.name === name);
+    if (c) prefillClient({ clientName: c.name || '', clientPhone: c.phone || '', clientEmail: c.email || '', clientAddress: c.address || '' });
   };
 
-  // Client-side totals (for the summary + PDF-only).
+  const isGst = form?.template === 'gst';
+
+  // Client-side totals (summary + PDF-only), matching the server formula.
   const calc = () => {
+    if (isGst) {
+      let subtotal = 0;
+      let tax = 0;
+      const items = form.items.map((it) => {
+        const line = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
+        const t = (line * (Number(it.gstRate) || 0)) / 100;
+        subtotal += line;
+        tax += t;
+        return { ...it, taxAmount: t.toFixed(2), total: (line + t).toFixed(2) };
+      });
+      return { items, subtotal: subtotal.toFixed(2), taxAmount: tax.toFixed(2), total: (subtotal + tax).toFixed(2) };
+    }
     let subtotal = 0;
     const items = form.items.map((it) => {
       const total = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
@@ -102,6 +123,7 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
 
   const buildBody = () => ({
     type,
+    template: form.template,
     number: form.number || undefined,
     projectId: form.projectId ? Number(form.projectId) : undefined,
     clientName: form.clientName,
@@ -112,8 +134,13 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
     dueDate: form.dueDate || undefined,
     items: form.items
       .filter((it) => it.description.trim())
-      .map((it) => ({ description: it.description, quantity: Number(it.quantity) || 0, unitPrice: Number(it.unitPrice) || 0 })),
-    taxRate: Number(form.taxRate) || 0,
+      .map((it) => ({
+        description: it.description,
+        quantity: Number(it.quantity) || 0,
+        unitPrice: Number(it.unitPrice) || 0,
+        ...(isGst ? { hsnCode: it.hsnCode || undefined, gstRate: Number(it.gstRate) || 0 } : {}),
+      })),
+    taxRate: isGst ? 0 : Number(form.taxRate) || 0,
     status: form.status,
     notes: form.notes || undefined,
     terms: form.terms || undefined,
@@ -122,20 +149,13 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
   const validItems = () => form.items.some((it) => it.description.trim());
 
   const save = async () => {
-    if (!validItems()) {
-      setError('Add at least one item.');
-      return;
-    }
+    if (!validItems()) return setError('Add at least one item.');
     setSaving(true);
     setError('');
     try {
-      if (docId) {
-        await updateDocument(docId, buildBody());
-        toast.success('Saved successfully');
-      } else {
-        await createDocument(buildBody());
-        toast.success('Saved successfully');
-      }
+      if (docId) await updateDocument(docId, buildBody());
+      else await createDocument(buildBody());
+      toast.success('Saved successfully');
       onSaved?.();
       onClose();
     } catch (err) {
@@ -145,15 +165,11 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
     }
   };
 
-  // Generate PDF without saving anything to the backend.
   const generateOnly = () => {
-    if (!validItems()) {
-      setError('Add at least one item.');
-      return;
-    }
+    if (!validItems()) return setError('Add at least one item.');
     const t = calc();
     generateDocumentPdf(
-      { type, ...buildBody(), issueDate: form.issueDate, dueDate: form.dueDate, items: t.items, subtotal: t.subtotal, taxRate: Number(form.taxRate) || 0, taxAmount: t.taxAmount, total: t.total },
+      { type, template: form.template, ...buildBody(), issueDate: form.issueDate, dueDate: form.dueDate, items: t.items, subtotal: t.subtotal, taxRate: isGst ? 0 : Number(form.taxRate) || 0, taxAmount: t.taxAmount, total: t.total },
       config,
       currency,
     );
@@ -181,30 +197,45 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
         <div className="flex justify-center p-6"><Spinner /></div>
       ) : (
         <div className="space-y-5">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <label className="label">{label} No.</label>
-              <input className="input" value={form.number} onChange={(e) => set('number', e.target.value)} />
-            </div>
-            <div>
-              <label className="label">Issue Date</label>
-              <input type="date" className="input" value={form.issueDate} onChange={(e) => set('issueDate', e.target.value)} />
-            </div>
-            <div>
-              <label className="label">{type === 'INVOICE' ? 'Due Date' : 'Valid Until'}</label>
-              <input type="date" className="input" value={form.dueDate} onChange={(e) => set('dueDate', e.target.value)} />
+          {/* Template selector */}
+          <div>
+            <label className="label">Template</label>
+            <div className="flex overflow-hidden rounded-lg border border-cream-300 text-sm dark:border-slate-700">
+              {[{ v: 'standard', l: 'Standard' }, { v: 'gst', l: 'GST (India)' }].map((t) => (
+                <button key={t.v} type="button" className={`px-4 py-1.5 ${form.template === t.v ? 'bg-brand-500 text-white' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`} onClick={() => set('template', t.v)}>
+                  {t.l}
+                </button>
+              ))}
             </div>
           </div>
 
-          {projects.length > 0 && (
-            <div>
-              <label className="label">Project (optional — prefills client)</label>
-              <select className="input" value={form.projectId} onChange={(e) => pickProject(e.target.value)}>
-                <option value="">None</option>
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.referenceNumber} — {p.name}</option>)}
-              </select>
-            </div>
-          )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div><label className="label">{label} No.</label><input className="input" value={form.number} onChange={(e) => set('number', e.target.value)} /></div>
+            <div><label className="label">Issue Date</label><input type="date" className="input" value={form.issueDate} onChange={(e) => set('issueDate', e.target.value)} /></div>
+            <div><label className="label">{type === 'INVOICE' ? 'Due Date' : 'Valid Until'}</label><input type="date" className="input" value={form.dueDate} onChange={(e) => set('dueDate', e.target.value)} /></div>
+          </div>
+
+          {/* Existing project / client autofill */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {projects.length > 0 && (
+              <div>
+                <label className="label">Existing Project (autofill)</label>
+                <select className="input" value={form.projectId} onChange={(e) => pickProject(e.target.value)}>
+                  <option value="">None</option>
+                  {projects.map((p) => <option key={p.id} value={p.id}>{p.referenceNumber} — {p.name}</option>)}
+                </select>
+              </div>
+            )}
+            {clients.length > 0 && (
+              <div>
+                <label className="label">Existing Client (autofill)</label>
+                <select className="input" value="" onChange={(e) => pickClient(e.target.value)}>
+                  <option value="">Select…</option>
+                  {clients.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div><label className="label">Client Name</label><input className="input" value={form.clientName} onChange={(e) => set('clientName', e.target.value)} /></div>
@@ -222,11 +253,19 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
             <div className="space-y-2">
               {form.items.map((it, i) => (
                 <div key={i} className="flex flex-wrap items-center gap-2">
-                  <input className="input flex-1 min-w-[180px]" placeholder="Description" value={it.description} onChange={(e) => setItem(i, 'description', e.target.value)} />
-                  <input type="number" min="0" className="input w-20" placeholder="Qty" value={it.quantity} onChange={(e) => setItem(i, 'quantity', e.target.value)} />
-                  <input type="number" min="0" step="0.01" className="input w-28" placeholder="Unit price" value={it.unitPrice} onChange={(e) => setItem(i, 'unitPrice', e.target.value)} />
-                  <span className="w-28 text-right text-sm text-slate-600 dark:text-slate-300">
-                    {formatMoney((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), currency)}
+                  <input className="input flex-1 min-w-[160px]" placeholder="Description" value={it.description} onChange={(e) => setItem(i, 'description', e.target.value)} />
+                  {isGst && <input className="input w-24" placeholder="HSN" value={it.hsnCode} onChange={(e) => setItem(i, 'hsnCode', e.target.value)} />}
+                  <input type="number" min="0" className="input w-16" placeholder="Qty" value={it.quantity} onChange={(e) => setItem(i, 'quantity', e.target.value)} />
+                  <input type="number" min="0" step="0.01" className="input w-24" placeholder="Rate" value={it.unitPrice} onChange={(e) => setItem(i, 'unitPrice', e.target.value)} />
+                  {isGst && (
+                    <select className="input w-20" value={it.gstRate} onChange={(e) => setItem(i, 'gstRate', e.target.value)}>
+                      {gstRates.map((r) => <option key={r} value={r}>{r}%</option>)}
+                    </select>
+                  )}
+                  <span className="w-24 text-right text-sm text-slate-600 dark:text-slate-300">
+                    {formatMoney(isGst
+                      ? (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0) * (1 + (Number(it.gstRate) || 0) / 100)
+                      : (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), currency)}
                   </span>
                   <button type="button" className="btn-ghost text-red-500" onClick={() => removeItem(i)}>&times;</button>
                 </div>
@@ -235,17 +274,19 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <label className="label">Tax Rate (%)</label>
-              <input type="number" min="0" max="100" step="0.01" className="input" value={form.taxRate} onChange={(e) => set('taxRate', e.target.value)} />
-            </div>
+            {!isGst && (
+              <div>
+                <label className="label">Tax Rate (%)</label>
+                <input type="number" min="0" max="100" step="0.01" className="input" value={form.taxRate} onChange={(e) => set('taxRate', e.target.value)} />
+              </div>
+            )}
             <div>
               <label className="label">Status</label>
               <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)}>
                 {STATUS_OPTIONS[type].map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <div className="flex items-end justify-end">
+            <div className="flex items-end justify-end sm:col-span-1">
               <div className="text-right">
                 <p className="text-xs text-slate-500">Grand Total</p>
                 <p className="text-xl font-semibold text-brand-600">{formatMoney(totals.total, currency)}</p>

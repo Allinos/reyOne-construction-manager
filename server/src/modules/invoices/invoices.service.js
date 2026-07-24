@@ -9,7 +9,36 @@ const { getPagination, buildMeta } = require('../../core/utils/pagination');
 const D = (v) => new Prisma.Decimal(v ?? 0);
 
 // Computes normalized line items and totals (server-side is source of truth).
-function computeTotals(items, taxRate) {
+// GST template applies a per-item GST rate; standard applies one global rate.
+function computeTotals(items, taxRate, template) {
+  if (template === 'gst') {
+    let subtotal = D(0);
+    let taxTotal = D(0);
+    const normItems = items.map((it) => {
+      const line = D(it.quantity).times(D(it.unitPrice));
+      const rate = D(it.gstRate ?? 0);
+      const tax = line.times(rate).div(100);
+      subtotal = subtotal.plus(line);
+      taxTotal = taxTotal.plus(tax);
+      return {
+        description: it.description,
+        hsnCode: it.hsnCode || '',
+        quantity: Number(it.quantity),
+        unitPrice: D(it.unitPrice).toFixed(2),
+        gstRate: rate.toFixed(2),
+        taxAmount: tax.toFixed(2),
+        total: line.plus(tax).toFixed(2),
+      };
+    });
+    return {
+      items: normItems,
+      subtotal: subtotal.toFixed(2),
+      taxRate: '0.00',
+      taxAmount: taxTotal.toFixed(2),
+      total: subtotal.plus(taxTotal).toFixed(2),
+    };
+  }
+
   let subtotal = D(0);
   const normItems = items.map((it) => {
     const line = D(it.quantity).times(D(it.unitPrice));
@@ -73,13 +102,15 @@ const invoicesService = {
   },
 
   async create(payload, actor, req) {
-    const totals = computeTotals(payload.items, payload.taxRate);
+    const template = payload.template || 'standard';
+    const totals = computeTotals(payload.items, payload.taxRate, template);
     const number = payload.number || (await generateNumber(payload.type));
     if (payload.number && (await repo.findByNumber(payload.type, number))) {
       throw AppError.conflict('A document with this number already exists');
     }
     const doc = await repo.create({
       type: payload.type,
+      template,
       number,
       projectId: payload.projectId ?? null,
       clientName: payload.clientName,
@@ -109,7 +140,9 @@ const invoicesService = {
     const data = { ...payload };
     if (data.clientEmail === '') data.clientEmail = null;
     if (payload.items) {
-      const totals = computeTotals(payload.items, payload.taxRate ?? existing.taxRate);
+      const template = payload.template || existing.template || 'standard';
+      const totals = computeTotals(payload.items, payload.taxRate ?? existing.taxRate, template);
+      data.template = template;
       data.items = totals.items;
       data.subtotal = totals.subtotal;
       data.taxRate = totals.taxRate;

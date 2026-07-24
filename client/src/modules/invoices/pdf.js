@@ -17,19 +17,41 @@ function esc(s) {
 
 export function documentHtml(doc, config = {}, currency = 'INR') {
   const isInvoice = doc.type === 'INVOICE';
-  const title = isInvoice ? 'INVOICE' : 'QUOTATION';
+  const isGst = doc.template === 'gst';
+  const title = isInvoice ? (isGst ? 'TAX INVOICE' : 'INVOICE') : 'QUOTATION';
   const items = doc.items || [];
+
+  const tableHead = isGst
+    ? `<tr><th>#</th><th>Item &amp; HSN</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">GST%</th><th class="r">Tax</th><th class="r">Amount</th></tr>`
+    : `<tr><th>#</th><th>Description</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Total</th></tr>`;
+
   const rows = items
-    .map(
-      (it, i) => `<tr>
-        <td>${i + 1}</td>
-        <td>${esc(it.description)}</td>
-        <td class="r">${esc(it.quantity)}</td>
-        <td class="r">${money(it.unitPrice, currency)}</td>
-        <td class="r">${money(it.total, currency)}</td>
-      </tr>`,
+    .map((it, i) =>
+      isGst
+        ? `<tr>
+            <td>${i + 1}</td>
+            <td>${esc(it.description)}${it.hsnCode ? `<div class="hsn">HSN: ${esc(it.hsnCode)}</div>` : ''}</td>
+            <td class="r">${esc(it.quantity)}</td>
+            <td class="r">${money(it.unitPrice, currency)}</td>
+            <td class="r">${esc(it.gstRate)}%</td>
+            <td class="r">${money(it.taxAmount, currency)}</td>
+            <td class="r">${money(it.total, currency)}</td>
+          </tr>`
+        : `<tr>
+            <td>${i + 1}</td>
+            <td>${esc(it.description)}</td>
+            <td class="r">${esc(it.quantity)}</td>
+            <td class="r">${money(it.unitPrice, currency)}</td>
+            <td class="r">${money(it.total, currency)}</td>
+          </tr>`,
     )
     .join('');
+
+  const totalsRows = isGst
+    ? `<div><span>Taxable Value</span><span>${money(doc.subtotal, currency)}</span></div>
+       <div><span>Total GST</span><span>${money(doc.taxAmount, currency)}</span></div>`
+    : `<div><span>Subtotal</span><span>${money(doc.subtotal, currency)}</span></div>
+       ${Number(doc.taxRate) > 0 ? `<div><span>Tax (${esc(doc.taxRate)}%)</span><span>${money(doc.taxAmount, currency)}</span></div>` : ''}`;
 
   const bankRows = [
     ['Bank', config.bankName],
@@ -69,6 +91,7 @@ export function documentHtml(doc, config = {}, currency = 'INR') {
   thead th { background: #FFF7ED; color: #9a3412; text-align: left; padding: 9px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
   tbody td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; }
   .r { text-align: right; }
+  .hsn { font-size: 10px; color: #9ca3af; }
   .totals { margin-left: auto; width: 280px; margin-top: 12px; }
   .totals div { display: flex; justify-content: space-between; padding: 5px 0; }
   .totals .grand { border-top: 2px solid #F97316; margin-top: 6px; padding-top: 8px; font-size: 16px; font-weight: 700; color: #0f172a; }
@@ -116,13 +139,12 @@ export function documentHtml(doc, config = {}, currency = 'INR') {
     </div>
 
     <table>
-      <thead><tr><th>#</th><th>Description</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Total</th></tr></thead>
+      <thead>${tableHead}</thead>
       <tbody>${rows}</tbody>
     </table>
 
     <div class="totals">
-      <div><span>Subtotal</span><span>${money(doc.subtotal, currency)}</span></div>
-      ${Number(doc.taxRate) > 0 ? `<div><span>Tax (${esc(doc.taxRate)}%)</span><span>${money(doc.taxAmount, currency)}</span></div>` : ''}
+      ${totalsRows}
       <div class="grand"><span>Grand Total</span><span>${money(doc.total, currency)}</span></div>
     </div>
 

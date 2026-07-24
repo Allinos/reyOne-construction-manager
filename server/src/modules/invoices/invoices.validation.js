@@ -4,8 +4,10 @@ const { z } = require('zod');
 
 const itemSchema = z.object({
   description: z.string().min(1).max(300),
+  hsnCode: z.string().max(20).optional(),
   quantity: z.coerce.number().nonnegative(),
   unitPrice: z.coerce.number().nonnegative(),
+  gstRate: z.coerce.number().min(0).max(100).optional(),
 });
 
 const baseDoc = {
@@ -25,12 +27,14 @@ const baseDoc = {
 
 const createDocumentSchema = z.object({
   type: z.enum(['QUOTATION', 'INVOICE']),
+  template: z.enum(['standard', 'gst']).optional(),
   number: z.string().max(50).optional(),
   ...baseDoc,
 });
 
 const updateDocumentSchema = z
   .object({
+    template: z.enum(['standard', 'gst']).optional(),
     projectId: z.coerce.number().int().positive().nullable().optional(),
     clientName: z.string().min(1).max(150).optional(),
     clientPhone: z.string().max(30).nullable().optional(),
