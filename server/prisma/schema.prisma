@@ -324,6 +324,7 @@ enum BillingType {
 model BillingDocument {
   id            Int         @id @default(autoincrement())
   type          BillingType
+  template      String      @default("standard") // standard | gst
   number        String
   projectId     Int?
   clientName    String
@@ -413,12 +414,15 @@ model Expense {
   category    String
   amount      Decimal      @db.Decimal(15, 2)
   date        DateTime
-  method      String
-  account     String
-  expenseBy   String?
-  paidTo      String? // vendor / person the expense was paid to
-  notes       String?      @db.Text
-  createdById Int?
+  method        String
+  account       String
+  expenseBy     String?
+  paidTo        String? // legacy free-text; superseded by vendorId
+  vendorId      Int?
+  paymentStatus String   @default("PAID") // PAID | PARTIAL | CREDIT
+  amountPaid    Decimal  @default(0) @db.Decimal(15, 2)
+  notes         String?  @db.Text
+  createdById   Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -428,5 +432,45 @@ model Expense {
   @@index([account])
   @@index([category])
   @@index([date])
+  @@index([vendorId])
   @@map("expenses")
+}
+
+// ===========================================================================
+// MODULE: Vendors
+// ===========================================================================
+model Vendor {
+  id            Int       @id @default(autoincrement())
+  name          String
+  contactPerson String?
+  phone         String?
+  email         String?
+  gstNumber     String?
+  address       String?   @db.Text
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  @@index([deletedAt])
+  @@map("vendors")
+}
+
+// ===========================================================================
+// MODULE: Clients
+// Auto-populated from projects (upserted by name) and enriched here.
+// ===========================================================================
+model Client {
+  id            Int       @id @default(autoincrement())
+  name          String    @unique
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?   @db.Text
+  gstNumber     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  @@map("clients")
 }

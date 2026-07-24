@@ -49,6 +49,16 @@ const PERMISSIONS = [
   { key: 'invoices.create', module: 'invoices', action: 'create', description: 'Create invoices & quotations' },
   { key: 'invoices.update', module: 'invoices', action: 'update', description: 'Edit invoices, quotations & config' },
   { key: 'invoices.delete', module: 'invoices', action: 'delete', description: 'Delete invoices & quotations' },
+
+  // Clients
+  { key: 'clients.read', module: 'clients', action: 'read', description: 'View clients' },
+  { key: 'clients.update', module: 'clients', action: 'update', description: 'Edit client details' },
+
+  // Vendors
+  { key: 'vendors.read', module: 'vendors', action: 'read', description: 'View vendors & ledgers' },
+  { key: 'vendors.create', module: 'vendors', action: 'create', description: 'Create vendors' },
+  { key: 'vendors.update', module: 'vendors', action: 'update', description: 'Edit vendors' },
+  { key: 'vendors.delete', module: 'vendors', action: 'delete', description: 'Delete vendors' },
 ];
 
 const WILDCARD = '*';
@@ -79,6 +89,8 @@ const DEFAULT_ROLES = [
       'dashboard.read',
       'projects.read', 'projects.create', 'projects.update',
       'finance.read',
+      'clients.read',
+      'vendors.read',
       'users.read',
       'activity.read',
     ],
@@ -98,6 +110,8 @@ const DEFAULT_ROLES = [
       'finance.read', 'finance.create', 'finance.update', 'finance.delete',
       'projects.read',
       'invoices.read', 'invoices.create', 'invoices.update', 'invoices.delete',
+      'clients.read', 'clients.update',
+      'vendors.read', 'vendors.create', 'vendors.update', 'vendors.delete',
       'activity.read',
     ],
   },

@@ -230,6 +230,22 @@ const projectsService = {
     const project = await repo.create(data);
     activity.record({ userId: actor.id, action: 'project.created', entityType: 'project', entityId: project.id, req });
 
+    // Keep the Clients directory in sync (create if new; never clobber enriched fields).
+    try {
+      await prisma.client.upsert({
+        where: { name: payload.clientName },
+        update: {},
+        create: {
+          name: payload.clientName,
+          phone: payload.clientPhone || null,
+          email: payload.clientEmail || null,
+          address: payload.clientAddress || null,
+        },
+      });
+    } catch {
+      /* best-effort */
+    }
+
     // An advance amount is money already received — record it as a payment so it
     // flows into finance totals automatically (never fails project creation).
     if (Number(payload.advanceAmount) > 0) {

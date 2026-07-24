@@ -62,6 +62,8 @@ const DEFAULT_SETTINGS = [
   // Invoices & Quotations
   { group: 'invoices', key: 'quotation_prefix', value: 'QTN-' },
   { group: 'invoices', key: 'invoice_prefix', value: 'INV-' },
+  // Per-item GST rate options (%) for the GST invoice template.
+  { group: 'invoices', key: 'gst_rates', value: [0, 5, 12, 18, 28] },
   {
     group: 'invoices',
     key: 'config',
