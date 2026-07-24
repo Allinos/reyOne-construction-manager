@@ -44,6 +44,18 @@ async function validatePhase(projectId, phaseId) {
   if (!phase || phase.projectId !== projectId) throw AppError.badRequest('Phase does not belong to this project');
 }
 
+// Derives amountPaid from payment status (PAID = full, CREDIT = 0, PARTIAL = given).
+function normalizePayment(status, amount, amountPaid) {
+  const amt = D(amount);
+  if (status === 'CREDIT') return { paymentStatus: 'CREDIT', amountPaid: '0.00' };
+  if (status === 'PARTIAL') {
+    let paid = D(amountPaid || 0);
+    if (paid.gt(amt)) paid = amt;
+    return { paymentStatus: 'PARTIAL', amountPaid: paid.toFixed(2) };
+  }
+  return { paymentStatus: 'PAID', amountPaid: amt.toFixed(2) };
+}
+
 function dateWhere(query) {
   if (!query.from && !query.to) return undefined;
   const range = {};
@@ -155,18 +167,25 @@ const financeService = {
   async createExpense(payload, actor, req) {
     const config = await loadConfig();
     assertIn(payload.category, config.categories, 'expense category');
-    assertIn(payload.method, config.methods, 'payment method');
-    assertIn(payload.account, config.accounts.map((a) => a.key), 'account');
+    // Method/account default to the first configured option when omitted.
+    const method = payload.method || config.methods[0] || 'Cash';
+    const account = payload.account || (config.accounts[0] && config.accounts[0].key) || 'cash';
+    assertIn(method, config.methods, 'payment method');
+    assertIn(account, config.accounts.map((a) => a.key), 'account');
     if (payload.scope === 'PROJECT') await validateProject(payload.projectId);
 
+    const pay = normalizePayment(payload.paymentStatus, payload.amount, payload.amountPaid);
     const expense = await repo.createExpense({
       scope: payload.scope,
       projectId: payload.scope === 'PROJECT' ? payload.projectId : null,
+      vendorId: payload.vendorId ?? null,
       category: payload.category,
       amount: payload.amount,
       date: payload.date,
-      method: payload.method,
-      account: payload.account,
+      method,
+      account,
+      paymentStatus: pay.paymentStatus,
+      amountPaid: pay.amountPaid,
       expenseBy: payload.expenseBy,
       paidTo: payload.paidTo,
       notes: payload.notes,
@@ -184,7 +203,19 @@ const financeService = {
     if (payload.method) assertIn(payload.method, config.methods, 'payment method');
     if (payload.account) assertIn(payload.account, config.accounts.map((a) => a.key), 'account');
 
-    const expense = await repo.updateExpense(id, payload);
+    const data = { ...payload };
+    // Recompute amountPaid whenever status or amount changes.
+    if (payload.paymentStatus || payload.amount != null || payload.amountPaid != null) {
+      const pay = normalizePayment(
+        payload.paymentStatus || existing.paymentStatus,
+        payload.amount != null ? payload.amount : existing.amount,
+        payload.amountPaid != null ? payload.amountPaid : existing.amountPaid,
+      );
+      data.paymentStatus = pay.paymentStatus;
+      data.amountPaid = pay.amountPaid;
+    }
+
+    const expense = await repo.updateExpense(id, data);
     activity.record({ userId: actor.id, action: 'expense.updated', entityType: 'expense', entityId: id, req });
     return expense;
   },

@@ -35,15 +35,20 @@ const listPaymentsQuery = z.object({
   to: z.coerce.date().optional(),
 });
 
+const paymentStatusEnum = z.enum(['PAID', 'PARTIAL', 'CREDIT']);
+
 const createExpenseSchema = z
   .object({
     scope: z.enum(['PROJECT', 'COMPANY']),
     projectId: z.coerce.number().int().positive().optional(),
+    vendorId: z.coerce.number().int().positive().optional(),
     category: z.string().min(1).max(100),
     amount: money,
     date: z.coerce.date(),
-    method: z.string().min(1).max(50),
-    account: z.string().min(1).max(50),
+    method: z.string().min(1).max(50).optional(),
+    account: z.string().min(1).max(50).optional(),
+    paymentStatus: paymentStatusEnum.optional(),
+    amountPaid: z.coerce.number().nonnegative().optional(),
     expenseBy: z.string().max(100).optional(),
     paidTo: z.string().max(150).optional(),
     notes: z.string().max(1000).optional(),
@@ -55,11 +60,15 @@ const createExpenseSchema = z
 
 const updateExpenseSchema = z
   .object({
+    projectId: z.coerce.number().int().positive().nullable().optional(),
+    vendorId: z.coerce.number().int().positive().nullable().optional(),
     category: z.string().min(1).max(100).optional(),
     amount: money.optional(),
     date: z.coerce.date().optional(),
     method: z.string().min(1).max(50).optional(),
     account: z.string().min(1).max(50).optional(),
+    paymentStatus: paymentStatusEnum.optional(),
+    amountPaid: z.coerce.number().nonnegative().optional(),
     expenseBy: z.string().max(100).nullable().optional(),
     paidTo: z.string().max(150).nullable().optional(),
     notes: z.string().max(1000).nullable().optional(),
