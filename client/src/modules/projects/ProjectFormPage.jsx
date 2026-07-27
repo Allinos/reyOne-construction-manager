@@ -5,7 +5,7 @@ import FieldConfigModal from './FieldConfigModal';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
-import { toAmount } from '../../lib/format';
+import { toAmount, amountPreview } from '../../lib/format';
 import { PageHeader, Card, Spinner, Alert } from '../../components/ui';
 import Icon from '../../components/Icon';
 
@@ -257,9 +257,11 @@ export default function ProjectFormPage() {
             </Field>
             <Field label="Project Amount">
               <input type="number" step="0.01" min="0" className="input" placeholder="e.g., 1500000" value={form.projectAmount} onChange={(e) => set('projectAmount', e.target.value)} />
+              {amountPreview(form.projectAmount) && <p className="mt-1 text-xs font-medium text-brand-600">{amountPreview(form.projectAmount)}</p>}
             </Field>
             <Field label="Advance Amount">
               <input type="number" step="0.01" min="0" className="input" placeholder="e.g., 100000" value={form.advanceAmount} onChange={(e) => set('advanceAmount', e.target.value)} />
+              {amountPreview(form.advanceAmount) && <p className="mt-1 text-xs font-medium text-brand-600">{amountPreview(form.advanceAmount)}</p>}
             </Field>
           </div>
 

@@ -8,6 +8,26 @@ export function toAmount(value) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+// Indian comma grouping, e.g. 1050000 -> "10,50,000".
+export function formatIndian(value) {
+  const n = Number(value) || 0;
+  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(n);
+}
+
+// Live preview for amount inputs: "10,000 (10 Thousand)", "2,50,000 (2.5 Lakhs)".
+export function amountPreview(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  const grouped = formatIndian(n);
+  const trim = (x) => Number(x.toFixed(2)).toString();
+  let words = '';
+  if (n >= 1e7) words = `${trim(n / 1e7)} Crore`;
+  else if (n >= 1e5) words = `${trim(n / 1e5)} Lakh${n / 1e5 >= 2 ? 's' : ''}`;
+  else if (n >= 1e3) words = `${trim(n / 1e3)} Thousand`;
+  else return grouped;
+  return `${grouped} (${words})`;
+}
+
 export function formatMoney(value, currency = 'INR') {
   const n = Number(value || 0);
   try {

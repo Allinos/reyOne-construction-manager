@@ -25,6 +25,8 @@ const blank = (scope) => ({
   account: '',
   paymentStatus: 'PAID',
   amountPaid: '',
+  expenseBy: '', // Company: "Paid By"
+  paidTo: '', // Company: "Paid To"
 });
 
 export default function ExpenseFormModal({ open, onClose, scope, editing, onSaved }) {
@@ -58,6 +60,8 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
         account: editing.account || '',
         paymentStatus: editing.paymentStatus || 'PAID',
         amountPaid: editing.amountPaid ?? '',
+        expenseBy: editing.expenseBy || '',
+        paidTo: editing.paidTo || '',
       });
     } else {
       setForm(blank(scope));
@@ -74,7 +78,6 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
     try {
       const body = {
         scope: form.scope,
-        vendorId: form.vendorId ? Number(form.vendorId) : undefined,
         category: form.category,
         amount: toAmount(form.amount),
         date: form.date,
@@ -83,7 +86,14 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
         paymentStatus: form.paymentStatus,
         amountPaid: form.paymentStatus === 'PARTIAL' ? toAmount(form.amountPaid) : undefined,
       };
-      if (form.scope === 'PROJECT') body.projectId = Number(form.projectId);
+      if (form.scope === 'PROJECT') {
+        body.projectId = Number(form.projectId);
+        body.vendorId = form.vendorId ? Number(form.vendorId) : undefined;
+      } else {
+        // Company expenses: no vendor; capture who paid and who was paid.
+        body.expenseBy = form.expenseBy || undefined;
+        body.paidTo = form.paidTo || undefined;
+      }
       if (editing) await updateExpense(editing.id, body);
       else await createExpense(body);
       toast.success(`Expense ${editing ? 'updated' : 'added'}`);
@@ -124,13 +134,26 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
               </select>
             </div>
           )}
-          <div>
-            <label className="label">Vendor <span className="text-xs font-normal text-slate-400">(optional)</span></label>
-            <select className="input" value={form.vendorId} onChange={(e) => set('vendorId', e.target.value)}>
-              <option value="">e.g., Select Vendor (Optional)</option>
-              {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-            </select>
-          </div>
+          {isProject ? (
+            <div>
+              <label className="label">Vendor <span className="text-xs font-normal text-slate-400">(optional)</span></label>
+              <select className="input" value={form.vendorId} onChange={(e) => set('vendorId', e.target.value)}>
+                <option value="">e.g., Select Vendor (Optional)</option>
+                {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="label">Paid By</label>
+                <input className="input" placeholder="e.g., Mintu, Admin, Company Card" value={form.expenseBy} onChange={(e) => set('expenseBy', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Paid To</label>
+                <input className="input" placeholder="e.g., Office Owner, Electricity Board" value={form.paidTo} onChange={(e) => set('paidTo', e.target.value)} />
+              </div>
+            </>
+          )}
           <div>
             <label className="label">Category</label>
             <select className="input" value={form.category} onChange={(e) => set('category', e.target.value)} required>

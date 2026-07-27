@@ -134,7 +134,7 @@ export default function ExpensesPage() {
                 <tr>
                   <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 font-medium">Project</th>
-                  <th className="px-4 py-3 font-medium">Vendor</th>
+                  <th className="px-4 py-3 font-medium">Vendor / Paid To</th>
                   <th className="px-4 py-3 font-medium">Amount</th>
                   <th className="px-4 py-3 font-medium">Paid</th>
                   <th className="px-4 py-3 font-medium">Balance</th>
