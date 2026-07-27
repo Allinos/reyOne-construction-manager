@@ -5,6 +5,7 @@ import FieldConfigModal from './FieldConfigModal';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
+import { toAmount } from '../../lib/format';
 import { PageHeader, Card, Spinner, Alert } from '../../components/ui';
 import Icon from '../../components/Icon';
 
@@ -122,8 +123,8 @@ export default function ProjectFormPage() {
     try {
       const body = {
         ...form,
-        projectAmount: form.projectAmount === '' ? 0 : Number(form.projectAmount),
-        advanceAmount: form.advanceAmount === '' ? 0 : Number(form.advanceAmount),
+        projectAmount: form.projectAmount === '' ? 0 : toAmount(form.projectAmount),
+        advanceAmount: form.advanceAmount === '' ? 0 : toAmount(form.advanceAmount),
         customFields,
       };
       if (!body.referenceNumber) delete body.referenceNumber;
@@ -205,16 +206,16 @@ export default function ProjectFormPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Client Name" required>
-              <input className="input" value={form.clientName} onChange={(e) => set('clientName', e.target.value)} required />
+              <input className="input" placeholder="e.g., Mintu Sharma" value={form.clientName} onChange={(e) => set('clientName', e.target.value)} required />
             </Field>
             <Field label="Phone">
-              <input className="input" value={form.clientPhone} onChange={(e) => set('clientPhone', e.target.value)} />
+              <input className="input" placeholder="e.g., +91 98765 43210" value={form.clientPhone} onChange={(e) => set('clientPhone', e.target.value)} />
             </Field>
             <Field label="Email">
-              <input type="email" className="input" value={form.clientEmail} onChange={(e) => set('clientEmail', e.target.value)} />
+              <input type="email" className="input" placeholder="e.g., client@example.com" value={form.clientEmail} onChange={(e) => set('clientEmail', e.target.value)} />
             </Field>
             <Field label="Address">
-              <input className="input" value={form.clientAddress} onChange={(e) => set('clientAddress', e.target.value)} />
+              <input className="input" placeholder="e.g., 123 MG Road, Siwan" value={form.clientAddress} onChange={(e) => set('clientAddress', e.target.value)} />
             </Field>
           </div>
         </Card>
@@ -234,7 +235,7 @@ export default function ProjectFormPage() {
               <input className="input" placeholder="Auto-generated if blank" value={form.referenceNumber} onChange={(e) => set('referenceNumber', e.target.value)} />
             </Field>
             <Field label="Project Name" required>
-              <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} required />
+              <input className="input" placeholder="e.g., 3BHK Villa Construction" value={form.name} onChange={(e) => set('name', e.target.value)} required />
             </Field>
             <Field label="Category">
               <select className="input" value={form.category} onChange={(e) => set('category', e.target.value)}>
@@ -255,10 +256,10 @@ export default function ProjectFormPage() {
               <input type="date" className="input" value={form.agreementDate} onChange={(e) => set('agreementDate', e.target.value)} />
             </Field>
             <Field label="Project Amount">
-              <input type="number" step="0.01" min="0" className="input" value={form.projectAmount} onChange={(e) => set('projectAmount', e.target.value)} />
+              <input type="number" step="0.01" min="0" className="input" placeholder="e.g., 1500000" value={form.projectAmount} onChange={(e) => set('projectAmount', e.target.value)} />
             </Field>
             <Field label="Advance Amount">
-              <input type="number" step="0.01" min="0" className="input" value={form.advanceAmount} onChange={(e) => set('advanceAmount', e.target.value)} />
+              <input type="number" step="0.01" min="0" className="input" placeholder="e.g., 100000" value={form.advanceAmount} onChange={(e) => set('advanceAmount', e.target.value)} />
             </Field>
           </div>
 

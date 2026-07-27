@@ -4,7 +4,7 @@ import { vendorOptions } from '../vendors/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
-import { formatMoney } from '../../lib/format';
+import { formatMoney, toAmount } from '../../lib/format';
 import Modal from '../../components/Modal';
 import { Spinner } from '../../components/ui';
 
@@ -76,12 +76,12 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
         scope: form.scope,
         vendorId: form.vendorId ? Number(form.vendorId) : undefined,
         category: form.category,
-        amount: Number(form.amount),
+        amount: toAmount(form.amount),
         date: form.date,
         notes: form.notes || undefined,
         account: form.account || undefined,
         paymentStatus: form.paymentStatus,
-        amountPaid: form.paymentStatus === 'PARTIAL' ? Number(form.amountPaid) || 0 : undefined,
+        amountPaid: form.paymentStatus === 'PARTIAL' ? toAmount(form.amountPaid) : undefined,
       };
       if (form.scope === 'PROJECT') body.projectId = Number(form.projectId);
       if (editing) await updateExpense(editing.id, body);
@@ -125,22 +125,22 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
             </div>
           )}
           <div>
-            <label className="label">Vendor</label>
+            <label className="label">Vendor <span className="text-xs font-normal text-slate-400">(optional)</span></label>
             <select className="input" value={form.vendorId} onChange={(e) => set('vendorId', e.target.value)}>
-              <option value="">Select vendor…</option>
+              <option value="">e.g., Select Vendor (Optional)</option>
               {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
             </select>
           </div>
           <div>
             <label className="label">Category</label>
             <select className="input" value={form.category} onChange={(e) => set('category', e.target.value)} required>
-              <option value="">Select…</option>
+              <option value="">e.g., Select Category</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
             <label className="label">Amount</label>
-            <input type="number" min="0.01" step="0.01" className="input" value={form.amount} onChange={(e) => set('amount', e.target.value)} required />
+            <input type="number" min="0.01" step="0.01" className="input" placeholder="e.g., 10000" value={form.amount} onChange={(e) => set('amount', e.target.value)} required />
           </div>
           <div>
             <label className="label">Date</label>
@@ -164,7 +164,7 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
             <>
               <div>
                 <label className="label">Amount Paid</label>
-                <input type="number" min="0" step="0.01" className="input" value={form.amountPaid} onChange={(e) => set('amountPaid', e.target.value)} />
+                <input type="number" min="0" step="0.01" className="input" placeholder="e.g., 5000" value={form.amountPaid} onChange={(e) => set('amountPaid', e.target.value)} />
               </div>
               <div>
                 <label className="label">Remaining Balance</label>
@@ -175,7 +175,7 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
 
           <div className="sm:col-span-2">
             <label className="label">Description</label>
-            <textarea className="input" rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
+            <textarea className="input" rows={2} placeholder="e.g., Transport charges for cement delivery" value={form.notes} onChange={(e) => set('notes', e.target.value)} />
           </div>
         </div>
       )}

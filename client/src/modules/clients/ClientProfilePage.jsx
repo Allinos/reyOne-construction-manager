@@ -27,11 +27,11 @@ function Info({ label, value }) {
 }
 
 const EDIT_FIELDS = [
-  ['contactPerson', 'Contact Person'],
-  ['phone', 'Phone'],
-  ['email', 'Email'],
-  ['gstNumber', 'GST Number'],
-  ['address', 'Address'],
+  ['contactPerson', 'Contact Person', 'e.g., Ramesh Kumar'],
+  ['phone', 'Phone', 'e.g., +91 98765 43210'],
+  ['email', 'Email', 'e.g., client@example.com'],
+  ['gstNumber', 'GST Number', 'e.g., 22AAAAA0000A1Z5'],
+  ['address', 'Address', 'e.g., 123 MG Road, Siwan'],
 ];
 
 export default function ClientProfilePage() {
@@ -154,10 +154,10 @@ export default function ClientProfilePage() {
       >
         {edit && (
           <form id="client-form" onSubmit={save} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {EDIT_FIELDS.map(([key, label]) => (
+            {EDIT_FIELDS.map(([key, label, placeholder]) => (
               <div key={key} className={key === 'address' ? 'sm:col-span-2' : ''}>
                 <label className="label">{label}</label>
-                <input className="input" value={edit[key]} onChange={(e) => setEdit((s) => ({ ...s, [key]: e.target.value }))} />
+                <input className="input" placeholder={placeholder} value={edit[key]} onChange={(e) => setEdit((s) => ({ ...s, [key]: e.target.value }))} />
               </div>
             ))}
           </form>

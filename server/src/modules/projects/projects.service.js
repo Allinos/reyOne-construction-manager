@@ -260,7 +260,8 @@ const projectsService = {
         await prisma.payment.create({
           data: {
             projectId: project.id,
-            amount: payload.advanceAmount,
+            // Use the persisted Decimal so the payment exactly equals the advance.
+            amount: project.advanceAmount,
             date: payload.agreementDate || new Date(),
             method,
             account,

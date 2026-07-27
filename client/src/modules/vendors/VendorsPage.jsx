@@ -10,12 +10,12 @@ import Modal from '../../components/Modal';
 
 const blank = { name: '', contactPerson: '', phone: '', email: '', gstNumber: '', address: '', notes: '' };
 const FIELDS = [
-  ['name', 'Vendor Name', true],
-  ['contactPerson', 'Contact Person'],
-  ['phone', 'Phone'],
-  ['email', 'Email'],
-  ['gstNumber', 'GST Number'],
-  ['address', 'Address'],
+  ['name', 'Vendor Name', true, 'e.g., ABC Building Materials'],
+  ['contactPerson', 'Contact Person', false, 'e.g., Ramesh Kumar'],
+  ['phone', 'Phone', false, 'e.g., +91 98765 43210'],
+  ['email', 'Email', false, 'e.g., sales@abcmaterials.com'],
+  ['gstNumber', 'GST Number', false, 'e.g., 22AAAAA0000A1Z5'],
+  ['address', 'Address', false, 'e.g., 45 Industrial Area, Patna'],
 ];
 
 export default function VendorsPage() {
@@ -145,15 +145,15 @@ export default function VendorsPage() {
       >
         {modal && (
           <form id="vendor-form" onSubmit={save} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {FIELDS.map(([key, label, required]) => (
+            {FIELDS.map(([key, label, required, placeholder]) => (
               <div key={key} className={key === 'address' ? 'sm:col-span-2' : ''}>
                 <label className="label">{label}{required && <span className="text-red-500"> *</span>}</label>
-                <input className="input" value={modal.form[key] || ''} onChange={(e) => setField(key, e.target.value)} required={required} />
+                <input className="input" placeholder={placeholder} value={modal.form[key] || ''} onChange={(e) => setField(key, e.target.value)} required={required} />
               </div>
             ))}
             <div className="sm:col-span-2">
               <label className="label">Notes</label>
-              <textarea className="input" rows={2} value={modal.form.notes || ''} onChange={(e) => setField('notes', e.target.value)} />
+              <textarea className="input" rows={2} placeholder="e.g., Preferred supplier for cement & steel" value={modal.form.notes || ''} onChange={(e) => setField('notes', e.target.value)} />
             </div>
           </form>
         )}

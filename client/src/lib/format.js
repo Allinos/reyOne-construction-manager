@@ -1,5 +1,13 @@
 // Formatting helpers shared across modules.
 
+// Rounds a monetary value to exactly 2 decimals, eliminating float noise
+// (e.g. 0.1 + 0.2, or 9999.999999). Returns a Number safe to send/store.
+export function toAmount(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
 export function formatMoney(value, currency = 'INR') {
   const n = Number(value || 0);
   try {

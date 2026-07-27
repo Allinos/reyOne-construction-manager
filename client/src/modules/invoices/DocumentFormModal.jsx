@@ -5,7 +5,7 @@ import { generateDocumentPdf } from './pdf';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
-import { formatMoney } from '../../lib/format';
+import { formatMoney, toAmount } from '../../lib/format';
 import Modal from '../../components/Modal';
 import { Spinner, Alert } from '../../components/ui';
 
@@ -137,7 +137,7 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
       .map((it) => ({
         description: it.description,
         quantity: Number(it.quantity) || 0,
-        unitPrice: Number(it.unitPrice) || 0,
+        unitPrice: toAmount(it.unitPrice),
         ...(isGst ? { hsnCode: it.hsnCode || undefined, gstRate: Number(it.gstRate) || 0 } : {}),
       })),
     taxRate: isGst ? 0 : Number(form.taxRate) || 0,
@@ -238,10 +238,10 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div><label className="label">Client Name</label><input className="input" value={form.clientName} onChange={(e) => set('clientName', e.target.value)} /></div>
-            <div><label className="label">Phone</label><input className="input" value={form.clientPhone} onChange={(e) => set('clientPhone', e.target.value)} /></div>
-            <div><label className="label">Email</label><input className="input" value={form.clientEmail} onChange={(e) => set('clientEmail', e.target.value)} /></div>
-            <div><label className="label">Address</label><input className="input" value={form.clientAddress} onChange={(e) => set('clientAddress', e.target.value)} /></div>
+            <div><label className="label">Client Name</label><input className="input" placeholder="e.g., Mintu Sharma" value={form.clientName} onChange={(e) => set('clientName', e.target.value)} /></div>
+            <div><label className="label">Phone</label><input className="input" placeholder="e.g., +91 98765 43210" value={form.clientPhone} onChange={(e) => set('clientPhone', e.target.value)} /></div>
+            <div><label className="label">Email</label><input className="input" placeholder="e.g., client@example.com" value={form.clientEmail} onChange={(e) => set('clientEmail', e.target.value)} /></div>
+            <div><label className="label">Address</label><input className="input" placeholder="e.g., 123 MG Road, Siwan" value={form.clientAddress} onChange={(e) => set('clientAddress', e.target.value)} /></div>
           </div>
 
           {/* Items */}
@@ -253,10 +253,10 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
             <div className="space-y-2">
               {form.items.map((it, i) => (
                 <div key={i} className="flex flex-wrap items-center gap-2">
-                  <input className="input flex-1 min-w-[160px]" placeholder="Description" value={it.description} onChange={(e) => setItem(i, 'description', e.target.value)} />
-                  {isGst && <input className="input w-24" placeholder="HSN" value={it.hsnCode} onChange={(e) => setItem(i, 'hsnCode', e.target.value)} />}
-                  <input type="number" min="0" className="input w-16" placeholder="Qty" value={it.quantity} onChange={(e) => setItem(i, 'quantity', e.target.value)} />
-                  <input type="number" min="0" step="0.01" className="input w-24" placeholder="Rate" value={it.unitPrice} onChange={(e) => setItem(i, 'unitPrice', e.target.value)} />
+                  <input className="input flex-1 min-w-[160px]" placeholder="e.g., Cement (50kg bag)" value={it.description} onChange={(e) => setItem(i, 'description', e.target.value)} />
+                  {isGst && <input className="input w-24" placeholder="e.g., 3214" value={it.hsnCode} onChange={(e) => setItem(i, 'hsnCode', e.target.value)} />}
+                  <input type="number" min="0" className="input w-16" placeholder="e.g., 100" value={it.quantity} onChange={(e) => setItem(i, 'quantity', e.target.value)} />
+                  <input type="number" min="0" step="0.01" className="input w-24" placeholder="e.g., 350" value={it.unitPrice} onChange={(e) => setItem(i, 'unitPrice', e.target.value)} />
                   {isGst && (
                     <select className="input w-20" value={it.gstRate} onChange={(e) => setItem(i, 'gstRate', e.target.value)}>
                       {gstRates.map((r) => <option key={r} value={r}>{r}%</option>)}

@@ -6,19 +6,19 @@ import Modal from '../../components/Modal';
 import { Spinner, Alert } from '../../components/ui';
 
 const TEXT_FIELDS = [
-  ['companyName', 'Company Name'],
-  ['address', 'Address'],
-  ['email', 'Email'],
-  ['phone', 'Phone'],
-  ['website', 'Website'],
-  ['gstNumber', 'GST / VAT Number'],
-  ['registrationNumber', 'Registration Number'],
-  ['bankName', 'Bank Name'],
-  ['accountHolder', 'Account Holder Name'],
-  ['accountNumber', 'Account Number'],
-  ['ifsc', 'IFSC / SWIFT Code'],
-  ['branch', 'Branch Name'],
-  ['upiId', 'UPI ID (optional)'],
+  ['companyName', 'Company Name', 'e.g., reyOne Construction Pvt Ltd'],
+  ['address', 'Address', 'e.g., 12 MG Road, Patna, Bihar 800001'],
+  ['email', 'Email', 'e.g., accounts@reyone.com'],
+  ['phone', 'Phone', 'e.g., +91 98765 43210'],
+  ['website', 'Website', 'e.g., www.reyone.com'],
+  ['gstNumber', 'GST / VAT Number', 'e.g., 22AAAAA0000A1Z5'],
+  ['registrationNumber', 'Registration Number', 'e.g., U45200BR2020PTC012345'],
+  ['bankName', 'Bank Name', 'e.g., HDFC Bank'],
+  ['accountHolder', 'Account Holder Name', 'e.g., reyOne Construction Pvt Ltd'],
+  ['accountNumber', 'Account Number', 'e.g., 50100123456789'],
+  ['ifsc', 'IFSC / SWIFT Code', 'e.g., HDFC0001234'],
+  ['branch', 'Branch Name', 'e.g., MG Road Branch'],
+  ['upiId', 'UPI ID (optional)', 'e.g., reyone@hdfcbank'],
 ];
 
 const readFile = (file) =>
@@ -102,21 +102,21 @@ export default function ConfigModal({ open, onClose, onSaved }) {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {TEXT_FIELDS.map(([key, label]) => (
+            {TEXT_FIELDS.map(([key, label, placeholder]) => (
               <div key={key}>
                 <label className="label">{label}</label>
-                <input className="input" value={cfg[key] || ''} onChange={(e) => set(key, e.target.value)} />
+                <input className="input" placeholder={placeholder} value={cfg[key] || ''} onChange={(e) => set(key, e.target.value)} />
               </div>
             ))}
           </div>
 
           <div>
             <label className="label">Terms &amp; Conditions</label>
-            <textarea className="input" rows={3} value={cfg.terms || ''} onChange={(e) => set('terms', e.target.value)} />
+            <textarea className="input" rows={3} placeholder="e.g., Payment due within 15 days. Goods once sold will not be taken back." value={cfg.terms || ''} onChange={(e) => set('terms', e.target.value)} />
           </div>
           <div>
             <label className="label">Default Notes</label>
-            <textarea className="input" rows={2} value={cfg.defaultNotes || ''} onChange={(e) => set('defaultNotes', e.target.value)} />
+            <textarea className="input" rows={2} placeholder="e.g., Thank you for your business." value={cfg.defaultNotes || ''} onChange={(e) => set('defaultNotes', e.target.value)} />
           </div>
         </div>
       )}

@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
-import { formatMoney, formatDate } from '../../lib/format';
+import { formatMoney, formatDate, toAmount } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
 import Modal from '../../components/Modal';
 
@@ -70,7 +70,7 @@ export default function PaymentsPage() {
     try {
       const f = modal.form;
       const body = {
-        amount: Number(f.amount),
+        amount: toAmount(f.amount),
         date: f.date,
         method: f.method,
         account: f.account,
@@ -208,7 +208,7 @@ export default function PaymentsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Amount</label>
-                <input type="number" step="0.01" min="0.01" className="input" value={modal.form.amount} onChange={(e) => setField('amount', e.target.value)} required />
+                <input type="number" step="0.01" min="0.01" className="input" placeholder="e.g., 50000" value={modal.form.amount} onChange={(e) => setField('amount', e.target.value)} required />
               </div>
               <div>
                 <label className="label">Date</label>
@@ -231,7 +231,7 @@ export default function PaymentsPage() {
             </div>
             <div>
               <label className="label">Notes</label>
-              <input className="input" value={modal.form.notes} onChange={(e) => setField('notes', e.target.value)} />
+              <input className="input" placeholder="e.g., Phase 1 advance payment" value={modal.form.notes} onChange={(e) => setField('notes', e.target.value)} />
             </div>
           </form>
         )}

@@ -263,25 +263,25 @@ export default function UsersPage() {
           <form id="user-form" onSubmit={save} className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="label">Name</label>
-              <input className="input" value={modal.form.name} onChange={(e) => setField('name', e.target.value)} required />
+              <input className="input" placeholder="e.g., John Doe" value={modal.form.name} onChange={(e) => setField('name', e.target.value)} required />
             </div>
             <div>
               <label className="label">Email</label>
-              <input type="email" className="input" value={modal.form.email} onChange={(e) => setField('email', e.target.value)} required />
+              <input type="email" className="input" placeholder="e.g., john@company.com" value={modal.form.email} onChange={(e) => setField('email', e.target.value)} required />
             </div>
             <div>
               <label className="label">Phone</label>
-              <input className="input" value={modal.form.phone} onChange={(e) => setField('phone', e.target.value)} />
+              <input className="input" placeholder="e.g., +91 98765 43210" value={modal.form.phone} onChange={(e) => setField('phone', e.target.value)} />
             </div>
             {!modal.editingId && (
               <div>
                 <label className="label">Password</label>
-                <input type="password" className="input" value={modal.form.password} onChange={(e) => setField('password', e.target.value)} required minLength={8} />
+                <input type="password" className="input" placeholder="At least 8 characters" value={modal.form.password} onChange={(e) => setField('password', e.target.value)} required minLength={8} />
               </div>
             )}
             <div>
               <label className="label">Designation</label>
-              <input className="input" list="designations" value={modal.form.designation} onChange={(e) => setField('designation', e.target.value)} />
+              <input className="input" list="designations" placeholder="e.g., Site Engineer" value={modal.form.designation} onChange={(e) => setField('designation', e.target.value)} />
               <datalist id="designations">
                 {designations.map((d) => <option key={d} value={d} />)}
               </datalist>
@@ -295,7 +295,7 @@ export default function UsersPage() {
             </div>
             <div>
               <label className="label">Salary</label>
-              <input type="number" step="0.01" min="0" className="input" value={modal.form.salary} onChange={(e) => setField('salary', e.target.value)} />
+              <input type="number" step="0.01" min="0" className="input" placeholder="e.g., 35000" value={modal.form.salary} onChange={(e) => setField('salary', e.target.value)} />
             </div>
             <div>
               <label className="label">Status</label>

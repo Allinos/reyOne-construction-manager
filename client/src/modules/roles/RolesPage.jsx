@@ -156,11 +156,11 @@ export default function RolesPage() {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div>
                 <label className="label">Name</label>
-                <input className="input" value={modal.name} onChange={(e) => setModal((m) => ({ ...m, name: e.target.value }))} required />
+                <input className="input" placeholder="e.g., Site Supervisor" value={modal.name} onChange={(e) => setModal((m) => ({ ...m, name: e.target.value }))} required />
               </div>
               <div>
                 <label className="label">Description</label>
-                <input className="input" value={modal.description} onChange={(e) => setModal((m) => ({ ...m, description: e.target.value }))} />
+                <input className="input" placeholder="e.g., Manages on-site work & teams" value={modal.description} onChange={(e) => setModal((m) => ({ ...m, description: e.target.value }))} />
               </div>
             </div>
 
