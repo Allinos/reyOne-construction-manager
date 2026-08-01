@@ -23,12 +23,11 @@ function OverviewBar() {
   const items = [
     { label: 'Total Received', value: o ? formatMoney(o.totalReceived, currency) : '—', accent: 'text-green-600' },
     { label: 'Total Expenses', value: o ? formatMoney(o.totalExpenses, currency) : '—', accent: 'text-red-600' },
-    { label: 'Profit', value: o ? formatMoney(o.profit, currency) : '—', accent: 'text-brand-600' },
     { label: 'Account Balance', value: o ? formatMoney(accountBalance, currency) : '—', accent: 'text-slate-800' },
   ];
 
   return (
-    <div className="mb-5 grid grid-cols-2 gap-3 rounded-xl border border-cream-300 bg-white p-3 sm:grid-cols-4">
+    <div className="mb-5 grid grid-cols-2 gap-3 rounded-xl border border-cream-300 bg-white p-3 sm:grid-cols-3 dark:border-slate-700 dark:bg-slate-800">
       {items.map((it) => (
         <div key={it.label} className="px-2">
           <p className="text-xs text-slate-500">{it.label}</p>

@@ -1,5 +1,7 @@
 'use strict';
 
+const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -34,6 +36,19 @@ async function createApp() {
 
   // Mount enabled modules under the API prefix.
   await mountModules(app, env.apiPrefix);
+
+  // Serve a static frontend from server/public (drop a built React app here).
+  const publicDir = path.join(__dirname, '..', 'public');
+  if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir));
+    // SPA fallback: non-API GET requests return index.html when present.
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith(env.apiPrefix) || req.path === '/health') return next();
+      const indexFile = path.join(publicDir, 'index.html');
+      if (fs.existsSync(indexFile)) return res.sendFile(indexFile);
+      return next();
+    });
+  }
 
   app.use(notFound);
   app.use(errorHandler);

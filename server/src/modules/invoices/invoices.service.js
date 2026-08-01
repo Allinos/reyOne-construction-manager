@@ -111,6 +111,7 @@ const invoicesService = {
     const doc = await repo.create({
       type: payload.type,
       template,
+      gstSplit: template === 'gst' ? Boolean(payload.gstSplit) : false,
       number,
       projectId: payload.projectId ?? null,
       clientName: payload.clientName,
@@ -139,6 +140,10 @@ const invoicesService = {
 
     const data = { ...payload };
     if (data.clientEmail === '') data.clientEmail = null;
+    const tmpl = payload.template || existing.template || 'standard';
+    if (payload.gstSplit !== undefined || payload.template !== undefined) {
+      data.gstSplit = tmpl === 'gst' ? Boolean(payload.gstSplit ?? existing.gstSplit) : false;
+    }
     if (payload.items) {
       const template = payload.template || existing.template || 'standard';
       const totals = computeTotals(payload.items, payload.taxRate ?? existing.taxRate, template);

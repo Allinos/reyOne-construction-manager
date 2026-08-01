@@ -14,16 +14,26 @@ const money = (d) => D(d).toFixed(2);
 // --- config & validation -------------------------------------------------
 
 async function loadConfig() {
-  const [methods, categories, accounts] = await Promise.all([
+  const [methods, categories, accounts, projCats, compCats] = await Promise.all([
     repo.getSetting('finance', 'payment_methods'),
     repo.getSetting('finance', 'expense_categories'),
     repo.getSetting('finance', 'accounts'),
+    repo.getSetting('finance', 'project_expense_categories'),
+    repo.getSetting('finance', 'company_expense_categories'),
   ]);
   return {
     methods: methods?.value || [],
     categories: categories?.value || [],
+    projectCategories: projCats?.value || [],
+    companyCategories: compCats?.value || [],
     accounts: (accounts?.value || []).map((a) => (typeof a === 'string' ? { key: a, name: a } : a)),
   };
+}
+
+// Categories valid for a given expense scope (falls back to the legacy list).
+function categoriesForScope(config, scope) {
+  const scoped = scope === 'PROJECT' ? config.projectCategories : config.companyCategories;
+  return scoped && scoped.length ? scoped : config.categories;
 }
 
 function assertIn(value, list, label) {
@@ -166,7 +176,7 @@ const financeService = {
 
   async createExpense(payload, actor, req) {
     const config = await loadConfig();
-    assertIn(payload.category, config.categories, 'expense category');
+    assertIn(payload.category, categoriesForScope(config, payload.scope), 'expense category');
     // Method/account default to the first configured option when omitted.
     const method = payload.method || config.methods[0] || 'Cash';
     const account = payload.account || (config.accounts[0] && config.accounts[0].key) || 'cash';
@@ -199,7 +209,7 @@ const financeService = {
     const existing = await repo.findExpense(id);
     if (!existing) throw AppError.notFound('Expense not found');
     const config = await loadConfig();
-    if (payload.category) assertIn(payload.category, config.categories, 'expense category');
+    if (payload.category) assertIn(payload.category, categoriesForScope(config, existing.scope), 'expense category');
     if (payload.method) assertIn(payload.method, config.methods, 'payment method');
     if (payload.account) assertIn(payload.account, config.accounts.map((a) => a.key), 'account');
 

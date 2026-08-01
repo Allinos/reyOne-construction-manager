@@ -28,6 +28,7 @@ const baseDoc = {
 const createDocumentSchema = z.object({
   type: z.enum(['QUOTATION', 'INVOICE']),
   template: z.enum(['standard', 'gst']).optional(),
+  gstSplit: z.boolean().optional(),
   number: z.string().max(50).optional(),
   ...baseDoc,
 });
@@ -35,6 +36,7 @@ const createDocumentSchema = z.object({
 const updateDocumentSchema = z
   .object({
     template: z.enum(['standard', 'gst']).optional(),
+    gstSplit: z.boolean().optional(),
     projectId: z.coerce.number().int().positive().nullable().optional(),
     clientName: z.string().min(1).max(150).optional(),
     clientPhone: z.string().max(30).nullable().optional(),

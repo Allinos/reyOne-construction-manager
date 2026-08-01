@@ -151,9 +151,14 @@ export default function ExpensesPage() {
                       <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{x.category}</td>
                       <td className="px-4 py-3 text-slate-500">
                         {x.scope === 'PROJECT' && x.projectId ? (
-                          <Link to={`/projects/${x.projectId}`} className="text-brand-600 hover:underline">
-                            {projectMap[x.projectId]?.name || 'Project'} <span className="text-xs text-slate-400">#{x.projectId}</span>
-                          </Link>
+                          <div>
+                            <Link to={`/projects/${x.projectId}`} className="text-brand-600 hover:underline">
+                              {projectMap[x.projectId]?.name || 'Project'} <span className="text-xs text-slate-400">#{x.projectId}</span>
+                            </Link>
+                            {projectMap[x.projectId]?.clientName && (
+                              <div className="text-xs text-slate-400">{projectMap[x.projectId].clientName}</div>
+                            )}
+                          </div>
                         ) : 'Company'}
                       </td>
                       <td className="px-4 py-3 text-slate-600">{x.vendorId ? (vendorMap[x.vendorId] || 'Vendor') : (x.paidTo || '—')}</td>

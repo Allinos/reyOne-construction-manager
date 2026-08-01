@@ -76,7 +76,12 @@ export default function ConfigurationPage() {
           </div>
         );
       case 'expenses':
-        return <StringListEditor title="Expense Categories" group="finance" settingKey="expense_categories" initial={f.expense_categories} />;
+        return (
+          <div className="space-y-4">
+            <StringListEditor title="Project Expense Categories" group="finance" settingKey="project_expense_categories" initial={f.project_expense_categories} />
+            <StringListEditor title="Company Expense Categories" group="finance" settingKey="company_expense_categories" initial={f.company_expense_categories} />
+          </div>
+        );
       case 'other':
         return <StringListEditor title="Designations" group="users" settingKey="designations" initial={u.designations} />;
       default:

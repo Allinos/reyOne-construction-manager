@@ -252,7 +252,7 @@ export default function ProjectFormPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Agreement Date">
+            <Field label="Agreement / Working Date">
               <input type="date" className="input" value={form.agreementDate} onChange={(e) => set('agreementDate', e.target.value)} />
             </Field>
             <Field label="Project Amount">

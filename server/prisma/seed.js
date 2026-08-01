@@ -47,6 +47,17 @@ const DEFAULT_SETTINGS = [
     key: 'expense_categories',
     value: ['Office Rent', 'Electricity', 'Fuel', 'Salary', 'Internet', 'Miscellaneous'],
   },
+  // Scope-specific expense categories (editable in Settings).
+  {
+    group: 'finance',
+    key: 'project_expense_categories',
+    value: ['Material', 'Labour', 'Equipment Rental', 'Transport', 'Subcontractor', 'Site Utilities'],
+  },
+  {
+    group: 'finance',
+    key: 'company_expense_categories',
+    value: ['Office Rent', 'Electricity', 'Fuel', 'Salary', 'Internet', 'Marketing', 'Miscellaneous'],
+  },
   {
     group: 'finance',
     key: 'accounts',

@@ -41,6 +41,7 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
         .then((d) =>
           setForm({
             template: d.template || 'standard',
+            gstSplit: d.gstSplit || false,
             number: d.number,
             projectId: d.projectId || '',
             clientName: d.clientName || '',
@@ -64,6 +65,7 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
         .then((r) =>
           setForm({
             template: 'standard',
+            gstSplit: false,
             number: r.number,
             projectId: '',
             clientName: '', clientPhone: '', clientEmail: '', clientAddress: '',
@@ -124,6 +126,7 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
   const buildBody = () => ({
     type,
     template: form.template,
+    gstSplit: isGst ? Boolean(form.gstSplit) : false,
     number: form.number || undefined,
     projectId: form.projectId ? Number(form.projectId) : undefined,
     clientName: form.clientName,
@@ -207,6 +210,18 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
                 </button>
               ))}
             </div>
+            {isGst && (
+              <div className="mt-2 flex items-center gap-4">
+                <label className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+                  <input type="radio" name="gstMode" checked={!form.gstSplit} onChange={() => set('gstSplit', false)} />
+                  IGST (single)
+                </label>
+                <label className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+                  <input type="radio" name="gstMode" checked={form.gstSplit} onChange={() => set('gstSplit', true)} />
+                  CGST + SGST
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

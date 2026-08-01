@@ -34,8 +34,11 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
   const toast = useToast();
   const currency = bootstrap?.company?.currency || 'INR';
   const finance = bootstrap?.settings?.finance || {};
-  const categories = finance.expense_categories || [];
   const accounts = finance.accounts || [];
+  // Scope-specific categories, with the legacy list as fallback.
+  const categories =
+    (scope === 'PROJECT' ? finance.project_expense_categories : finance.company_expense_categories) ||
+    finance.expense_categories || [];
 
   const [form, setForm] = useState(null);
   const [projects, setProjects] = useState([]);

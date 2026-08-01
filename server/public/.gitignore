@@ -1,0 +1,4 @@
+# Ignore built frontend assets dropped here; keep the folder + docs tracked.
+*
+!.gitignore
+!README.md

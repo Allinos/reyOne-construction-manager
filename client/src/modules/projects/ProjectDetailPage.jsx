@@ -124,8 +124,21 @@ export default function ProjectDetailPage() {
     }
   };
 
+  // Optimistic mutate: update local state instantly, sync in the background,
+  // reload only if the server rejects it — keeps the UI feeling immediate.
+  const optimistic = (mutateLocal, apiCall, successMsg) => {
+    setProject((p) => mutateLocal(p));
+    apiCall()
+      .then(() => successMsg && toast.success(successMsg))
+      .catch((err) => {
+        toast.error(errorMessage(err));
+        load();
+      });
+  };
+
   // --- project ---
-  const changeStatus = (status) => guard(() => updateProject(id, { status }), 'Status updated successfully');
+  const changeStatus = (status) =>
+    optimistic((p) => ({ ...p, status }), () => updateProject(id, { status }), 'Status updated successfully');
   const onDelete = async () => {
     const ok = await confirm({ title: 'Delete project?', message: `This will remove ${project.name}.`, confirmLabel: 'Delete' });
     if (ok) guard(() => deleteProject(id), 'Project deleted').then(() => navigate('/projects'));
@@ -151,8 +164,11 @@ export default function ProjectDetailPage() {
     guard(() => updatePhase(id, phase.id, { assigneeIds: phase.assignees.filter((a) => a.id !== uid).map((a) => a.id) }), 'Employee removed');
 
   // --- phases ---
-  const changePhaseStatus = (phase, status) => guard(() => updatePhase(id, phase.id, { status }), 'Phase status updated successfully');
-  const setPhaseDeadline = (phase, deadline) => guard(() => updatePhase(id, phase.id, { deadline }), 'Deadline updated');
+  const patchPhase = (p, phaseId, patch) => ({ ...p, phases: p.phases.map((ph) => (ph.id === phaseId ? { ...ph, ...patch } : ph)) });
+  const changePhaseStatus = (phase, status) =>
+    optimistic((p) => patchPhase(p, phase.id, { status }), () => updatePhase(id, phase.id, { status }), 'Phase status updated successfully');
+  const setPhaseDeadline = (phase, deadline) =>
+    optimistic((p) => patchPhase(p, phase.id, { deadline }), () => updatePhase(id, phase.id, { deadline }), 'Deadline updated');
   const onAddPhase = () => {
     const name = window.prompt('New stage name');
     if (name?.trim()) guard(() => addPhase(id, { name: name.trim() }), 'Stage added');
@@ -163,8 +179,18 @@ export default function ProjectDetailPage() {
   };
 
   // --- tasks ---
-  const toggleTask = (phase, task) =>
-    guard(() => updateTask(id, phase.id, task.id, { status: task.status === 'completed' ? 'pending' : 'completed' }));
+  const toggleTask = (phase, task) => {
+    const next = task.status === 'completed' ? 'pending' : 'completed';
+    optimistic(
+      (p) => ({
+        ...p,
+        phases: p.phases.map((ph) =>
+          ph.id === phase.id ? { ...ph, tasks: ph.tasks.map((t) => (t.id === task.id ? { ...t, status: next } : t)) } : ph,
+        ),
+      }),
+      () => updateTask(id, phase.id, task.id, { status: next }),
+    );
+  };
 
   const openAddTask = (phase) =>
     setTaskModal({ phaseId: phase.id, taskId: null, existing: new Set(), tempChips: [], tempDraft: '' });

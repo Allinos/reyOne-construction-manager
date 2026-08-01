@@ -36,11 +36,10 @@ export function FinanceAnalytics({ open }) {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Tile label="Payment Received" value={formatMoney(data.totals.received, currency)} accent="text-green-600" />
         <Tile label="Pending Payments" value={formatMoney(data.totals.pending, currency)} accent="text-amber-600" />
         <Tile label="Total Expenses" value={formatMoney(data.totals.expenses, currency)} accent="text-red-600" />
-        <Tile label="Profit" value={formatMoney(data.totals.profit, currency)} accent="text-brand-600" />
       </div>
       <Card>
         <h3 className="mb-3 font-semibold text-slate-700">Monthly Income vs Expenses</h3>

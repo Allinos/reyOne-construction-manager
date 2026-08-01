@@ -47,9 +47,14 @@ export function documentHtml(doc, config = {}, currency = 'INR') {
     )
     .join('');
 
+  const half = (Number(doc.taxAmount) || 0) / 2;
+  const gstTaxRows = doc.gstSplit
+    ? `<div><span>CGST</span><span>${money(half, currency)}</span></div>
+       <div><span>SGST</span><span>${money(half, currency)}</span></div>`
+    : `<div><span>Total GST</span><span>${money(doc.taxAmount, currency)}</span></div>`;
+
   const totalsRows = isGst
-    ? `<div><span>Taxable Value</span><span>${money(doc.subtotal, currency)}</span></div>
-       <div><span>Total GST</span><span>${money(doc.taxAmount, currency)}</span></div>`
+    ? `<div><span>Taxable Value</span><span>${money(doc.subtotal, currency)}</span></div>${gstTaxRows}`
     : `<div><span>Subtotal</span><span>${money(doc.subtotal, currency)}</span></div>
        ${Number(doc.taxRate) > 0 ? `<div><span>Tax (${esc(doc.taxRate)}%)</span><span>${money(doc.taxAmount, currency)}</span></div>` : ''}`;
 

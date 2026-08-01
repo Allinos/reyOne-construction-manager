@@ -325,6 +325,7 @@ model BillingDocument {
   id            Int         @id @default(autoincrement())
   type          BillingType
   template      String      @default("standard") // standard | gst
+  gstSplit      Boolean     @default(false) // GST template: split into CGST + SGST
   number        String
   projectId     Int?
   clientName    String
