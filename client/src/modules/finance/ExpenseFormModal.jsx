@@ -102,10 +102,22 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
       };
       if (form.scope === 'PROJECT') {
         body.projectId = Number(form.projectId);
-        // Payee: exactly one of vendor / workforce / manual name.
-        if (payeeMode === 'vendor') body.vendorId = form.vendorId ? Number(form.vendorId) : undefined;
-        else if (payeeMode === 'workforce') body.workforceId = form.workforceId ? Number(form.workforceId) : undefined;
-        else body.paidTo = form.paidTo || undefined;
+        // Payee: exactly one of vendor / workforce / manual name. On edit we send
+        // explicit nulls for the unused options so switching payee clears the rest.
+        const clearing = editing ? null : undefined;
+        if (payeeMode === 'vendor') {
+          body.vendorId = form.vendorId ? Number(form.vendorId) : clearing;
+          body.workforceId = clearing;
+          body.paidTo = clearing;
+        } else if (payeeMode === 'workforce') {
+          body.workforceId = form.workforceId ? Number(form.workforceId) : clearing;
+          body.vendorId = clearing;
+          body.paidTo = clearing;
+        } else {
+          body.paidTo = form.paidTo || clearing;
+          body.vendorId = clearing;
+          body.workforceId = clearing;
+        }
       } else {
         // Company expenses: no vendor; capture who paid and who was paid.
         body.expenseBy = form.expenseBy || undefined;
