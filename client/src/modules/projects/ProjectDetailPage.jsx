@@ -14,6 +14,7 @@ import { PageHeader, FullPageLoader, SectionCard, Alert, StatusBadge } from '../
 import { statusColor, statusSelectClass } from '../../lib/status';
 import Modal from '../../components/Modal';
 import Icon from '../../components/Icon';
+import RequirementsButton from '../requirements/RequirementsWorkspace';
 
 // Colors <option> text and applies a status-tinted class to a <select>.
 function StatusSelect({ value, statuses, onChange, className = '' }) {
@@ -90,6 +91,7 @@ export default function ProjectDetailPage() {
   const masterTasks = bootstrap?.settings?.projects?.task_templates || [];
   const statusLabel = (key) => statuses.find((s) => s.key === key)?.label || key;
   const canEdit = can('projects.update');
+  const requirementsEnabled = (bootstrap?.modules || []).some((m) => m.key === 'requirements') && can('requirements.read');
 
   const [project, setProject] = useState(null);
   const [customDefs, setCustomDefs] = useState([]);
@@ -251,6 +253,7 @@ export default function ProjectDetailPage() {
               <Icon name="arrowLeft" className="h-4 w-4" />
             </Link>
             {canEdit && <StatusSelect value={project.status} statuses={statuses} onChange={changeStatus} className="w-auto" />}
+            {requirementsEnabled && <RequirementsButton projectId={project.id} />}
             {canEdit && <button className="btn-secondary" onClick={openProjectEmp}>Assign Employees</button>}
             {canEdit && <Link to={`/projects/${id}/edit`} className="btn-secondary">Edit</Link>}
             {can('projects.delete') && <button className="btn-secondary text-red-600" onClick={onDelete}>Delete</button>}
