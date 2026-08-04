@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { listExpenses, deleteExpense, projectOptions, getExpenseStats } from './api';
 import { vendorOptions } from '../vendors/api';
+import { workforceOptions } from '../workforce/api';
 import ExpenseFormModal from './ExpenseFormModal';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -27,6 +28,7 @@ export default function ExpensesPage() {
 
   const [projects, setProjects] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [workforce, setWorkforce] = useState([]);
   const [scopeFilter, setScopeFilter] = useState('');
   const [result, setResult] = useState({ items: [], meta: null });
   const [page, setPage] = useState(1);
@@ -40,6 +42,7 @@ export default function ExpensesPage() {
 
   const projectMap = Object.fromEntries(projects.map((p) => [p.id, p]));
   const vendorMap = Object.fromEntries(vendors.map((v) => [v.id, v.name]));
+  const workforceMap = Object.fromEntries(workforce.map((w) => [w.id, w]));
 
   const refreshStats = useCallback(() => {
     getExpenseStats(month).then(setStats).catch(() => {});
@@ -61,6 +64,7 @@ export default function ExpensesPage() {
   useEffect(() => {
     projectOptions().then(setProjects).catch(() => {});
     vendorOptions().then(setVendors).catch(() => {});
+    workforceOptions().then(setWorkforce).catch(() => {});
   }, []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { refreshStats(); }, [refreshStats]);
@@ -151,17 +155,25 @@ export default function ExpensesPage() {
                       <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{x.category}</td>
                       <td className="px-4 py-3 text-slate-500">
                         {x.scope === 'PROJECT' && x.projectId ? (
-                          <div>
-                            <Link to={`/projects/${x.projectId}`} className="text-brand-600 hover:underline">
-                              {projectMap[x.projectId]?.name || 'Project'} <span className="text-xs text-slate-400">#{x.projectId}</span>
-                            </Link>
-                            {projectMap[x.projectId]?.clientName && (
-                              <div className="text-xs text-slate-400">{projectMap[x.projectId].clientName}</div>
-                            )}
-                          </div>
+                          <Link to={`/projects/${x.projectId}`} className="block hover:underline">
+                            <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">
+                              {projectMap[x.projectId]?.clientName || 'Client'}
+                            </span>
+                            <span className="block text-xs text-slate-400">
+                              {projectMap[x.projectId]?.name || 'Project'} <span className="text-brand-500">#{x.projectId}</span>
+                            </span>
+                          </Link>
                         ) : 'Company'}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{x.vendorId ? (vendorMap[x.vendorId] || 'Vendor') : (x.paidTo || '—')}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {x.vendorId
+                          ? (vendorMap[x.vendorId] || 'Vendor')
+                          : x.workforceId
+                          ? (workforceMap[x.workforceId]
+                              ? `${workforceMap[x.workforceId].name} · ${workforceMap[x.workforceId].category}`
+                              : 'Workforce')
+                          : (x.paidTo || '—')}
+                      </td>
                       <td className="px-4 py-3 font-medium text-red-600">{formatMoney(x.amount, currency)}</td>
                       <td className="px-4 py-3 text-green-700">{formatMoney(x.amountPaid, currency)}</td>
                       <td className="px-4 py-3 text-slate-600">{formatMoney(balance > 0 ? balance : 0, currency)}</td>

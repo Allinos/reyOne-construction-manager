@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createExpense, updateExpense, projectOptions } from './api';
 import { vendorOptions } from '../vendors/api';
+import { workforceOptions } from '../workforce/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
@@ -26,7 +27,8 @@ const blank = (scope) => ({
   paymentStatus: 'PAID',
   amountPaid: '',
   expenseBy: '', // Company: "Paid By"
-  paidTo: '', // Company: "Paid To"
+  paidTo: '', // Company: "Paid To" / manual project payee
+  workforceId: '',
 });
 
 export default function ExpenseFormModal({ open, onClose, scope, editing, onSaved }) {
@@ -40,9 +42,13 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
     (scope === 'PROJECT' ? finance.project_expense_categories : finance.company_expense_categories) ||
     finance.expense_categories || [];
 
+  const workforceEnabled = (bootstrap?.modules || []).some((m) => m.key === 'workforce');
+
   const [form, setForm] = useState(null);
   const [projects, setProjects] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [workforce, setWorkforce] = useState([]);
+  const [payeeMode, setPayeeMode] = useState('vendor'); // vendor | workforce | manual
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -51,7 +57,9 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
     setError('');
     if (scope === 'PROJECT') projectOptions().then(setProjects);
     vendorOptions().then(setVendors);
+    if (workforceEnabled) workforceOptions().then(setWorkforce);
     if (editing) {
+      setPayeeMode(editing.vendorId ? 'vendor' : editing.workforceId ? 'workforce' : editing.paidTo ? 'manual' : 'vendor');
       setForm({
         scope: editing.scope,
         projectId: editing.projectId || '',
@@ -65,10 +73,13 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
         amountPaid: editing.amountPaid ?? '',
         expenseBy: editing.expenseBy || '',
         paidTo: editing.paidTo || '',
+        workforceId: editing.workforceId || '',
       });
     } else {
+      setPayeeMode('vendor');
       setForm(blank(scope));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, scope, editing]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -91,7 +102,10 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
       };
       if (form.scope === 'PROJECT') {
         body.projectId = Number(form.projectId);
-        body.vendorId = form.vendorId ? Number(form.vendorId) : undefined;
+        // Payee: exactly one of vendor / workforce / manual name.
+        if (payeeMode === 'vendor') body.vendorId = form.vendorId ? Number(form.vendorId) : undefined;
+        else if (payeeMode === 'workforce') body.workforceId = form.workforceId ? Number(form.workforceId) : undefined;
+        else body.paidTo = form.paidTo || undefined;
       } else {
         // Company expenses: no vendor; capture who paid and who was paid.
         body.expenseBy = form.expenseBy || undefined;
@@ -133,17 +147,45 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
               <label className="label">Project <span className="text-red-500">*</span></label>
               <select className="input" value={form.projectId} onChange={(e) => set('projectId', e.target.value)} required>
                 <option value="">Select project…</option>
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.referenceNumber} — {p.name}</option>)}
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}{p.clientName ? ` · ${p.clientName}` : ''} ({p.referenceNumber})
+                  </option>
+                ))}
               </select>
             </div>
           )}
           {isProject ? (
-            <div>
-              <label className="label">Vendor <span className="text-xs font-normal text-slate-400">(optional)</span></label>
-              <select className="input" value={form.vendorId} onChange={(e) => set('vendorId', e.target.value)}>
-                <option value="">e.g., Select Vendor (Optional)</option>
-                {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-              </select>
+            <div className="sm:col-span-2">
+              <label className="label">Expense Payee <span className="text-xs font-normal text-slate-400">(optional)</span></label>
+              <div className="mb-2 flex flex-wrap gap-2">
+                <button type="button" className={`rounded-lg border px-3 py-1.5 text-sm ${payeeMode === 'vendor' ? 'border-brand-400 bg-brand-50 text-brand-700 dark:bg-slate-700' : 'border-cream-300 text-slate-600 dark:border-slate-600'}`} onClick={() => setPayeeMode('vendor')}>
+                  Select Vendor
+                </button>
+                {workforceEnabled && (
+                  <button type="button" className={`rounded-lg border px-3 py-1.5 text-sm ${payeeMode === 'workforce' ? 'border-brand-400 bg-brand-50 text-brand-700 dark:bg-slate-700' : 'border-cream-300 text-slate-600 dark:border-slate-600'}`} onClick={() => setPayeeMode('workforce')}>
+                    Workforce
+                  </button>
+                )}
+                <button type="button" className={`rounded-lg border px-3 py-1.5 text-sm ${payeeMode === 'manual' ? 'border-brand-400 bg-brand-50 text-brand-700 dark:bg-slate-700' : 'border-cream-300 text-slate-600 dark:border-slate-600'}`} onClick={() => setPayeeMode('manual')}>
+                  Enter Manually
+                </button>
+              </div>
+              {payeeMode === 'vendor' && (
+                <select className="input" value={form.vendorId} onChange={(e) => set('vendorId', e.target.value)}>
+                  <option value="">Select vendor…</option>
+                  {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+              )}
+              {payeeMode === 'workforce' && (
+                <select className="input" value={form.workforceId} onChange={(e) => set('workforceId', e.target.value)}>
+                  <option value="">Select workforce member…</option>
+                  {workforce.map((w) => <option key={w.id} value={w.id}>{w.name} — {w.category}</option>)}
+                </select>
+              )}
+              {payeeMode === 'manual' && (
+                <input className="input" placeholder="e.g., Local hardware shop" value={form.paidTo} onChange={(e) => set('paidTo', e.target.value)} />
+              )}
             </div>
           ) : (
             <>
