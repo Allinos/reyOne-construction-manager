@@ -91,7 +91,9 @@ export default function ProjectDetailPage() {
   const masterTasks = bootstrap?.settings?.projects?.task_templates || [];
   const statusLabel = (key) => statuses.find((s) => s.key === key)?.label || key;
   const canEdit = can('projects.update');
-  const requirementsEnabled = (bootstrap?.modules || []).some((m) => m.key === 'requirements') && can('requirements.read');
+  const enabledModules = bootstrap?.modules || [];
+  const requirementsEnabled = enabledModules.some((m) => m.key === 'requirements') && can('requirements.read');
+  const photosEnabled = requirementsEnabled && enabledModules.some((m) => m.key === 'photo_upload');
 
   const [project, setProject] = useState(null);
   const [customDefs, setCustomDefs] = useState([]);
@@ -253,7 +255,6 @@ export default function ProjectDetailPage() {
               <Icon name="arrowLeft" className="h-4 w-4" />
             </Link>
             {canEdit && <StatusSelect value={project.status} statuses={statuses} onChange={changeStatus} className="w-auto" />}
-            {requirementsEnabled && <RequirementsButton projectId={project.id} />}
             {canEdit && <button className="btn-secondary" onClick={openProjectEmp}>Assign Employees</button>}
             {canEdit && <Link to={`/projects/${id}/edit`} className="btn-secondary">Edit</Link>}
             {can('projects.delete') && <button className="btn-secondary text-red-600" onClick={onDelete}>Delete</button>}
@@ -283,6 +284,21 @@ export default function ProjectDetailPage() {
           {customDefs.map((d) => <Info key={d.key} label={d.label} value={project.customFields?.[d.key]} />)}
         </div>
       </div>
+
+      {/* Requirements & Details / Photos & Docs */}
+      {requirementsEnabled && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+          <RequirementsButton projectId={project.id} />
+          {photosEnabled && (
+            <RequirementsButton
+              projectId={project.id}
+              initialTab="photo_upload"
+              label="Photos & Docs"
+              icon="photo"
+            />
+          )}
+        </div>
+      )}
 
       {/* Stages */}
       <div className="mb-3 flex items-center justify-between">

@@ -10,18 +10,20 @@ const TABS = [
   { key: 'req_text', label: 'Text Requirements', Comp: TextTab },
   { key: 'req_forms', label: 'Custom Forms', Comp: FormTab },
   { key: 'req_table', label: 'Excel Table', Comp: TableTab },
-  { key: 'photo_upload', label: 'Photos', Comp: PhotoTab },
+  { key: 'photo_upload', label: 'Photos & Docs', Comp: PhotoTab },
 ];
 
 // Large, full-screen-capable workspace launched from a Project Detail page.
 // Each tab is an independently toggleable sub-module (req_text, req_forms,
 // req_table, photo_upload) — only enabled ones appear.
-function Workspace({ projectId, onClose }) {
+function Workspace({ projectId, onClose, initialTab }) {
   const { bootstrap, can } = useAuth();
   const canEdit = can('requirements.update');
   const enabled = useMemo(() => new Set((bootstrap?.modules || []).map((m) => m.key)), [bootstrap]);
   const tabs = useMemo(() => TABS.filter((t) => enabled.has(t.key)), [enabled]);
-  const [active, setActive] = useState(tabs[0]?.key || null);
+  const [active, setActive] = useState(
+    (initialTab && tabs.some((t) => t.key === initialTab) ? initialTab : tabs[0]?.key) || null,
+  );
   const [full, setFull] = useState(false);
 
   useEffect(() => {
@@ -85,16 +87,23 @@ function Workspace({ projectId, onClose }) {
   );
 }
 
-// Button + modal wrapper dropped into the Project Detail page.
-export default function RequirementsButton({ projectId }) {
+// Button + modal wrapper dropped into the Project Detail page. `initialTab` lets
+// a caller (e.g. the "Photos & Docs" button) open straight to a specific tab.
+export default function RequirementsButton({
+  projectId,
+  initialTab,
+  label = 'Requirements & Details',
+  icon = 'modules',
+  className = 'btn-secondary',
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button className="btn-secondary" onClick={() => setOpen(true)}>
-        <span className="mr-1.5 inline-flex align-middle"><Icon name="modules" className="h-4 w-4" /></span>
-        Requirements &amp; Details
+      <button className={className} onClick={() => setOpen(true)}>
+        <span className="mr-1.5 inline-flex align-middle"><Icon name={icon} className="h-4 w-4" /></span>
+        {label}
       </button>
-      {open && <Workspace projectId={projectId} onClose={() => setOpen(false)} />}
+      {open && <Workspace projectId={projectId} initialTab={initialTab} onClose={() => setOpen(false)} />}
     </>
   );
 }

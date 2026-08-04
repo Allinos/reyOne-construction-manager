@@ -20,10 +20,10 @@ export const MODULE_DEFS = [
   { key: 'dashboard', section: 'main', label: 'Dashboard', path: '/', icon: 'dashboard', permission: 'dashboard.read', element: <DashboardPage /> },
   { key: 'projects', section: 'main', label: 'Projects', path: '/projects', icon: 'projects', permission: 'projects.read', element: <ProjectsModule /> },
   { key: 'clients', section: 'main', label: 'Clients', path: '/clients', icon: 'clients', permission: 'clients.read', element: <ClientsModule /> },
-  { key: 'workforce', section: 'main', label: 'Workforce', path: '/workforce', icon: 'workforce', permission: 'workforce.read', element: <WorkforcePage /> },
   { key: 'finance', section: 'finance', label: 'Finance', path: '/finance', icon: 'finance', permission: 'finance.read', element: <FinanceModule /> },
   { key: 'expenses', section: 'finance', label: 'Expenses', path: '/expenses', icon: 'expenses', permission: 'finance.read', element: <ExpensesPage />, moduleKey: 'finance' },
   { key: 'vendors', section: 'finance', label: 'Vendors', path: '/vendors', icon: 'vendors', permission: 'vendors.read', element: <VendorsModule /> },
+  { key: 'workforce', section: 'finance', label: 'Workforce', path: '/workforce', icon: 'workforce', permission: 'workforce.read', element: <WorkforcePage /> },
   { key: 'users', section: 'profile', label: 'User Manager', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
   { key: 'settings', section: 'profile', label: 'Settings', path: '/settings', icon: 'settings', permission: 'settings.read', element: <SettingsModule /> },
 
