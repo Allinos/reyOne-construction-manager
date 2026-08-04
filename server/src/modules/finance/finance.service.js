@@ -189,6 +189,7 @@ const financeService = {
       scope: payload.scope,
       projectId: payload.scope === 'PROJECT' ? payload.projectId : null,
       vendorId: payload.vendorId ?? null,
+      workforceId: payload.workforceId ?? null,
       category: payload.category,
       amount: payload.amount,
       date: payload.date,

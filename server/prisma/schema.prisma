@@ -420,6 +420,7 @@ model Expense {
   expenseBy     String?
   paidTo        String? // legacy free-text; superseded by vendorId
   vendorId      Int?
+  workforceId   Int? // payee when it's a workforce member
   paymentStatus String   @default("PAID") // PAID | PARTIAL | CREDIT
   amountPaid    Decimal  @default(0) @db.Decimal(15, 2)
   notes         String?  @db.Text
@@ -434,7 +435,67 @@ model Expense {
   @@index([category])
   @@index([date])
   @@index([vendorId])
+  @@index([workforceId])
   @@map("expenses")
+}
+
+// ===========================================================================
+// MODULE: Workforce
+// People involved in project execution (contractor, labour, technician, …).
+// Categories are configurable via settings.
+// ===========================================================================
+enum WorkforceStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Workforce {
+  id        Int             @id @default(autoincrement())
+  name      String
+  category  String
+  phone     String?
+  address   String?         @db.Text
+  notes     String?         @db.Text
+  status    WorkforceStatus @default(ACTIVE)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  deletedAt DateTime?
+
+  @@index([category])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("workforce")
+}
+
+// ===========================================================================
+// MODULE: Project Requirements & Details
+// Requirements come in independently-toggleable kinds (text, custom form,
+// table). content is a flexible JSON payload per kind. Photos are separate.
+// ===========================================================================
+model ProjectRequirement {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  kind      String // TEXT | FORM | TABLE
+  title     String?
+  content   Json // TEXT: { text }; FORM: { fields, values }; TABLE: { columns, rows }
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId, kind])
+  @@map("project_requirements")
+}
+
+model ProjectPhoto {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  name      String?
+  mimeType  String?
+  data      String   @db.LongText // base64 data URL
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+  @@map("project_photos")
 }
 
 // ===========================================================================

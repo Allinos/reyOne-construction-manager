@@ -42,6 +42,7 @@ const createExpenseSchema = z
     scope: z.enum(['PROJECT', 'COMPANY']),
     projectId: z.coerce.number().int().positive().optional(),
     vendorId: z.coerce.number().int().positive().optional(),
+    workforceId: z.coerce.number().int().positive().optional(),
     category: z.string().min(1).max(100),
     amount: money,
     date: z.coerce.date(),
@@ -62,6 +63,7 @@ const updateExpenseSchema = z
   .object({
     projectId: z.coerce.number().int().positive().nullable().optional(),
     vendorId: z.coerce.number().int().positive().nullable().optional(),
+    workforceId: z.coerce.number().int().positive().nullable().optional(),
     category: z.string().min(1).max(100).optional(),
     amount: money.optional(),
     date: z.coerce.date().optional(),

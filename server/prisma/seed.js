@@ -70,6 +70,13 @@ const DEFAULT_SETTINGS = [
   // Users
   { group: 'users', key: 'designations', value: ['Manager', 'Engineer', 'Accountant', 'Supervisor', 'Worker'] },
 
+  // Workforce categories (configurable)
+  {
+    group: 'workforce',
+    key: 'categories',
+    value: ['Contractor', 'Labor', 'Technician', 'Supervisor', 'Carpenter', 'Electrician', 'Plumber', 'Painter'],
+  },
+
   // Invoices & Quotations
   { group: 'invoices', key: 'quotation_prefix', value: 'QTN-' },
   { group: 'invoices', key: 'invoice_prefix', value: 'INV-' },

@@ -59,6 +59,16 @@ const PERMISSIONS = [
   { key: 'vendors.create', module: 'vendors', action: 'create', description: 'Create vendors' },
   { key: 'vendors.update', module: 'vendors', action: 'update', description: 'Edit vendors' },
   { key: 'vendors.delete', module: 'vendors', action: 'delete', description: 'Delete vendors' },
+
+  // Workforce
+  { key: 'workforce.read', module: 'workforce', action: 'read', description: 'View workforce' },
+  { key: 'workforce.create', module: 'workforce', action: 'create', description: 'Create workforce members' },
+  { key: 'workforce.update', module: 'workforce', action: 'update', description: 'Edit workforce members' },
+  { key: 'workforce.delete', module: 'workforce', action: 'delete', description: 'Delete workforce members' },
+
+  // Project Requirements & Details
+  { key: 'requirements.read', module: 'requirements', action: 'read', description: 'View project requirements' },
+  { key: 'requirements.update', module: 'requirements', action: 'update', description: 'Edit project requirements & photos' },
 ];
 
 const WILDCARD = '*';
@@ -91,6 +101,8 @@ const DEFAULT_ROLES = [
       'finance.read',
       'clients.read',
       'vendors.read',
+      'workforce.read', 'workforce.create', 'workforce.update',
+      'requirements.read', 'requirements.update',
       'users.read',
       'activity.read',
     ],
@@ -99,7 +111,7 @@ const DEFAULT_ROLES = [
     key: 'site_engineer',
     name: 'Site Engineer',
     description: 'Works on assigned projects and phases',
-    permissions: ['dashboard.read', 'projects.read', 'projects.update'],
+    permissions: ['dashboard.read', 'projects.read', 'projects.update', 'requirements.read', 'requirements.update', 'workforce.read'],
   },
   {
     key: 'accountant',
@@ -112,6 +124,8 @@ const DEFAULT_ROLES = [
       'invoices.read', 'invoices.create', 'invoices.update', 'invoices.delete',
       'clients.read', 'clients.update',
       'vendors.read', 'vendors.create', 'vendors.update', 'vendors.delete',
+      'workforce.read', 'workforce.create', 'workforce.update', 'workforce.delete',
+      'requirements.read', 'requirements.update',
       'activity.read',
     ],
   },
