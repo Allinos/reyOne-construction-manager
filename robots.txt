@@ -1,0 +1,8 @@
+# robots.txt — DW Nirman Engineerings LLP
+# Allow all crawlers full access.
+User-agent: *
+Allow: /
+
+# Point crawlers to the sitemap.
+# NOTE: Replace the domain below once the site is live.
+Sitemap: https://REPLACE_WITH_WEBSITE_DOMAIN/sitemap.xml

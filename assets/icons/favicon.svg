@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DW Nirman Engineerings">
+  <rect width="64" height="64" rx="14" fill="#17181a"/>
+  <text x="32" y="41" font-family="Manrope, Arial, sans-serif" font-size="26" font-weight="800" letter-spacing="0.5" text-anchor="middle" fill="#ffffff">DW</text>
+  <rect x="16" y="48" width="32" height="3" rx="1.5" fill="#b06a3b"/>
+</svg>

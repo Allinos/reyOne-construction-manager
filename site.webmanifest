@@ -1,0 +1,17 @@
+{
+  "name": "DW Nirman Engineerings LLP",
+  "short_name": "DW Nirman",
+  "description": "Construction & Engineering delivered through a transparent, structured process — from planning to handover.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#f7f5f2",
+  "theme_color": "#17181a",
+  "icons": [
+    {
+      "src": "assets/icons/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+/* =============================================================
+ * animations.css — Lightweight, CSS-only motion
+ * -------------------------------------------------------------
+ * All animations are intentionally subtle and cheap. They are
+ * driven by a small IntersectionObserver in js/animations.js that
+ * adds `.is-visible` when an element scrolls into view.
+ *
+ * Respects prefers-reduced-motion.
+ * ============================================================= */
+
+/* Reveal-on-scroll base state */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+  will-change: opacity, transform;
+}
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Stagger children via inline --i (set in HTML or JS) */
+[data-reveal][style*="--i"] { transition-delay: calc(var(--i) * 80ms); }
+
+/* Named keyframes reused by components */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes image-reveal {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes slow-drift {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(10px, -12px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Hero entrance helpers (added by JS on load) */
+.hero .anim-up {
+  opacity: 0;
+  animation: fade-up 0.7s var(--ease) forwards;
+}
+.hero .anim-up.d1 { animation-delay: 0.05s; }
+.hero .anim-up.d2 { animation-delay: 0.18s; }
+.hero .anim-up.d3 { animation-delay: 0.30s; }
+.hero .anim-up.d4 { animation-delay: 0.42s; }
+
+.hero__media.anim-reveal {
+  animation: image-reveal 0.9s var(--ease) 0.2s both;
+}
+
+.hero__decor { animation: slow-drift 14s ease-in-out infinite; }
+
+/* Subtle hover lift for interactive tiles is handled in style.css */
+
+/* Reduced motion: disable all non-essential animation */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-reveal] { opacity: 1; transform: none; }
+  .hero .anim-up { opacity: 1; animation: none; }
+  .hero__decor { animation: none; }
+}
