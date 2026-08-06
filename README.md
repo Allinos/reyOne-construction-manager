@@ -45,6 +45,7 @@ numbers or company history. Placeholders are intentional and clearly marked.
 
 ```
 /                     root pages (index, about, services, contact, legal, 404…)
+                      (Process page removed; Transparent Build stays on home)
 /projects/            project detail pages
 /blog/                blog index + article
 /css/                 style.css (design system), responsive.css, animations.css
@@ -73,6 +74,29 @@ This separation is what makes a future backend migration straightforward.
 | `faq.js` | Accessible FAQ accordion (data- or markup-driven) |
 | `projects.js` | Renders project cards + before/after slider |
 | `lead.js` | Multi-step "Project Planner" → WhatsApp handoff |
+| `modal.js` | Lead-capture popup (auto-opens after 5s, dismissible) |
+
+### Navigation & single-page sections
+The **Services, Projects, Reviews and FAQ** nav tabs are on-page sections of
+the homepage — clicking them smooth-scrolls to the section (cross-page they
+resolve via `index.html#services` etc., with a sticky-header scroll offset).
+**About** and **Contact** remain standalone pages. Standalone
+`services.html`, `projects.html`, `reviews.html` and `faq.html` pages still
+exist (linked from "View all…" buttons) for deep content and SEO.
+
+### Lead popup
+A global popup (`#lead-modal`, in every page's footer include) contains the
+same Project Planner. It **auto-opens 5 seconds after load, once per browser
+session** (so it doesn't nag on every navigation), and is dismissible via the
+close button, the backdrop, or Esc. Any element with `data-open-modal` opens
+it on demand (e.g. the homepage "Plan Your Project" button).
+
+### Branding
+The brand mark is `assets/images/logo.svg` (blue gear + buildings, matching
+the DW Nirman logo). To use the exact raster logo instead, drop it in
+`assets/images/` and update the two `.brand__logo` `src` references
+(header + footer) — or swap the SVG file. Brand colours are derived from the
+logo and live as CSS tokens in `css/style.css` (`--color-accent` = logo blue).
 
 **Script load order** (already set on every page): `config.js` → `data/*` →
 core modules → page-specific modules.

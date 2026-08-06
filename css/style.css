@@ -19,21 +19,22 @@
 
 /* ---------- 1. Design tokens ---------- */
 :root {
-  /* Colour system — change once, applies everywhere */
-  --color-bg: #f7f5f2;          /* warm off-white */
+  /* Colour system — derived from the DW Nirman brand logo.
+     Change once, applies everywhere. */
+  --color-bg: #f5f7fa;          /* clean cool off-white */
   --color-surface: #ffffff;     /* cards / raised surfaces */
-  --color-surface-2: #f0ede8;   /* subtle alt surface */
-  --color-text: #17181a;        /* deep charcoal / near black */
-  --color-heading: #101113;
-  --color-muted: #6c6a66;       /* concrete grey */
-  --color-accent: #b06a3b;      /* muted copper / earthy orange */
-  --color-accent-dark: #8f5430;
-  --color-accent-soft: #f2e7de;
-  --color-border: #e4e0d9;
-  --color-dark: #17181a;        /* dark section background */
-  --color-dark-surface: #232426;
-  --color-on-dark: #f4f2ee;
-  --color-on-dark-muted: #a9a7a2;
+  --color-surface-2: #eef2f7;   /* subtle alt surface */
+  --color-text: #26313d;        /* logo dark navy */
+  --color-heading: #1b2530;
+  --color-muted: #64707d;       /* muted slate grey */
+  --color-accent: #1d6fc4;      /* logo royal blue */
+  --color-accent-dark: #16548f; /* darker blue (hover) */
+  --color-accent-soft: #e6f0fa; /* light blue tint */
+  --color-border: #e2e8f0;
+  --color-dark: #232f3b;        /* dark navy section background */
+  --color-dark-surface: #2e3b48;
+  --color-on-dark: #eef2f7;
+  --color-on-dark-muted: #9aa7b4;
 
   /* Typography */
   --font-sans: "Manrope", "Inter", system-ui, -apple-system,
@@ -193,6 +194,12 @@ strong { font-weight: 700; }
 .section {
   padding-block: clamp(3.5rem, 7vw, 6.5rem);
 }
+/* Offset in-page anchor targets so the sticky header never covers them
+   when a nav tab smooth-scrolls to a section on the same page. */
+section[id],
+[data-anchor] {
+  scroll-margin-top: calc(var(--header-h) + 18px);
+}
 .section--tight { padding-block: clamp(2.5rem, 4vw, 4rem); }
 .section--dark {
   background: var(--color-dark);
@@ -336,6 +343,16 @@ strong { font-weight: 700; }
   font-weight: 800;
   letter-spacing: 0.02em;
 }
+/* Brand logo image (from assets/images/logo.svg) */
+.brand__logo {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  object-fit: contain;
+  transition: height var(--dur) var(--ease), width var(--dur) var(--ease);
+}
+.is-scrolled .brand__logo { width: 40px; height: 40px; }
+.footer-brand .brand__logo { width: 42px; height: 42px; }
 .brand__name { font-size: 1.06rem; line-height: 1.05; }
 .brand__name span {
   display: block;
@@ -1077,3 +1094,62 @@ strong { font-weight: 700; }
   clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
 .divider { height: 1px; background: var(--color-border); border: 0; margin-block: var(--space-6); }
+
+/* ---------- Lead popup / modal ---------- */
+.modal[hidden] { display: none; }
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+}
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 20, 27, 0.55);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+.modal__dialog {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  transform: translateY(14px) scale(0.98);
+  opacity: 0;
+  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
+}
+.modal.is-open .modal__backdrop { opacity: 1; }
+.modal.is-open .modal__dialog { opacity: 1; transform: none; }
+.modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 1.5rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.modal__close:hover { background: var(--color-surface-2); border-color: var(--color-muted); }
+.modal__head { margin-bottom: var(--space-5); padding-right: 2.5rem; }
+.modal__head h2 { font-size: clamp(1.4rem, 3vw, 1.8rem); margin: var(--space-2) 0; }
+.modal__head p { color: var(--color-muted); font-size: 0.95rem; }
+/* Modal reuses .planner internals but without its own card chrome */
+.modal .planner { border: 0; box-shadow: none; padding: 0; background: transparent; }
+body.modal-open { overflow: hidden; }

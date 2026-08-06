@@ -47,6 +47,9 @@
     document.querySelectorAll("[data-config='phone']").forEach(function (el) {
       el.textContent = maskPlaceholder(cfg.phoneNumber, "[PHONE]");
     });
+    document.querySelectorAll("[data-config='phoneAlt']").forEach(function (el) {
+      el.textContent = maskPlaceholder(cfg.phoneNumberAlt, "[PHONE]");
+    });
     document.querySelectorAll("[data-config='address']").forEach(function (el) {
       el.textContent = cfg.officeAddress || "[LEGAL BUSINESS ADDRESS]";
     });

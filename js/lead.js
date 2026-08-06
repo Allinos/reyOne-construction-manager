@@ -36,7 +36,12 @@
   "use strict";
 
   function init() {
-    var planner = document.querySelector("[data-planner]");
+    // Initialise every planner on the page (e.g. inline section + popup modal).
+    var planners = document.querySelectorAll("[data-planner]");
+    Array.prototype.forEach.call(planners, initPlanner);
+  }
+
+  function initPlanner(planner) {
     if (!planner) return;
 
     var steps = Array.prototype.slice.call(
@@ -61,7 +66,7 @@
       createdAt: null // set on finish
     };
 
-    function show(i) {
+    function show(i, doFocus) {
       steps.forEach(function (s, idx) {
         s.classList.toggle("is-active", idx === i);
       });
@@ -69,9 +74,17 @@
         b.classList.toggle("is-active", idx <= i);
       });
       current = i;
-      // Move focus to the step heading for screen readers.
-      var heading = steps[i].querySelector(".planner__q");
-      if (heading) heading.setAttribute("tabindex", "-1"), heading.focus();
+      // Move focus to the step heading for screen readers when the user
+      // navigates steps — but NEVER on initial load, and never scroll the
+      // page (preventScroll), so the page doesn't jump to the form.
+      if (doFocus) {
+        var heading = steps[i].querySelector(".planner__q");
+        if (heading) {
+          heading.setAttribute("tabindex", "-1");
+          try { heading.focus({ preventScroll: true }); }
+          catch (e) { /* older browsers: skip focus rather than scroll */ }
+        }
+      }
     }
 
     /* Option buttons: single-select within their step group. */
@@ -115,12 +128,12 @@
     function next() {
       if (!validateStep(current)) return;
       if (current < steps.length - 1) {
-        show(current + 1);
+        show(current + 1, true);
         if (steps[current].hasAttribute("data-summary")) renderSummary();
       }
     }
     function prev() {
-      if (current > 0) show(current - 1);
+      if (current > 0) show(current - 1, true);
     }
 
     planner.querySelectorAll("[data-next]").forEach(function (b) {
@@ -187,13 +200,18 @@
         ? window.DWWhatsApp.url(buildMessage())
         : "https://wa.me/?text=" + encodeURIComponent(buildMessage());
       window.open(url, "_blank", "noopener");
+
+      // If this planner lives inside the popup, close it after handoff.
+      if (window.DWModal && planner.closest && planner.closest("#lead-modal")) {
+        window.DWModal.close();
+      }
     }
 
     var finishBtn = planner.querySelector("[data-finish]");
     if (finishBtn) finishBtn.addEventListener("click", finish);
 
-    // init
-    show(0);
+    // init — show first step WITHOUT moving focus (prevents page auto-scroll)
+    show(0, false);
   }
 
   if (document.readyState === "loading") {

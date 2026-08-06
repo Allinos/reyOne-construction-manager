@@ -22,14 +22,16 @@ var SITE_CONFIG = {
   /* ---- Core identity ---- */
   companyName: "DW Nirman Engineerings LLP",
   shortName: "DW Nirman",
-  tagline: "Build With Clarity. Build With Confidence.",
+  tagline: "We Build Your Dream",
 
-  /* ---- Contact channels (REPLACE before launch) ---- */
+  /* ---- Contact channels ---- */
   // WhatsApp number in full international format WITHOUT "+", spaces or dashes.
-  // Example for India: "919876543210"
-  whatsappNumber: "REPLACE_WITH_REAL_NUMBER",
-  // Phone number for tel: links (may include leading +).
-  phoneNumber: "REPLACE_WITH_REAL_NUMBER",
+  // India country code (91) + number.
+  whatsappNumber: "919435173665",
+  // Primary phone number for tel: links (may include leading +).
+  phoneNumber: "+91 9435173665",
+  // Secondary phone number (shown alongside the primary).
+  phoneNumberAlt: "+91 9435171984",
   email: "REPLACE_WITH_REAL_EMAIL",
 
   /* ---- Location / service area (REPLACE before launch) ---- */

@@ -94,6 +94,14 @@
       }
     });
 
+    /* Wire secondary tel: links from config */
+    document.querySelectorAll("[data-tel-alt]").forEach(function (el) {
+      var phone = (cfg.phoneNumberAlt || "").replace(/\s+/g, "");
+      if (phone && phone.indexOf("REPLACE") === -1) {
+        el.setAttribute("href", "tel:" + phone);
+      }
+    });
+
     /* Wire mailto: links from config */
     document.querySelectorAll("[data-email]").forEach(function (el) {
       var email = cfg.email || "";
