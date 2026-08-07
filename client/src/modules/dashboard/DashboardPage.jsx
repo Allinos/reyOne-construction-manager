@@ -97,7 +97,12 @@ export default function DashboardPage() {
         <Card>
           <h2 className="mb-4 font-semibold text-slate-700 dark:text-slate-200">Payment Status</h2>
           {Number(s.totalRevenue) + Number(s.pendingPayments) > 0 ? (
-            <DonutChart data={paymentData} centerTop={`${Math.round((Number(s.totalRevenue) / (Number(s.totalRevenue) + Number(s.pendingPayments) || 1)) * 100)}%`} centerBottom="Collected" />
+            <DonutChart
+              data={paymentData}
+              centerTop={`${Math.round((Number(s.totalRevenue) / (Number(s.totalRevenue) + Number(s.pendingPayments) || 1)) * 100)}%`}
+              centerBottom="Collected"
+              formatValue={(v) => formatMoney(v, currency)}
+            />
           ) : (
             <p className="text-sm text-slate-400">No payment data.</p>
           )}
@@ -106,7 +111,7 @@ export default function DashboardPage() {
         <Card>
           <h2 className="mb-4 font-semibold text-slate-700 dark:text-slate-200">Expense Breakdown</h2>
           {expenseCats.length ? (
-            <PieChart data={expenseCats} />
+            <PieChart data={expenseCats} formatValue={(v) => formatMoney(v, currency)} />
           ) : (
             <p className="text-sm text-slate-400">No expenses recorded.</p>
           )}
