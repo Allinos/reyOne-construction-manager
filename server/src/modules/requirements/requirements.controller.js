@@ -23,6 +23,9 @@ const requirementsController = {
   async createPhoto(req, res) {
     return created(res, await service.createPhoto(req.body, req.user, req));
   },
+  async updatePhoto(req, res) {
+    return ok(res, await service.updatePhoto(req.params.id, req.body, req.user, req));
+  },
   async removePhoto(req, res) {
     return ok(res, await service.removePhoto(req.params.id, req.user, req));
   },

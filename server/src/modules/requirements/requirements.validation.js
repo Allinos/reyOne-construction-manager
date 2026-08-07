@@ -36,7 +36,12 @@ const createPhotoSchema = z.object({
   projectId: z.coerce.number().int().positive(),
   name: z.string().max(255).optional(),
   mimeType: z.string().max(100).optional(),
+  category: z.string().max(80).optional(),
   data: z.string().min(1), // base64 data URL
+});
+
+const updatePhotoSchema = z.object({
+  category: z.string().max(80).nullable().optional(),
 });
 
 const photoQuery = z.object({ projectId: z.coerce.number().int().positive() });
@@ -48,6 +53,7 @@ module.exports = {
   updateRequirementSchema,
   listQuery,
   createPhotoSchema,
+  updatePhotoSchema,
   photoQuery,
   idParam,
 };

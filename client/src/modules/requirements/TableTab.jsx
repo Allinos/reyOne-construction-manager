@@ -9,7 +9,7 @@ import CardGrid from './CardGrid';
 import ItemModal from './ItemModal';
 
 const DEFAULT_COLS = 5;
-const DEFAULT_ROWS = 50;
+const DEFAULT_ROWS = 10;
 const DEFAULT_W = 128;
 const DEFAULT_H = 34;
 const makeGrid = () => ({

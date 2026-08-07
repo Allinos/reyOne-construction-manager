@@ -53,9 +53,18 @@ const requirementsService = {
       projectId: payload.projectId,
       name: payload.name ?? null,
       mimeType: payload.mimeType ?? null,
+      category: payload.category ?? null,
       data: payload.data,
     });
     activity.record({ userId: actor.id, action: 'requirements.photo_added', entityType: 'project_photo', entityId: photo.id, req });
+    return photo;
+  },
+
+  async updatePhoto(id, payload, actor, req) {
+    const existing = await repo.findPhoto(id);
+    if (!existing) throw AppError.notFound('Photo not found');
+    const photo = await repo.updatePhoto(id, { category: payload.category ?? null });
+    activity.record({ userId: actor.id, action: 'requirements.photo_updated', entityType: 'project_photo', entityId: id, req });
     return photo;
   },
 

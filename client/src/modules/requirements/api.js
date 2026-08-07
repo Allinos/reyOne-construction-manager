@@ -13,4 +13,5 @@ export const deleteRequirement = (id) => unwrap(api.delete(`/requirements/${id}`
 export const listPhotos = (projectId) =>
   api.get('/requirements/photos', { params: { projectId } }).then((r) => r.data.data);
 export const createPhoto = (body) => unwrap(api.post('/requirements/photos', body));
+export const updatePhoto = (id, body) => unwrap(api.patch(`/requirements/photos/${id}`, body));
 export const deletePhoto = (id) => unwrap(api.delete(`/requirements/photos/${id}`));

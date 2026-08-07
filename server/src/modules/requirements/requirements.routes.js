@@ -10,6 +10,7 @@ const {
   updateRequirementSchema,
   listQuery,
   createPhotoSchema,
+  updatePhotoSchema,
   photoQuery,
   idParam,
 } = require('./requirements.validation');
@@ -20,6 +21,7 @@ function registerRoutes(router) {
   // Photos (declared before /:id so the literal path is not swallowed).
   router.get('/photos', authorize('requirements.read'), validate({ query: photoQuery }), asyncHandler(controller.listPhotos));
   router.post('/photos', authorize('requirements.update'), validate({ body: createPhotoSchema }), asyncHandler(controller.createPhoto));
+  router.patch('/photos/:id', authorize('requirements.update'), validate({ params: idParam, body: updatePhotoSchema }), asyncHandler(controller.updatePhoto));
   router.delete('/photos/:id', authorize('requirements.update'), validate({ params: idParam }), asyncHandler(controller.removePhoto));
 
   // Requirements (TEXT | FORM | TABLE).

@@ -36,6 +36,9 @@ const requirementsRepository = {
   createPhoto(data) {
     return prisma.projectPhoto.create({ data });
   },
+  updatePhoto(id, data) {
+    return prisma.projectPhoto.update({ where: { id }, data });
+  },
   deletePhoto(id) {
     return prisma.projectPhoto.delete({ where: { id } });
   },

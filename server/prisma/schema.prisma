@@ -491,6 +491,7 @@ model ProjectPhoto {
   projectId Int
   name      String?
   mimeType  String?
+  category  String? // configurable photo/document category
   data      String   @db.LongText // base64 data URL
   createdAt DateTime @default(now())
 

@@ -86,6 +86,20 @@ const DEFAULT_SETTINGS = [
     ],
   },
 
+  // Photo & document categories (configurable, each with a display colour)
+  {
+    group: 'photos',
+    key: 'categories',
+    value: [
+      { name: 'Project Images', color: '#f97316' },
+      { name: 'Client Images', color: '#0ea5e9' },
+      { name: 'Documents', color: '#8b5cf6' },
+      { name: 'Legal Documents', color: '#ef4444' },
+      { name: 'Receipts / Bills', color: '#10b981' },
+      { name: 'Other', color: '#64748b' },
+    ],
+  },
+
   // Invoices & Quotations
   { group: 'invoices', key: 'quotation_prefix', value: 'QTN-' },
   { group: 'invoices', key: 'invoice_prefix', value: 'INV-' },

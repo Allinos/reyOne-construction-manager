@@ -12,8 +12,8 @@ const FIELD_TYPES = ['Text', 'Number', 'Dropdown', 'Radio', 'Checkbox', 'Date', 
 const uid = () => `${Date.now()}${Math.floor(Math.random() * 1000)}`;
 const newField = () => ({ id: uid(), name: '', placeholder: '', type: 'Text', required: false, defaultValue: '', options: '', validation: '' });
 
-// Per-field width preference (client-side): how many of 6 grid columns to span.
-const SPAN = { sm: 'sm:col-span-2', md: 'sm:col-span-3', full: 'sm:col-span-6' };
+// Legacy preset → percentage, so older saved prefs still resolve.
+const PRESET_PCT = { sm: 33, md: 50, full: 100 };
 
 function FieldInput({ field, value, onChange, disabled }) {
   const opts = (field.options || '').split(',').map((o) => o.trim()).filter(Boolean);
@@ -70,8 +70,25 @@ function FormEditor({ item, canEdit, onClose, onSaved }) {
   const [widths, setWidths] = useLocalStorage(`req:form:${item.id}:w`, {});
   const [saving, setSaving] = useState(false);
 
-  const spanOf = (fid) => SPAN[widths[fid] || 'md'];
-  const setWidth = (fid, v) => setWidths((w) => ({ ...w, [fid]: v }));
+  // Free-form per-field width as a % of the row (client-side only).
+  const widthPct = (fid) => {
+    const v = widths[fid];
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string' && PRESET_PCT[v]) return PRESET_PCT[v];
+    return 50;
+  };
+  const setWidth = (fid, pct) => setWidths((w) => ({ ...w, [fid]: Math.min(100, Math.max(15, Math.round(pct))) }));
+  const startResize = (fid, e) => {
+    e.preventDefault(); e.stopPropagation();
+    const container = e.currentTarget.closest('[data-fieldrow]');
+    const containerW = container ? container.offsetWidth : 600;
+    const startX = e.clientX;
+    const startPct = widthPct(fid);
+    const move = (ev) => setWidth(fid, startPct + ((ev.clientX - startX) / containerW) * 100);
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
 
   const setField = (id, key, val) => setFields((fs) => fs.map((f) => (f.id === id ? { ...f, [key]: val } : f)));
   const addField = () => setFields((fs) => [...fs, newField()]);
@@ -133,11 +150,18 @@ function FormEditor({ item, canEdit, onClose, onSaved }) {
                 <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                   <input type="checkbox" checked={f.required} onChange={(e) => setField(f.id, 'required', e.target.checked)} /> Required
                 </label>
-                <select className="input" value={widths[f.id] || 'md'} onChange={(e) => setWidth(f.id, e.target.value)} title="Field width (this device)">
-                  <option value="sm">Width: Small</option>
-                  <option value="md">Width: Medium</option>
-                  <option value="full">Width: Full</option>
-                </select>
+                <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300" title="Field width on this device">
+                  <span className="whitespace-nowrap">Width</span>
+                  <input
+                    type="range"
+                    min="15"
+                    max="100"
+                    value={widthPct(f.id)}
+                    onChange={(e) => setWidth(f.id, Number(e.target.value))}
+                    className="flex-1 accent-brand-500"
+                  />
+                  <span className="w-10 text-right text-xs text-slate-400">{widthPct(f.id)}%</span>
+                </label>
                 <button className="pill-delete justify-self-start" onClick={() => removeField(f.id)}>Remove field</button>
               </div>
             ))}
@@ -154,11 +178,18 @@ function FormEditor({ item, canEdit, onClose, onSaved }) {
                   <span className="text-xs font-medium text-slate-400">Entry #{idx + 1}</span>
                   {canEdit && <button className="pill-delete" onClick={() => removeRow(r._rid)}>Delete</button>}
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-6">
+                <div data-fieldrow className="-mx-1.5 flex flex-wrap">
                   {fields.map((f) => (
-                    <div key={f.id} className={SPAN[widths[f.id] || 'md']}>
+                    <div key={f.id} className="relative px-1.5 pb-2" style={{ width: `${widthPct(f.id)}%`, minWidth: 140 }}>
                       <label className="label">{f.name || 'Field'} {f.required && <span className="text-red-500">*</span>}</label>
                       <FieldInput field={f} value={r[f.id]} onChange={(v) => setCell(r._rid, f.id, v)} disabled={!canEdit} />
+                      {canEdit && (
+                        <div
+                          onPointerDown={(e) => startResize(f.id, e)}
+                          className="absolute bottom-2 right-0 top-6 w-1.5 cursor-col-resize rounded bg-transparent hover:bg-brand-400/60"
+                          title="Drag to resize field width"
+                        />
+                      )}
                     </div>
                   ))}
                 </div>

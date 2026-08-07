@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { listPhotos, createPhoto, deletePhoto } from './api';
+import { listPhotos, createPhoto, updatePhoto, deletePhoto } from './api';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
@@ -14,14 +15,22 @@ const readAsDataURL = (file) =>
     reader.readAsDataURL(file);
   });
 
-// Photo Upload — independent, toggleable module. Upload multiple images from the
-// gallery, preview them in a grid, and delete individually.
+// Photo & document upload — multi-file, categorised, with subtle colour badges.
 export default function PhotoTab({ projectId, canEdit }) {
+  const { bootstrap } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
   const fileRef = useRef(null);
   const [photos, setPhotos] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadCat, setUploadCat] = useState('');
+  const [filterCat, setFilterCat] = useState('');
+
+  // Categories may be legacy strings or { name, color } objects.
+  const categories = (bootstrap?.settings?.photos?.categories || []).map((c) =>
+    typeof c === 'string' ? { name: c, color: '#64748b' } : { name: c.name || '', color: c.color || '#64748b' },
+  );
+  const colorFor = (name) => categories.find((c) => c.name === name)?.color || '#94a3b8';
 
   const load = useCallback(() => {
     listPhotos(projectId).then(setPhotos).catch((e) => toast.error(errorMessage(e)));
@@ -37,10 +46,10 @@ export default function PhotoTab({ projectId, canEdit }) {
         // eslint-disable-next-line no-await-in-loop
         const data = await readAsDataURL(file);
         // eslint-disable-next-line no-await-in-loop
-        const photo = await createPhoto({ projectId, name: file.name, mimeType: file.type, data });
+        const photo = await createPhoto({ projectId, name: file.name, mimeType: file.type, category: uploadCat || undefined, data });
         setPhotos((list) => [photo, ...(list || [])]);
       }
-      toast.success(`${files.length} photo(s) uploaded`);
+      toast.success(`${files.length} file(s) uploaded`);
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -49,8 +58,18 @@ export default function PhotoTab({ projectId, canEdit }) {
     }
   };
 
+  const changeCategory = async (p, category) => {
+    setPhotos((list) => list.map((x) => (x.id === p.id ? { ...x, category } : x))); // optimistic
+    try {
+      await updatePhoto(p.id, { category: category || null });
+    } catch (e) {
+      toast.error(errorMessage(e));
+      load();
+    }
+  };
+
   const remove = async (p) => {
-    const ok = await confirm({ title: 'Delete photo?', message: 'This image will be removed.', confirmLabel: 'Delete' });
+    const ok = await confirm({ title: 'Delete file?', message: 'This item will be removed.', confirmLabel: 'Delete' });
     if (!ok) return;
     try {
       await deletePhoto(p.id);
@@ -60,28 +79,44 @@ export default function PhotoTab({ projectId, canEdit }) {
 
   if (photos === null) return <div className="flex justify-center p-8"><Spinner /></div>;
 
+  const visible = filterCat ? photos.filter((p) => (p.category || '') === filterCat) : photos;
+
   return (
     <div className="space-y-4">
-      {canEdit && (
-        <div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
-            multiple
-            hidden
-            onChange={onFiles}
-          />
-          <button className="btn-secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>
-            {uploading ? <Spinner className="h-4 w-4" /> : '+ Upload Photos & Docs'}
-          </button>
+      <div className="flex flex-wrap items-center gap-2">
+        {canEdit && (
+          <>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+              multiple
+              hidden
+              onChange={onFiles}
+            />
+            <select className="input w-auto" value={uploadCat} onChange={(e) => setUploadCat(e.target.value)} title="Category for new uploads">
+              <option value="">Uncategorised</option>
+              {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
+            <button className="btn-secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>
+              {uploading ? <Spinner className="h-4 w-4" /> : '+ Upload Photos & Docs'}
+            </button>
+          </>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <label className="text-xs text-slate-500">Filter</label>
+          <select className="input w-auto" value={filterCat} onChange={(e) => setFilterCat(e.target.value)}>
+            <option value="">All categories</option>
+            {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+          </select>
         </div>
-      )}
-      {photos.length === 0 ? (
-        <p className="text-sm text-slate-400">No photos or documents uploaded yet.</p>
+      </div>
+
+      {visible.length === 0 ? (
+        <p className="text-sm text-slate-400">No files{filterCat ? ' in this category' : ' uploaded yet'}.</p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {photos.map((p) => {
+          {visible.map((p) => {
             const isImage = (p.mimeType || '').startsWith('image/');
             return (
               <div key={p.id} className="group relative overflow-hidden rounded-lg border border-cream-300 dark:border-slate-700">
@@ -95,6 +130,16 @@ export default function PhotoTab({ projectId, canEdit }) {
                     </div>
                   )}
                 </a>
+                {/* Subtle category badge */}
+                {p.category && (
+                  <span
+                    className="absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                    style={{ backgroundColor: `${colorFor(p.category)}26`, color: colorFor(p.category) }}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colorFor(p.category) }} />
+                    {p.category}
+                  </span>
+                )}
                 {canEdit && (
                   <button
                     className="absolute right-1 top-1 rounded-full bg-black/50 px-2 py-0.5 text-xs text-white opacity-0 transition group-hover:opacity-100"
@@ -103,7 +148,20 @@ export default function PhotoTab({ projectId, canEdit }) {
                     &times;
                   </button>
                 )}
-                {p.name && <div className="truncate px-2 py-1 text-xs text-slate-500">{p.name}</div>}
+                <div className="flex items-center gap-1 px-2 py-1">
+                  {p.name && <span className="min-w-0 flex-1 truncate text-xs text-slate-500">{p.name}</span>}
+                  {canEdit && (
+                    <select
+                      className="max-w-[92px] shrink-0 rounded border border-cream-300 bg-transparent px-1 py-0.5 text-[10px] text-slate-500 outline-none dark:border-slate-600"
+                      value={p.category || ''}
+                      onChange={(e) => changeCategory(p, e.target.value)}
+                      title="Change category"
+                    >
+                      <option value="">Uncat.</option>
+                      {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                    </select>
+                  )}
+                </div>
               </div>
             );
           })}

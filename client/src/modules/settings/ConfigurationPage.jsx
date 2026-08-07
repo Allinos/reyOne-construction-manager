@@ -14,6 +14,7 @@ const SECTIONS = [
   { key: 'finance', label: 'Finance', perm: 'settings.read' },
   { key: 'expenses', label: 'Expense Categories', perm: 'settings.read' },
   { key: 'workforce', label: 'Workforce', perm: 'settings.read' },
+  { key: 'photos', label: 'Photos & Docs', perm: 'settings.read' },
   { key: 'roles', label: 'Roles', perm: 'roles.read' },
   { key: 'activities', label: 'Activities', perm: 'activity.read' },
   { key: 'modules', label: 'Modules', perm: 'modules.read' },
@@ -47,6 +48,7 @@ export default function ConfigurationPage() {
     const f = settings.finance || {};
     const u = settings.users || {};
     const w = settings.workforce || {};
+    const ph = settings.photos || {};
 
     switch (active) {
       case 'projects':
@@ -96,6 +98,19 @@ export default function ConfigurationPage() {
             group="workforce"
             settingKey="categories"
             initial={normalizeCategories(w.categories)}
+            columns={[
+              { key: 'name', label: 'Category name' },
+              { key: 'color', label: 'Colour', type: 'color' },
+            ]}
+          />
+        );
+      case 'photos':
+        return (
+          <ObjectListEditor
+            title="Photo & Document Categories"
+            group="photos"
+            settingKey="categories"
+            initial={normalizeCategories(ph.categories)}
             columns={[
               { key: 'name', label: 'Category name' },
               { key: 'color', label: 'Colour', type: 'color' },
