@@ -35,9 +35,15 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [analytics, setAnalytics] = useState(false);
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // stats card month
-  const [listMonth, setListMonth] = useState(''); // list filter — empty = latest across all months
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // drives analytics + list
   const [stats, setStats] = useState(null);
+
+  // Human label for the selected month, e.g. "August 2026".
+  const monthLabel = (() => {
+    if (!/^\d{4}-\d{2}$/.test(month)) return '';
+    const [y, m] = month.split('-').map(Number);
+    return new Date(y, m - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+  })();
   const [chooser, setChooser] = useState(false); // scope selection dialog
   const [form, setForm] = useState(null); // { scope, editing }
 
@@ -54,14 +60,14 @@ export default function ExpensesPage() {
     try {
       const params = { page, limit: 50 };
       if (scopeFilter) params.scope = scopeFilter;
-      if (listMonth) params.month = listMonth;
+      if (month) params.month = month;
       setResult(await listExpenses(params));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [page, scopeFilter, listMonth]);
+  }, [page, scopeFilter, month]);
 
   useEffect(() => {
     projectOptions().then(setProjects).catch(() => {});
@@ -100,30 +106,29 @@ export default function ExpensesPage() {
         }
       />
 
-      {/* Statistics header */}
+      {/* Analytics header — reflects the selected month */}
       <Card className="mb-4">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <div>
-            <label className="mb-0.5 block text-xs text-slate-500">Month</label>
-            <input type="month" className="input w-auto py-1.5" value={month} onChange={(e) => setMonth(e.target.value)} />
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">
+            {monthLabel ? `${monthLabel} Analytics` : 'Analytics'}
+          </h2>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500">Month</label>
+            <input type="month" className="input w-auto py-1.5" value={month} onChange={(e) => { setMonth(e.target.value); setPage(1); }} />
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <div><p className="text-xs text-slate-500">Project Expenses</p><p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.project, currency) : '—'}</p></div>
-            <div><p className="text-xs text-slate-500">Company Expenses</p><p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.company, currency) : '—'}</p></div>
-            <div><p className="text-xs text-slate-500">Total Expenses</p><p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{stats ? formatMoney(stats.total, currency) : '—'}</p></div>
-          </div>
+        </div>
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <div><p className="text-xs text-slate-500">Project Expenses</p><p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.project, currency) : '—'}</p></div>
+          <div><p className="text-xs text-slate-500">Company Expenses</p><p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.company, currency) : '—'}</p></div>
+          <div><p className="text-xs text-slate-500">Total Expenses</p><p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{stats ? formatMoney(stats.total, currency) : '—'}</p></div>
         </div>
       </Card>
 
-      {/* List filters: month + scope tabs */}
+      {/* List header: "Last 50 Entries" + scope tabs */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-500">Filter month</label>
-          <input type="month" className="input w-auto py-1.5" value={listMonth} onChange={(e) => { setListMonth(e.target.value); setPage(1); }} />
-          {listMonth && (
-            <button className="text-xs text-brand-600 hover:underline" onClick={() => { setListMonth(''); setPage(1); }}>Clear (show latest 50)</button>
-          )}
-        </div>
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          Last 50 Entries{monthLabel ? ` · ${monthLabel}` : ''}
+        </h3>
         <div className="flex overflow-hidden rounded-lg border border-cream-300 text-sm dark:border-slate-700">
           {[{ v: '', l: 'All' }, { v: 'PROJECT', l: 'Project Expenses' }, { v: 'COMPANY', l: 'Company Expenses' }].map((t) => (
             <button key={t.v} className={`px-3 py-1.5 ${scopeFilter === t.v ? 'bg-brand-500 text-white' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`} onClick={() => { setScopeFilter(t.v); setPage(1); }}>
