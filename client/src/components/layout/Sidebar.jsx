@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { buildNav } from '../../app/modules';
 import Icon from '../Icon';
+import BrandLogo from '../BrandLogo';
 
 export default function Sidebar({ onNavigate }) {
   const { bootstrap, user, logout, can } = useAuth();
@@ -20,8 +21,8 @@ export default function Sidebar({ onNavigate }) {
     <aside className="flex h-full w-64 flex-col border-r border-cream-300 bg-white">
       {/* Brand */}
       <div className="flex items-center gap-2 px-5 py-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-white">
-          <Icon name="building" className="h-5 w-5" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white ring-1 ring-cream-300 dark:bg-slate-800 dark:ring-slate-700">
+          <BrandLogo className="h-7 w-7" />
         </div>
         <div className="min-w-0">
           <p className="truncate font-semibold text-slate-800">{company?.name || 'reyOne'}</p>
