@@ -30,6 +30,9 @@ const PATHS = {
   workforce: 'M3 19a9 9 0 0 1 18 0M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M4 19h16M12 7a4 4 0 0 0-4 4h8a4 4 0 0 0-4-4z',
   fullscreen: 'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3',
   photo: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
+  text: 'M4 6h16M4 10h16M4 14h10M4 18h7',
+  table: 'M3 4h18v16H3zM3 9h18M3 14.5h18M9 4v16M15 4v16',
+  form: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 8h8M8 12h8M8 16h4',
 };
 
 export default function Icon({ name, className = 'w-5 h-5', strokeWidth = 2 }) {

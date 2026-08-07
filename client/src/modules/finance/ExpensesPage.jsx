@@ -51,7 +51,7 @@ export default function ExpensesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page };
+      const params = { page, limit: 50 };
       if (scopeFilter) params.scope = scopeFilter;
       if (month) params.month = month;
       setResult(await listExpenses(params));
