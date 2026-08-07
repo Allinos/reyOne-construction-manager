@@ -26,11 +26,13 @@ const MODULE_CATALOG = [
   { key: 'workforce', name: 'Workforce', isCore: false, enabled: true, sortOrder: 16, description: 'Contractors, labour, technicians' },
 
   // Project Requirements & Details — parent + independently-toggleable sections.
+  // The sub-sections are frontend-driven feature flags (no backend routes of
+  // their own), so they are marked `virtual` to stay toggleable in the manager.
   { key: 'requirements', name: 'Project Requirements', isCore: false, enabled: true, sortOrder: 17, description: 'Requirements & details workspace' },
-  { key: 'req_text', name: 'Requirements: Text', isCore: false, enabled: true, sortOrder: 18, description: 'Text requirements tab' },
-  { key: 'req_forms', name: 'Requirements: Custom Forms', isCore: false, enabled: true, sortOrder: 19, description: 'Custom form builder tab' },
-  { key: 'req_table', name: 'Requirements: Excel Table', isCore: false, enabled: true, sortOrder: 20, description: 'Spreadsheet tab' },
-  { key: 'photo_upload', name: 'Photo Upload', isCore: false, enabled: true, sortOrder: 21, description: 'Project photo uploads' },
+  { key: 'req_text', name: 'Requirements: Text', isCore: false, enabled: true, sortOrder: 18, description: 'Text requirements tab', virtual: true, dependsOn: ['requirements'] },
+  { key: 'req_forms', name: 'Requirements: Custom Forms', isCore: false, enabled: true, sortOrder: 19, description: 'Custom form builder tab', virtual: true, dependsOn: ['requirements'] },
+  { key: 'req_table', name: 'Requirements: Excel Table', isCore: false, enabled: true, sortOrder: 20, description: 'Spreadsheet tab', virtual: true, dependsOn: ['requirements'] },
+  { key: 'photo_upload', name: 'Photo Upload', isCore: false, enabled: true, sortOrder: 21, description: 'Project photo & document uploads', virtual: true, dependsOn: ['requirements'] },
 
   // Future modules — seeded disabled so they appear in the Module Manager
   { key: 'attendance', name: 'Attendance', isCore: false, enabled: false, sortOrder: 20, description: 'Coming soon' },

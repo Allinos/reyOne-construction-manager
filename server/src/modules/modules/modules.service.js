@@ -4,11 +4,20 @@ const repo = require('./modules.repository');
 const AppError = require('../../core/errors/AppError');
 const activity = require('../../core/services/activityLog');
 const { loadManifests } = require('../../core/modules/registry');
+const { MODULE_CATALOG } = require('../../core/constants/modules');
 
-// Builds { key: [dependsOn...] } from the module manifests on disk.
+// Catalog entries that are pure frontend feature flags (no backend routes).
+// They still count as "buildable" so they stay toggleable in the manager.
+const VIRTUAL = MODULE_CATALOG.filter((m) => m.virtual);
+const VIRTUAL_KEYS = new Set(VIRTUAL.map((m) => m.key));
+
+// Builds { key: [dependsOn...] } from the module manifests on disk, plus the
+// declared dependencies of virtual (frontend-only) modules. Being present in
+// this map means the module is "built" (has routes or is a known flag).
 function dependencyMap() {
   const map = {};
   for (const m of loadManifests()) map[m.key] = m.dependsOn || [];
+  for (const m of VIRTUAL) map[m.key] = m.dependsOn || [];
   return map;
 }
 
@@ -76,7 +85,8 @@ const modulesService = {
       enabled,
       isCore: module.isCore,
       // Route mounting happens at boot, so a toggle takes effect on next restart.
-      requiresRestart: true,
+      // Virtual (frontend-only) flags apply immediately via the next bootstrap.
+      requiresRestart: !VIRTUAL_KEYS.has(module.key),
     };
   },
 };

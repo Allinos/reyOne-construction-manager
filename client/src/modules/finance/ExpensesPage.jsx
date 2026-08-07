@@ -53,13 +53,14 @@ export default function ExpensesPage() {
     try {
       const params = { page };
       if (scopeFilter) params.scope = scopeFilter;
+      if (month) params.month = month;
       setResult(await listExpenses(params));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [page, scopeFilter]);
+  }, [page, scopeFilter, month]);
 
   useEffect(() => {
     projectOptions().then(setProjects).catch(() => {});
@@ -103,7 +104,7 @@ export default function ExpensesPage() {
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <div>
             <label className="mb-0.5 block text-xs text-slate-500">Month</label>
-            <input type="month" className="input w-auto py-1.5" value={month} onChange={(e) => setMonth(e.target.value)} />
+            <input type="month" className="input w-auto py-1.5" value={month} onChange={(e) => { setMonth(e.target.value); setPage(1); }} />
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <div><p className="text-xs text-slate-500">Project Expenses</p><p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.project, currency) : '—'}</p></div>

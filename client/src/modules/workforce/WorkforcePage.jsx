@@ -19,7 +19,11 @@ export default function WorkforcePage() {
   const { bootstrap, can } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
-  const categories = bootstrap?.settings?.workforce?.categories || [];
+  // Categories may be stored as legacy strings or as { name, color } objects.
+  const categories = (bootstrap?.settings?.workforce?.categories || []).map((c) =>
+    typeof c === 'string' ? { name: c, color: '#f97316' } : { name: c.name || '', color: c.color || '#f97316' },
+  );
+  const colorFor = (name) => categories.find((c) => c.name === name)?.color || '#64748b';
 
   const [filters, setFilters] = useState({ search: '', category: '', status: '', sort: 'name:asc', page: 1 });
   const [result, setResult] = useState({ items: [], meta: null });
@@ -95,7 +99,7 @@ export default function WorkforcePage() {
           <input className="input flex-1 min-w-[180px]" placeholder="Search name or phone…" value={filters.search} onChange={(e) => update({ search: e.target.value })} />
           <select className="input w-auto" value={filters.category} onChange={(e) => update({ category: e.target.value })}>
             <option value="">All categories</option>
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
           </select>
           <select className="input w-auto" value={filters.status} onChange={(e) => update({ status: e.target.value })}>
             <option value="">All statuses</option>
@@ -131,7 +135,9 @@ export default function WorkforcePage() {
                 {result.items.map((m) => (
                   <tr key={m.id}>
                     <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{m.name}</td>
-                    <td className="px-4 py-3"><span className="badge bg-brand-100 text-brand-700">{m.category}</span></td>
+                    <td className="px-4 py-3">
+                      <span className="badge" style={{ backgroundColor: `${colorFor(m.category)}22`, color: colorFor(m.category) }}>{m.category}</span>
+                    </td>
                     <td className="px-4 py-3 text-slate-600">{m.phone || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`badge ${m.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>{m.status}</span>
@@ -169,7 +175,7 @@ export default function WorkforcePage() {
             <div>
               <label className="label">Category <span className="text-red-500">*</span></label>
               <input className="input" list="wf-categories" placeholder="e.g., Electrician" value={modal.form.category} onChange={(e) => setField('category', e.target.value)} required />
-              <datalist id="wf-categories">{categories.map((c) => <option key={c} value={c} />)}</datalist>
+              <datalist id="wf-categories">{categories.map((c) => <option key={c.name} value={c.name} />)}</datalist>
             </div>
             <div>
               <label className="label">Phone</label>

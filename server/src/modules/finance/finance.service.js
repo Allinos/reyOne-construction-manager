@@ -168,8 +168,13 @@ const financeService = {
     if (query.projectId) where.projectId = query.projectId;
     if (query.category) where.category = query.category;
     if (query.account) where.account = query.account;
-    const d = dateWhere(query);
-    if (d) where.date = d;
+    if (/^\d{4}-\d{2}$/.test(query.month || '')) {
+      const [y, m] = query.month.split('-').map(Number);
+      where.date = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
+    } else {
+      const d = dateWhere(query);
+      if (d) where.date = d;
+    }
     const { rows, total } = await repo.listExpenses({ where, skip, take });
     return { data: rows, meta: buildMeta(page, limit, total) };
   },

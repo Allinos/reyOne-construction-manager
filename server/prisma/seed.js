@@ -70,11 +70,20 @@ const DEFAULT_SETTINGS = [
   // Users
   { group: 'users', key: 'designations', value: ['Manager', 'Engineer', 'Accountant', 'Supervisor', 'Worker'] },
 
-  // Workforce categories (configurable)
+  // Workforce categories (configurable, each with a display colour)
   {
     group: 'workforce',
     key: 'categories',
-    value: ['Contractor', 'Labor', 'Technician', 'Supervisor', 'Carpenter', 'Electrician', 'Plumber', 'Painter'],
+    value: [
+      { name: 'Contractor', color: '#f97316' },
+      { name: 'Labor', color: '#0ea5e9' },
+      { name: 'Technician', color: '#8b5cf6' },
+      { name: 'Supervisor', color: '#10b981' },
+      { name: 'Carpenter', color: '#d97706' },
+      { name: 'Electrician', color: '#eab308' },
+      { name: 'Plumber', color: '#06b6d4' },
+      { name: 'Painter', color: '#ec4899' },
+    ],
   },
 
   // Invoices & Quotations
@@ -150,11 +159,14 @@ async function seedRoles() {
 
 async function seedModules() {
   for (const m of MODULE_CATALOG) {
+    // Only persist real columns — catalog-only fields like `virtual`/`dependsOn`
+    // are used in memory by the modules service and are not stored.
+    const { key, name, description, isCore, sortOrder, enabled } = m;
     await prisma.module.upsert({
-      where: { key: m.key },
+      where: { key },
       // Do not override enabled on update — an admin's toggles must survive reseeds.
-      update: { name: m.name, description: m.description, isCore: m.isCore, sortOrder: m.sortOrder },
-      create: m,
+      update: { name, description, isCore, sortOrder },
+      create: { key, name, description, isCore, sortOrder, enabled },
     });
   }
   console.log(`  ✓ ${MODULE_CATALOG.length} modules`);

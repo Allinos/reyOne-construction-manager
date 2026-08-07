@@ -66,7 +66,7 @@ export function ObjectListEditor({ title, group, settingKey, initial, columns })
   const [state, setState] = useState({ saving: false, error: '', saved: false });
 
   const setCell = (i, key, value) => setRows(rows.map((r, idx) => (idx === i ? { ...r, [key]: value } : r)));
-  const addRow = () => setRows([...rows, Object.fromEntries(columns.map((c) => [c.key, '']))]);
+  const addRow = () => setRows([...rows, Object.fromEntries(columns.map((c) => [c.key, c.type === 'color' ? '#f97316' : '']))]);
   const removeRow = (i) => setRows(rows.filter((_, idx) => idx !== i));
 
   const save = async () => {
@@ -90,15 +90,26 @@ export function ObjectListEditor({ title, group, settingKey, initial, columns })
       <div className="space-y-2">
         {rows.map((row, i) => (
           <div key={i} className="flex flex-wrap items-center gap-2">
-            {columns.map((c) => (
-              <input
-                key={c.key}
-                className="input flex-1 min-w-[120px]"
-                placeholder={c.label}
-                value={row[c.key] ?? ''}
-                onChange={(e) => setCell(i, c.key, e.target.value)}
-              />
-            ))}
+            {columns.map((c) =>
+              c.type === 'color' ? (
+                <input
+                  key={c.key}
+                  type="color"
+                  className="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-cream-300 bg-white p-1 dark:border-slate-600"
+                  title={c.label}
+                  value={row[c.key] || '#f97316'}
+                  onChange={(e) => setCell(i, c.key, e.target.value)}
+                />
+              ) : (
+                <input
+                  key={c.key}
+                  className="input flex-1 min-w-[120px]"
+                  placeholder={c.label}
+                  value={row[c.key] ?? ''}
+                  onChange={(e) => setCell(i, c.key, e.target.value)}
+                />
+              ),
+            )}
             <button className="btn-ghost text-red-500" onClick={() => removeRow(i)} type="button">Remove</button>
           </div>
         ))}

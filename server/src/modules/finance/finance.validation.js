@@ -84,6 +84,7 @@ const listExpensesQuery = z.object({
   projectId: z.coerce.number().int().positive().optional(),
   category: z.string().max(100).optional(),
   account: z.string().max(50).optional(),
+  month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
 });
