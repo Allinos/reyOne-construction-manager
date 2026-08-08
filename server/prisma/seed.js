@@ -86,6 +86,11 @@ const DEFAULT_SETTINGS = [
     ],
   },
 
+  // Custom Module — configurable page name + form schema + list visibility
+  { group: 'custom_module', key: 'name', value: 'Custom Module' },
+  { group: 'custom_module', key: 'fields', value: [] },
+  { group: 'custom_module', key: 'list_fields', value: [] },
+
   // Photo & document categories (configurable, each with a display colour)
   {
     group: 'photos',

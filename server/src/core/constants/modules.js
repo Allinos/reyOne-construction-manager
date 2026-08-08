@@ -34,6 +34,9 @@ const MODULE_CATALOG = [
   { key: 'req_table', name: 'Requirements: Excel Table', isCore: false, enabled: true, sortOrder: 20, description: 'Spreadsheet tab', virtual: true, dependsOn: ['requirements'] },
   { key: 'photo_upload', name: 'Photo Upload', isCore: false, enabled: true, sortOrder: 21, description: 'Project photo & document uploads', virtual: true, dependsOn: ['requirements'] },
 
+  // Custom Module — fully configurable page (name set in Settings)
+  { key: 'custom_module', name: 'Custom Module', isCore: false, enabled: true, sortOrder: 22, description: 'Fully customizable form, list & analytics' },
+
   // Future modules — seeded disabled so they appear in the Module Manager
   { key: 'attendance', name: 'Attendance', isCore: false, enabled: false, sortOrder: 20, description: 'Coming soon' },
   { key: 'payroll', name: 'Payroll', isCore: false, enabled: false, sortOrder: 21, description: 'Coming soon' },

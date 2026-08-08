@@ -69,6 +69,13 @@ const PERMISSIONS = [
   // Project Requirements & Details
   { key: 'requirements.read', module: 'requirements', action: 'read', description: 'View project requirements' },
   { key: 'requirements.update', module: 'requirements', action: 'update', description: 'Edit project requirements & photos' },
+
+  // Custom Module (fully configurable page)
+  { key: 'custom_module.read', module: 'custom_module', action: 'read', description: 'View custom module data' },
+  { key: 'custom_module.create', module: 'custom_module', action: 'create', description: 'Add custom module records' },
+  { key: 'custom_module.update', module: 'custom_module', action: 'update', description: 'Edit custom module records' },
+  { key: 'custom_module.delete', module: 'custom_module', action: 'delete', description: 'Delete custom module records' },
+  { key: 'custom_module.configure', module: 'custom_module', action: 'configure', description: 'Configure the custom module form & fields' },
 ];
 
 const WILDCARD = '*';

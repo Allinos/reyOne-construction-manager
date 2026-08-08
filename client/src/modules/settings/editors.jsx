@@ -59,6 +59,38 @@ export function StringListEditor({ title, group, settingKey, initial }) {
   );
 }
 
+// Editor for a single string setting (e.g. a page/module name).
+export function TextSettingEditor({ title, group, settingKey, initial, hint, placeholder }) {
+  const toast = useToast();
+  const [value, setValue] = useState(initial || '');
+  const [state, setState] = useState({ saving: false, error: '', saved: false });
+
+  const save = async () => {
+    setState({ saving: true, error: '', saved: false });
+    try {
+      await updateSetting(group, settingKey, value.trim());
+      setState({ saving: false, error: '', saved: true });
+      toast.success(`${title} saved`);
+    } catch (err) {
+      setState({ saving: false, error: errorMessage(err), saved: false });
+    }
+  };
+
+  return (
+    <Card>
+      <h3 className="mb-1 font-semibold text-slate-700">{title}</h3>
+      {hint && <p className="mb-3 text-xs text-slate-400">{hint}</p>}
+      {state.error && <Alert>{state.error}</Alert>}
+      <div className="flex gap-2">
+        <input className="input flex-1" value={value} placeholder={placeholder} onChange={(e) => setValue(e.target.value)} />
+        <button className="btn-primary" onClick={save} disabled={state.saving}>
+          {state.saving ? <Spinner className="h-4 w-4" /> : state.saved ? 'Saved' : 'Save'}
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 // Editor for a list of objects with a fixed set of text columns.
 export function ObjectListEditor({ title, group, settingKey, initial, columns }) {
   const toast = useToast();

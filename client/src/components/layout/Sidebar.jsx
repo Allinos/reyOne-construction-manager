@@ -7,7 +7,8 @@ import BrandLogo from '../BrandLogo';
 export default function Sidebar({ onNavigate }) {
   const { bootstrap, user, logout, can } = useAuth();
   const enabledKeys = (bootstrap?.modules || []).map((m) => m.key);
-  const groups = buildNav(enabledKeys, can);
+  const labels = { custom_module: bootstrap?.settings?.custom_module?.name };
+  const groups = buildNav(enabledKeys, can, labels);
   const company = bootstrap?.company;
 
   const initials = (user?.name || '?')

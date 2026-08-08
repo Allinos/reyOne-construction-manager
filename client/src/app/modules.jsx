@@ -11,6 +11,7 @@ import InvoicesPage from '../modules/invoices/InvoicesPage';
 import VendorsModule from '../modules/vendors/VendorsModule';
 import ClientsModule from '../modules/clients/ClientsModule';
 import WorkforcePage from '../modules/workforce/WorkforcePage';
+import CustomModulePage from '../modules/custom_module/CustomModulePage';
 
 // Frontend module registry — mirrors the backend modules. `section` groups the
 // item in the sidebar; `hidden` keeps a routed module out of the nav (used for
@@ -24,6 +25,7 @@ export const MODULE_DEFS = [
   { key: 'expenses', section: 'finance', label: 'Expenses', path: '/expenses', icon: 'expenses', permission: 'finance.read', element: <ExpensesPage />, moduleKey: 'finance' },
   { key: 'vendors', section: 'finance', label: 'Vendors', path: '/vendors', icon: 'vendors', permission: 'vendors.read', element: <VendorsModule /> },
   { key: 'workforce', section: 'finance', label: 'Workforce', path: '/workforce', icon: 'workforce', permission: 'workforce.read', element: <WorkforcePage /> },
+  { key: 'custom_module', section: 'main', label: 'Custom Module', path: '/custom-module', icon: 'modules', permission: 'custom_module.read', element: <CustomModulePage /> },
   { key: 'users', section: 'profile', label: 'User Manager', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
   { key: 'settings', section: 'profile', label: 'Settings', path: '/settings', icon: 'settings', permission: 'settings.read', element: <SettingsModule /> },
 
@@ -47,11 +49,12 @@ export const SECTIONS = [
   { key: 'profile', label: 'Profile' },
 ];
 
-// Builds the grouped, filtered nav for the sidebar.
-export function buildNav(enabledKeys, can) {
+// Builds the grouped, filtered nav for the sidebar. `labels` optionally overrides
+// a module's display label by key (used for the configurable Custom Module name).
+export function buildNav(enabledKeys, can, labels = {}) {
   const enabled = new Set(enabledKeys);
   const navItems = [
-    ...MODULE_DEFS.filter((m) => !m.hidden && m.section).map((m) => ({ ...m, moduleKey: m.moduleKey || m.key })),
+    ...MODULE_DEFS.filter((m) => !m.hidden && m.section).map((m) => ({ ...m, moduleKey: m.moduleKey || m.key, label: labels[m.key] || m.label })),
     ...EXTRA_NAV,
   ].filter((m) => enabled.has(m.moduleKey) && (!m.permission || can(m.permission)));
 

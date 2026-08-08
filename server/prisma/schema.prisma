@@ -486,6 +486,20 @@ model ProjectRequirement {
   @@map("project_requirements")
 }
 
+// Records for the fully-configurable Custom Module. The form schema lives in
+// the settings table (group "custom_module"); each record's values are JSON
+// keyed by field id.
+model CustomRecord {
+  id        Int       @id @default(autoincrement())
+  values    Json
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([deletedAt])
+  @@map("custom_records")
+}
+
 model ProjectPhoto {
   id        Int      @id @default(autoincrement())
   projectId Int

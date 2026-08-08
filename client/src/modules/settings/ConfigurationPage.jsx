@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getAllSettings } from './api';
-import { StringListEditor, ObjectListEditor } from './editors';
+import { StringListEditor, ObjectListEditor, TextSettingEditor } from './editors';
 import { Spinner, Alert } from '../../components/ui';
 import { errorMessage } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -15,6 +15,7 @@ const SECTIONS = [
   { key: 'expenses', label: 'Expense Categories', perm: 'settings.read' },
   { key: 'workforce', label: 'Workforce', perm: 'settings.read' },
   { key: 'photos', label: 'Photos & Docs', perm: 'settings.read' },
+  { key: 'custom_module', label: 'Custom Module', perm: 'settings.read' },
   { key: 'roles', label: 'Roles', perm: 'roles.read' },
   { key: 'activities', label: 'Activities', perm: 'activity.read' },
   { key: 'modules', label: 'Modules', perm: 'modules.read' },
@@ -49,6 +50,7 @@ export default function ConfigurationPage() {
     const u = settings.users || {};
     const w = settings.workforce || {};
     const ph = settings.photos || {};
+    const cm = settings.custom_module || {};
 
     switch (active) {
       case 'projects':
@@ -116,6 +118,19 @@ export default function ConfigurationPage() {
               { key: 'color', label: 'Colour', type: 'color' },
             ]}
           />
+        );
+      case 'custom_module':
+        return (
+          <div className="space-y-4">
+            <TextSettingEditor
+              title="Custom Module Name"
+              group="custom_module"
+              settingKey="name"
+              initial={cm.name || 'Custom Module'}
+              placeholder="e.g., Inventory, Site Log, Assets"
+              hint="This name appears in the sidebar and on the page. Enable/disable this module in Settings → Modules. Build its form using the Configuration button on the page itself."
+            />
+          </div>
         );
       case 'other':
         return <StringListEditor title="Designations" group="users" settingKey="designations" initial={u.designations} />;
