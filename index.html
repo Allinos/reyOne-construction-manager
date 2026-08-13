@@ -409,19 +409,11 @@
             </ul>
             <div class="btn-row"><a class="btn btn--primary" data-wa data-wa-context="contact">Check your location</a></div>
           </div>
-          <!-- Right: map with a red locator for a worked location.
-               The embed URL comes from js/config.js (serviceAreaMapEmbedUrl);
-               main.js swaps in the iframe, or shows the placeholder below. -->
+          <!-- Right: illustrative SVG map of North-East India with a red
+               locator marking a worked location. To move the pin, edit the
+               pinLon/pinLat values in assets/images/northeast-india-map.svg. -->
           <div class="split__media map-panel" data-reveal>
-            <iframe data-map-embed style="display:none" title="Map of our service area" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
-            <div class="map-placeholder" data-map-placeholder>
-              <span class="map-placeholder__grid" aria-hidden="true"></span>
-              <div class="map-pin">
-                <svg class="map-pin__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Z"/><circle cx="12" cy="9" r="2.5" fill="#fff"/></svg>
-                <span class="map-pin__label">Worked location</span>
-                <span class="map-pin__note">Set your worked location in <code>js/config.js</code> to show it on the map.</span>
-              </div>
-            </div>
+            <img class="ne-map" src="assets/images/northeast-india-map.svg" width="520" height="430" loading="lazy" decoding="async" alt="Illustrative map of North-East India with a red locator marking our worked location in Assam" />
           </div>
         </div>
       </div>

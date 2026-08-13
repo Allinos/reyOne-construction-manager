@@ -38,14 +38,11 @@ var SITE_CONFIG = {
   serviceArea: "[SERVICE AREA]",
   officeAddress: "[LEGAL BUSINESS ADDRESS]",
   businessHours: "Mon – Sat, 9:30 AM – 6:30 PM",
-  // Google Maps embed src — paste the "embed" iframe src from Google Maps.
+  // Google Maps embed src (contact page) — paste the "embed" iframe src.
   googleMapsEmbedUrl: "REPLACE_WITH_GOOGLE_MAPS_EMBED_URL",
-  // "Where we work" map: a keyless Google Maps embed showing the service area
-  // with a red marker. Default centres on North-East India — change the `q`
-  // value to your actual worked location (a place name or "lat,lng") and the
-  // red locator pin will point to it.
-  serviceAreaMapEmbedUrl:
-    "https://maps.google.com/maps?q=26.14,91.77&z=6&output=embed",
+  // NOTE: The "Where we work" section uses an illustrative SVG map of
+  // North-East India (assets/images/northeast-india-map.svg). To move the red
+  // locator pin, edit the pinLon/pinLat values inside that SVG file.
 
   /* ---- Online presence (REPLACE before launch) ---- */
   websiteDomain: "REPLACE_WITH_WEBSITE_DOMAIN",

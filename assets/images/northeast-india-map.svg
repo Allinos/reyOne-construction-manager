@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 430" role="img" aria-label="Illustrative map of North-East India showing our service area">
+  <rect width="520" height="430" fill="#eef3f8"/>
+  <g>
+    <path d="M25.5 91.3 L68.9 100.3 L62.9 142.7 L24.0 132.7 Z" fill="#d3deea" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M200.1 145.2 L247.5 87.8 L332.4 52.9 L402.2 30.5 L462.1 45.4 L492.0 87.8 L452.1 125.2 L392.2 115.3 L352.3 150.2 L292.4 132.7 L237.5 157.6 L200.1 167.6 Z" fill="#cdd9e6" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M110.3 180.1 L157.7 195.1 L207.6 180.1 L242.5 157.6 L297.4 132.7 L357.3 150.2 L397.2 117.7 L422.2 147.7 L372.3 185.1 L327.4 234.9 L282.5 234.9 L257.5 217.5 L202.6 197.5 L152.7 210.0 L117.8 205.0 Z" fill="#8fbdec" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round" class="ne-assam"/>
+    <path d="M115.3 205.0 L157.7 211.5 L202.6 200.0 L255.0 220.0 L222.6 243.4 L172.7 241.4 L127.8 238.4 L113.8 222.5 Z" fill="#d7e0ea" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M289.9 147.7 L352.3 160.1 L379.8 195.1 L347.3 237.4 L307.4 233.5 L289.9 190.1 Z" fill="#ccd7e4" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M275.0 237.4 L344.8 244.9 L357.3 292.3 L319.9 304.8 L275.0 284.8 Z" fill="#d3dde9" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M237.5 277.3 L289.9 283.3 L292.4 382.1 L253.5 399.5 L232.6 342.2 Z" fill="#cbd6e3" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M180.2 277.3 L227.6 279.8 L237.5 332.2 L202.6 349.7 L182.7 312.3 Z" fill="#d7e0ea" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
+  </g>
+  <g>
+    <text x="45.3" y="116.7" text-anchor="middle" font-size="10.5" fill="#3a4552" font-family="Manrope, Arial, sans-serif" font-weight="600">Sikkim</text>
+    <text x="338.6" y="108.2" text-anchor="middle" font-size="9.5" fill="#3a4552" font-family="Manrope, Arial, sans-serif" font-weight="600">Arunachal</text>
+    <text x="260.3" y="183.1" text-anchor="middle" font-size="10.5" fill="#3a4552" font-family="Manrope, Arial, sans-serif" font-weight="600">Assam</text>
+    <text x="170.9" y="222.8" text-anchor="middle" font-size="10.5" fill="#3a4552" font-family="Manrope, Arial, sans-serif" font-weight="600">Meghalaya</text>
+    <text x="327.8" y="194.0" text-anchor="middle" font-size="10.5" fill="#3a4552" font-family="Manrope, Arial, sans-serif" font-weight="600">Nagaland</text>
+    <text x="314.4" y="272.9" text-anchor="middle" font-size="10.5" fill="#3a4552" font-family="Manrope, Arial, sans-serif" font-weight="600">Manipur</text>
+    <text x="261.2" y="336.9" text-anchor="middle" font-size="10.5" fill="#3a4552" font-family="Manrope, Arial, sans-serif" font-weight="600">Mizoram</text>
+    <text x="206.1" y="310.3" text-anchor="middle" font-size="10.5" fill="#3a4552" font-family="Manrope, Arial, sans-serif" font-weight="600">Tripura</text>
+  </g>
+    <g class="ne-pin" transform="translate(210.1 190.6)">
+      <ellipse cx="0" cy="1.5" rx="6" ry="2.4" fill="rgba(20,20,20,0.18)"/>
+      <path d="M0 0 C -7 -9 -5.5 -18 0 -18 C 5.5 -18 7 -9 0 0 Z" fill="#e23b3b" stroke="#b71c1c" stroke-width="0.8"/>
+      <circle cx="0" cy="-11.5" r="3.1" fill="#ffffff"/>
+    </g>
+  <text x="508" y="420" text-anchor="end" font-size="9" fill="#8a98a6" font-family="Manrope, Arial, sans-serif">North-East India (illustrative)</text>
+</svg>
