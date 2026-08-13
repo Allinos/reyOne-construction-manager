@@ -91,6 +91,22 @@
       }
     });
 
+    // Service-area map embed (with red locator). Falls back to a styled
+    // placeholder when no embed URL is configured.
+    document.querySelectorAll("[data-map-embed]").forEach(function (iframe) {
+      var url = cfg.serviceAreaMapEmbedUrl || "";
+      var panel = iframe.closest(".map-panel");
+      var placeholder = panel ? panel.querySelector("[data-map-placeholder]") : null;
+      if (url && url.indexOf("REPLACE") === -1) {
+        iframe.setAttribute("src", url);
+        iframe.style.display = "block";
+        if (placeholder) placeholder.style.display = "none";
+      } else {
+        iframe.style.display = "none";
+        if (placeholder) placeholder.style.display = "grid";
+      }
+    });
+
     // Current year
     document.querySelectorAll("[data-year]").forEach(function (el) {
       el.textContent = new Date().getFullYear();

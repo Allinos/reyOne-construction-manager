@@ -144,8 +144,30 @@
       </div>
     </section>
 
+    <!-- =================== FEATURED PROJECTS (carousel) =================== -->
+    <section class="section" id="projects">
+      <div class="container">
+        <div class="section-head" data-reveal>
+          <span class="eyebrow">Selected work</span>
+          <h2>Work That Speaks For Itself.</h2>
+          <p class="lead">A look at the kinds of projects we deliver. Real project details and photography are added as they are verified.</p>
+        </div>
+        <!-- Auto-scrolling carousel: 3 cards on desktop, 1 on mobile.
+             Cards rendered from data/projects.js into the track; the
+             carousel behaviour (auto-scroll + dots) is added by js/carousel.js. -->
+        <div class="carousel" data-carousel data-reveal>
+          <div class="carousel__track" data-carousel-track data-projects data-projects-limit="6"></div>
+          <div class="carousel__dots" data-carousel-dots aria-hidden="true"></div>
+          <p class="carousel__hint">Swipe or use the dots to browse projects.</p>
+        </div>
+        <div class="btn-row center" data-reveal style="justify-content:center">
+          <a class="btn btn--dark" href="projects.html">View all projects</a>
+        </div>
+      </div>
+    </section>
+
     <!-- =================== PROBLEM =================== -->
-    <section class="section">
+    <section class="section section--alt">
       <div class="container">
         <div class="section-head" data-reveal>
           <span class="eyebrow">The real problem</span>
@@ -195,22 +217,6 @@
         <div class="grid grid-3" data-services></div>
         <div class="btn-row" data-reveal>
           <a class="btn btn--dark" href="services.html">View all services</a>
-        </div>
-      </div>
-    </section>
-
-    <!-- =================== FEATURED PROJECTS =================== -->
-    <section class="section section--alt" id="projects">
-      <div class="container">
-        <div class="section-head" data-reveal>
-          <span class="eyebrow">Selected work</span>
-          <h2>Work That Speaks For Itself.</h2>
-          <p class="lead">A look at the kinds of projects we deliver. Real project details and photography are added as they are verified.</p>
-        </div>
-        <!-- Rendered from data/projects.js by js/projects.js -->
-        <div class="grid grid-3" data-projects data-projects-limit="3"></div>
-        <div class="btn-row" data-reveal>
-          <a class="btn btn--dark" href="projects.html">View all projects</a>
         </div>
       </div>
     </section>
@@ -388,13 +394,35 @@
     </section>
 
     <!-- =================== SERVICE AREA =================== -->
-    <section class="section">
+    <section class="section section--alt" id="service-area">
       <div class="container">
-        <div class="section-head section-head--center" data-reveal>
-          <span class="eyebrow">Where we work</span>
-          <h2>Serving Clients Across <span data-config="serviceArea">[SERVICE AREA]</span>.</h2>
-          <p class="lead">We take on projects within our active service area. Confirm your location with us on WhatsApp and we'll let you know how we can help.</p>
-          <div class="btn-row" style="justify-content:center"><a class="btn btn--primary" data-wa data-wa-context="contact">Check your location</a></div>
+        <div class="split service-area-split">
+          <!-- Left: content -->
+          <div data-reveal>
+            <span class="eyebrow">Where we work</span>
+            <h2>Serving Clients Across <span data-config="serviceArea">[SERVICE AREA]</span>.</h2>
+            <p class="lead">We take on projects within our active service area. Confirm your location with us on WhatsApp and we'll let you know how we can help.</p>
+            <ul class="feature-list mt-6">
+              <li>On-site assessment within our service area</li>
+              <li>Local coordination and direct communication</li>
+              <li>Structured, milestone-based execution</li>
+            </ul>
+            <div class="btn-row"><a class="btn btn--primary" data-wa data-wa-context="contact">Check your location</a></div>
+          </div>
+          <!-- Right: map with a red locator for a worked location.
+               The embed URL comes from js/config.js (serviceAreaMapEmbedUrl);
+               main.js swaps in the iframe, or shows the placeholder below. -->
+          <div class="split__media map-panel" data-reveal>
+            <iframe data-map-embed style="display:none" title="Map of our service area" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+            <div class="map-placeholder" data-map-placeholder>
+              <span class="map-placeholder__grid" aria-hidden="true"></span>
+              <div class="map-pin">
+                <svg class="map-pin__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Z"/><circle cx="12" cy="9" r="2.5" fill="#fff"/></svg>
+                <span class="map-pin__label">Worked location</span>
+                <span class="map-pin__note">Set your worked location in <code>js/config.js</code> to show it on the map.</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -564,6 +592,7 @@
   <script src="js/whatsapp.js"></script>
   <script src="js/faq.js"></script>
   <script src="js/projects.js"></script>
+  <script src="js/carousel.js"></script>
   <script src="js/lead.js"></script>
   <script src="js/modal.js"></script>
 </body>

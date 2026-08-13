@@ -40,6 +40,12 @@ var SITE_CONFIG = {
   businessHours: "Mon – Sat, 9:30 AM – 6:30 PM",
   // Google Maps embed src — paste the "embed" iframe src from Google Maps.
   googleMapsEmbedUrl: "REPLACE_WITH_GOOGLE_MAPS_EMBED_URL",
+  // "Where we work" map: a keyless Google Maps embed showing the service area
+  // with a red marker. Default centres on North-East India — change the `q`
+  // value to your actual worked location (a place name or "lat,lng") and the
+  // red locator pin will point to it.
+  serviceAreaMapEmbedUrl:
+    "https://maps.google.com/maps?q=26.14,91.77&z=6&output=embed",
 
   /* ---- Online presence (REPLACE before launch) ---- */
   websiteDomain: "REPLACE_WITH_WEBSITE_DOMAIN",

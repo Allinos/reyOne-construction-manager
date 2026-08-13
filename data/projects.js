@@ -103,6 +103,87 @@ var PROJECTS = [
       "Year": "[Year]"
     },
     gallery: []
+  },
+  {
+    slug: "project-04",
+    page: "projects/project-04.html",
+    name: "[Project Name — Villa]",
+    location: "[Location]",
+    type: "Residential Construction",
+    scope: "Independent villa",
+    year: "[Year]",
+    image: "",
+    imageAlt: "Placeholder for a villa construction project by DW Nirman Engineerings",
+    placeholder: true,
+    summary:
+      "A villa build delivered with clear scope, transparent costing and stage-wise quality checks.",
+    requirement: "[Client requirement to be supplied.]",
+    challenge: "[Project challenge to be supplied.]",
+    approach: "[Approach to be supplied.]",
+    execution: "[Execution notes to be supplied.]",
+    outcome: "[Outcome to be supplied once verified.]",
+    details: {
+      "Project Type": "Residential Construction",
+      "Location": "[Location]",
+      "Scope": "Villa construction",
+      "Status": "[Completed / In progress]",
+      "Year": "[Year]"
+    },
+    gallery: []
+  },
+  {
+    slug: "project-05",
+    page: "projects/project-05.html",
+    name: "[Project Name — Office Fit-out]",
+    location: "[Location]",
+    type: "Commercial Construction",
+    scope: "Office space & fit-out",
+    year: "[Year]",
+    image: "",
+    imageAlt: "Placeholder for a commercial office fit-out project by DW Nirman Engineerings",
+    placeholder: true,
+    summary:
+      "A commercial office space delivered with structured milestones and clear progress reporting.",
+    requirement: "[Client requirement to be supplied.]",
+    challenge: "[Project challenge to be supplied.]",
+    approach: "[Approach to be supplied.]",
+    execution: "[Execution notes to be supplied.]",
+    outcome: "[Outcome to be supplied once verified.]",
+    details: {
+      "Project Type": "Commercial Construction",
+      "Location": "[Location]",
+      "Scope": "Office fit-out",
+      "Status": "[Completed / In progress]",
+      "Year": "[Year]"
+    },
+    gallery: []
+  },
+  {
+    slug: "project-06",
+    page: "projects/project-06.html",
+    name: "[Project Name — Civil Works]",
+    location: "[Location]",
+    type: "Civil Engineering",
+    scope: "Site & civil works",
+    year: "[Year]",
+    image: "",
+    imageAlt: "Placeholder for a civil engineering project by DW Nirman Engineerings",
+    placeholder: true,
+    summary:
+      "Civil works executed with engineering-led supervision and documented quality checkpoints.",
+    requirement: "[Client requirement to be supplied.]",
+    challenge: "[Project challenge to be supplied.]",
+    approach: "[Approach to be supplied.]",
+    execution: "[Execution notes to be supplied.]",
+    outcome: "[Outcome to be supplied once verified.]",
+    details: {
+      "Project Type": "Civil Engineering",
+      "Location": "[Location]",
+      "Scope": "Civil & site works",
+      "Status": "[Completed / In progress]",
+      "Year": "[Year]"
+    },
+    gallery: []
   }
 ];
 
