@@ -19,7 +19,7 @@ var SERVICES = [
   {
     slug: "residential-construction",
     page: "residential-construction.html",
-    title: "Residential & Commercial Construction",
+    title: "Residential Construction",
     icon: "home",
     confirmed: true,
     short:
@@ -44,7 +44,7 @@ var SERVICES = [
   {
     slug: "commercial-construction",
     page: "commercial-construction.html",
-    title: "Reparing & Renovation",
+    title: "Commercial Construction",
     icon: "building",
     confirmed: true,
     short:
@@ -69,7 +69,7 @@ var SERVICES = [
   {
     slug: "renovation",
     page: "renovation.html",
-    title: "Interior & Exterior Works",
+    title: "Renovation & Remodeling",
     icon: "layers",
     confirmed: true,
     short:
@@ -94,7 +94,7 @@ var SERVICES = [
   {
     slug: "civil-engineering",
     page: "civil-engineering.html",
-    title: "Civil & Strutural Engineering",
+    title: "Civil Engineering",
     icon: "compass",
     confirmed: true,
     short:
@@ -119,9 +119,9 @@ var SERVICES = [
   {
     slug: "structural-works",
     page: "services.html",
-    title: "Geo Technical Investigation",
+    title: "Structural Works",
     icon: "grid",
-    confirmed: true, // CONFIGURABLE — confirm with company before presenting as offered
+    confirmed: false, // CONFIGURABLE — confirm with company before presenting as offered
     short:
       "Structural framework and strengthening works. (Configurable — pending company confirmation.)",
     forWho: [
@@ -139,13 +139,38 @@ var SERVICES = [
     ]
   },
   {
+    slug: "project-management",
+    page: "project-management.html",
+    title: "Project Management",
+    icon: "clipboard",
+    confirmed: true,
+    short:
+      "Structured coordination of scope, cost, timeline and quality — with visibility at every stage.",
+    forWho: [
+      "Clients managing larger or multi-stage projects",
+      "Owners who want a single accountable coordinator",
+      "Anyone who wants organised progress reporting"
+    ],
+    scope: [
+      "Scope definition and milestone planning",
+      "Cost tracking against the agreed estimate",
+      "Progress reporting and site coordination",
+      "Quality checkpoints and handover management"
+    ],
+    benefits: [
+      "One accountable point of contact",
+      "Milestone-based progress visibility",
+      "Fewer surprises on cost and timeline"
+    ]
+  },
+  {
     slug: "turnkey-construction",
     page: "services.html",
-    title: "Project Management & Turnkey Construction",
+    title: "Turnkey Construction",
     icon: "key",
-    confirmed: true, // CONFIGURABLE — confirm with company before presenting as offered
+    confirmed: false, // CONFIGURABLE — confirm with company before presenting as offered
     short:
-    "End-to-end delivery from planning to handover. (Configurable — pending company confirmation.)",
+      "End-to-end delivery from planning to handover. (Configurable — pending company confirmation.)",
     forWho: [
       "Clients wanting a single end-to-end partner",
       "Owners preferring a managed, hands-off build"
@@ -159,32 +184,7 @@ var SERVICES = [
       "One partner, start to finish",
       "Clear scope and structured handover"
     ]
-  },
-  // {
-  //   slug: "project-management",
-  //   page: "project-management.html",
-  //   title: "Project Management",
-  //   icon: "clipboard",
-  //   confirmed: true,
-  //   short:
-  //     "Structured coordination of scope, cost, timeline and quality — with visibility at every stage.",
-  //   forWho: [
-  //     "Clients managing larger or multi-stage projects",
-  //     "Owners who want a single accountable coordinator",
-  //     "Anyone who wants organised progress reporting"
-  //   ],
-  //   scope: [
-  //     "Scope definition and milestone planning",
-  //     "Cost tracking against the agreed estimate",
-  //     "Progress reporting and site coordination",
-  //     "Quality checkpoints and handover management"
-  //   ],
-  //   benefits: [
-  //     "One accountable point of contact",
-  //     "Milestone-based progress visibility",
-  //     "Fewer surprises on cost and timeline"
-  //   ]
-  // }
+  }
 ];
 
 if (typeof window !== "undefined") {

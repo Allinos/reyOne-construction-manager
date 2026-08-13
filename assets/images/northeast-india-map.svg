@@ -23,9 +23,9 @@
   <text xml:space="preserve" style="font-weight:bold;font-size:6.89889px;line-height:0%;font-family:'Manrope','Avignon Pro',sans-serif;text-align:start;letter-spacing:0.0493899px;word-spacing:0.0023519px;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#ffffff;stroke-width:3.40157" x="-61.337742" y="148.21089" id="text10" transform="rotate(-49.975328)"><tspan id="tspan10" x="-61.337742" y="148.21089" style="stroke-width:3.40157">Tripura</tspan></text>
   <!-- Red locator pin — worked location in Assam (near Guwahati).
        Move this translate() to relocate the pin within the map. -->
-  <g id="worked-location-pin" transform="translate(83.2,86.5)">
+ <!--  <g id="worked-location-pin" transform="translate(83.2,86.5)">
     <ellipse cx="0" cy="1.1" rx="3" ry="1.1" fill="#0f141b" fill-opacity="0.28"></ellipse>
     <path d="M0 0 C -3.7 -4.8 -2.9 -9.4 0 -9.4 C 2.9 -9.4 3.7 -4.8 0 0 Z" fill="#e23b3b" stroke="#b71c1c" stroke-width="0.45"></path>
     <circle cx="0" cy="-6" r="1.65" fill="#ffffff"></circle>
-  </g>
+  </g> -->
 </svg>

@@ -32,11 +32,11 @@ var SITE_CONFIG = {
   phoneNumber: "+91 9435173665",
   // Secondary phone number (shown alongside the primary).
   phoneNumberAlt: "+91 9435171984",
-  email: "REPLACE_WITH_REAL_EMAIL",
+  email: "dwnirmanengineeringllp@gmail.com",
 
   /* ---- Location / service area (REPLACE before launch) ---- */
-  serviceArea: "[SERVICE AREA]",
-  officeAddress: "[LEGAL BUSINESS ADDRESS]",
+  serviceArea: "North East",
+  officeAddress: "Motiram, Bimala Bora Rd, in front of Hotel AM Palace, Haibargaon, Fauzdaripatty, Nagaon, Assam 782001",
   businessHours: "Mon – Sat, 9:30 AM – 6:30 PM",
   // Google Maps embed src (contact page) — paste the "embed" iframe src.
   googleMapsEmbedUrl: "REPLACE_WITH_GOOGLE_MAPS_EMBED_URL",
@@ -45,13 +45,13 @@ var SITE_CONFIG = {
   // locator pin, edit the pinLon/pinLat values inside that SVG file.
 
   /* ---- Online presence (REPLACE before launch) ---- */
-  websiteDomain: "REPLACE_WITH_WEBSITE_DOMAIN",
+  websiteDomain: "http://dwnirmanengineering.in/",
   googleReviewsUrl: "REPLACE_WITH_GOOGLE_BUSINESS_PROFILE_URL",
   social: {
     instagram: "REPLACE_WITH_INSTAGRAM_URL",
-    facebook: "REPLACE_WITH_FACEBOOK_URL",
+    facebook: "https://www.facebook.com/p/DW-Nirman-Engineering-61572439651128/",
     linkedin: "REPLACE_WITH_LINKEDIN_URL",
-    youtube: "REPLACE_WITH_YOUTUBE_URL"
+    youtube: "https://www.youtube.com/@washiulhoque"
   },
 
   /* ---- Legal / credentials (REPLACE with verified values only) ---- */
