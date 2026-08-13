@@ -46,7 +46,7 @@ var SITE_CONFIG = {
 
   /* ---- Online presence (REPLACE before launch) ---- */
   websiteDomain: "http://dwnirmanengineering.in/",
-  googleReviewsUrl: "REPLACE_WITH_GOOGLE_BUSINESS_PROFILE_URL",
+  googleReviewsUrl: "https://share.google/ogCb8XuDuomKHowDZ",
   social: {
     instagram: "REPLACE_WITH_INSTAGRAM_URL",
     facebook: "https://www.facebook.com/p/DW-Nirman-Engineering-61572439651128/",
