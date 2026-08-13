@@ -23,10 +23,10 @@ var SERVICES = [
     icon: "home",
     confirmed: true,
     short:
-      "Ground-up homes and villas built through a clear scope, transparent costing and structured milestones.",
+      "Ground-up homes, villas and commercial buildings — built through clear scope, transparent costing and structured milestones.",
     forWho: [
       "Families planning a new independent house or villa",
-      "Plot owners wanting an end-to-end managed build",
+      "Business owners building retail, office or commercial space",
       "Clients who value transparent costing and progress visibility"
     ],
     scope: [
@@ -44,26 +44,26 @@ var SERVICES = [
   {
     slug: "commercial-construction",
     page: "commercial-construction.html",
-    title: "Reparing & Renovation",
+    title: "Repairing & Renovation",
     icon: "building",
     confirmed: true,
     short:
-      "Retail, office and mixed-use spaces delivered with structured execution and accountable timelines.",
+      "Structural repairs, restoration and renovation that extend the life of your existing building — with minimal disruption.",
     forWho: [
-      "Business owners building retail or office space",
-      "Property developers needing dependable execution",
-      "Clients who need clear reporting for stakeholders"
+      "Owners repairing or restoring an existing building",
+      "Homeowners planning a renovation or upgrade",
+      "Clients needing structural strengthening or repair"
     ],
     scope: [
-      "Commercial structural and civil works",
-      "Services coordination (electrical, plumbing, HVAC-ready)",
-      "Fit-out coordination and finishing",
-      "Compliance-aware documentation support"
+      "Condition assessment of the existing structure",
+      "Structural repair, strengthening and waterproofing",
+      "Renovation of finishes, plumbing and electricals",
+      "Phased execution to reduce disruption"
     ],
     benefits: [
-      "Predictable milestone planning",
-      "Transparent cost breakdowns",
-      "Clear single point of accountability"
+      "A realistic scope after site assessment",
+      "Careful handling of the existing structure",
+      "Clear before / after on what changes"
     ]
   },
   {
@@ -73,42 +73,42 @@ var SERVICES = [
     icon: "layers",
     confirmed: true,
     short:
-      "Structured upgrades and remodeling that respect your existing structure, budget and timeline.",
+      "Interior and exterior finishing — from flooring, painting and false ceilings to façades, plaster and weatherproofing.",
     forWho: [
-      "Homeowners upgrading an existing property",
-      "Owners repurposing or extending a space",
-      "Clients wanting minimal disruption and clear scope"
+      "Owners finishing a newly built home or office",
+      "Clients refreshing their interiors or exteriors",
+      "Anyone wanting a coordinated finishing package"
     ],
     scope: [
-      "Condition assessment of the existing structure",
-      "Selective demolition and structural strengthening",
-      "Modernisation of finishes, plumbing and electricals",
-      "Phased execution to reduce disruption"
+      "Flooring, tiling, painting and false ceilings",
+      "Woodwork, joinery and fixtures",
+      "External plaster, façade and weatherproofing",
+      "A coordinated finishing schedule"
     ],
     benefits: [
-      "A realistic scope after site assessment",
-      "Before / after clarity on what changes",
-      "Careful handling of the existing structure"
+      "A single team for interior and exterior finishes",
+      "Consistent quality and finish",
+      "Clear scope and timeline"
     ]
   },
   {
     slug: "civil-engineering",
     page: "civil-engineering.html",
-    title: "Civil & Strutural Engineering",
+    title: "Civil & Structural Engineering",
     icon: "compass",
     confirmed: true,
     short:
-      "Civil works grounded in sound engineering practice, from site works to structural coordination.",
+      "Civil and structural engineering — from site works and RCC framework to structural design coordination and supervision.",
     forWho: [
       "Property owners needing civil / site works",
-      "Clients requiring engineering-led execution",
-      "Projects needing structured technical oversight"
+      "Projects requiring RCC / structural framework",
+      "Clients needing engineering-led execution"
     ],
     scope: [
       "Site preparation and civil groundworks",
-      "Structural coordination and supervision",
-      "Material and workmanship quality checks",
-      "Documentation of key civil stages"
+      "RCC framework and structural works",
+      "Structural design coordination and supervision",
+      "Material and workmanship quality checks"
     ],
     benefits: [
       "Engineering-informed decisions",
@@ -121,21 +121,24 @@ var SERVICES = [
     page: "services.html",
     title: "Geo Technical Investigation",
     icon: "grid",
-    confirmed: true, // CONFIGURABLE — confirm with company before presenting as offered
+    confirmed: true,
     short:
-      "Structural framework and strengthening works. (Configurable — pending company confirmation.)",
+      "Soil investigation and geotechnical testing to inform safe, cost-effective foundation design.",
     forWho: [
-      "Projects requiring RCC / structural framework",
-      "Owners needing structural strengthening or repair"
+      "Owners planning a new build on an untested site",
+      "Projects needing foundation recommendations",
+      "Clients wanting to reduce foundation risk"
     ],
     scope: [
-      "RCC framework execution",
-      "Structural strengthening and retrofitting",
-      "Coordination with structural consultants"
+      "Soil sampling and boreholes",
+      "Laboratory and field testing",
+      "Bearing capacity and soil analysis",
+      "A foundation recommendations report"
     ],
     benefits: [
-      "Structured, checked execution",
-      "Engineering-led supervision"
+      "Foundation decisions backed by real site data",
+      "Reduced risk of settlement or failure",
+      "Cost-appropriate foundation design"
     ]
   },
   {
@@ -143,20 +146,23 @@ var SERVICES = [
     page: "services.html",
     title: "Project Management & Turnkey Construction",
     icon: "key",
-    confirmed: true, // CONFIGURABLE — confirm with company before presenting as offered
+    confirmed: true,
     short:
-    "End-to-end delivery from planning to handover. (Configurable — pending company confirmation.)",
+      "End-to-end delivery and structured project management — from planning and coordination to an accountable handover.",
     forWho: [
       "Clients wanting a single end-to-end partner",
-      "Owners preferring a managed, hands-off build"
+      "Owners preferring a managed, hands-off build",
+      "Projects needing organised coordination and reporting"
     ],
     scope: [
+      "Scope definition and milestone planning",
       "Design coordination through to finishing",
-      "Single-contract execution",
-      "Systematic, documented handover"
+      "Cost tracking and progress reporting",
+      "Single-contract execution and documented handover"
     ],
     benefits: [
-      "One partner, start to finish",
+      "One accountable point of contact",
+      "Milestone-based progress visibility",
       "Clear scope and structured handover"
     ]
   },

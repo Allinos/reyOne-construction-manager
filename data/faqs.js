@@ -12,7 +12,7 @@
 var FAQS = [
   {
     q: "What services do you provide?",
-    a: "We focus on residential and commercial construction, renovation and remodeling, civil engineering and structured project management. Some offerings (such as turnkey and standalone structural works) are configurable — please confirm your specific requirement with us on WhatsApp."
+    a: "We provide residential and commercial construction; repairing and renovation; interior and exterior works; civil and structural engineering; geotechnical investigation; and project management and turnkey construction. Share your specific requirement with us on WhatsApp and we'll confirm how we can help."
   },
   {
     q: "How does the construction process work?",
