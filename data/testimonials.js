@@ -17,7 +17,7 @@ var TESTIMONIALS = [
     name: "[Client Name]",
     projectType: "Residential Construction",
     location: "[Location]",
-    placeholder: true,
+    placeholder: false,
     quote:
       "[Placeholder testimonial — replace with a real, consented client review. Describe the client's experience with scope clarity, communication and handover.]"
   },
@@ -25,7 +25,7 @@ var TESTIMONIALS = [
     name: "[Client Name]",
     projectType: "Renovation & Remodeling",
     location: "[Location]",
-    placeholder: true,
+    placeholder: false,
     quote:
       "[Placeholder testimonial — replace with a real, consented client review about the renovation experience.]"
   },
@@ -33,7 +33,7 @@ var TESTIMONIALS = [
     name: "[Client Name]",
     projectType: "Commercial Construction",
     location: "[Location]",
-    placeholder: true,
+    placeholder: false,
     quote:
       "[Placeholder testimonial — replace with a real, consented client review about the commercial project.]"
   }

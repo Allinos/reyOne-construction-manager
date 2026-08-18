@@ -799,6 +799,7 @@ section[id],
 }
 .card__link {
   display: inline-flex;
+ display: none;     /*// new added */
   align-items: center;
   gap: 6px;
   margin-top: var(--space-4);
@@ -1169,7 +1170,7 @@ section[id],
   align-items: center;
 }
 .split__media {
-  aspect-ratio: 5 / 4;
+  /* aspect-ratio: 5 / 4; */
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow);
