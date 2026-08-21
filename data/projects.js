@@ -144,7 +144,7 @@ var PROJECTS = [
     // scope: "Office space & fit-out",
     // year: "[Year]",
     // image: "assets/images/project-05.png",
-    image: "assets/images/image1.png",
+    image: "assets/images/image1.jpg",
     imageAlt:
       "Placeholder for a commercial office fit-out project by DW Nirman Engineerings",
     placeholder: false,

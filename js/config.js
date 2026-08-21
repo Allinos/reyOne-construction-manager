@@ -29,7 +29,7 @@ var SITE_CONFIG = {
   // India country code (91) + number.
   whatsappNumber: "919435171984",
   // Primary phone number for tel: links (may include leading +).
-  phoneNumber: "+91 9435173665",
+  phoneNumber: "+91 9435171984",
   // Secondary phone number (shown alongside the primary).
   phoneNumberAlt: "+91 9435171984",
   email: "dwnirmanengineeringllp@gmail.com",
