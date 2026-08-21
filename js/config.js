@@ -27,7 +27,7 @@ var SITE_CONFIG = {
   /* ---- Contact channels ---- */
   // WhatsApp number in full international format WITHOUT "+", spaces or dashes.
   // India country code (91) + number.
-  whatsappNumber: "919435173665",
+  whatsappNumber: "919435171984",
   // Primary phone number for tel: links (may include leading +).
   phoneNumber: "+91 9435173665",
   // Secondary phone number (shown alongside the primary).
