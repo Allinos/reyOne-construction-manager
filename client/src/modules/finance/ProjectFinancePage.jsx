@@ -142,7 +142,7 @@ export default function ProjectFinancePage() {
                     const balance = (Number(x.amount) || 0) - (Number(x.amountPaid) || 0);
                     return (
                       <div key={x.id} className="rounded-lg border border-cream-200 p-2.5 dark:border-slate-700">
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-5">
                           <Field label="Date" value={formatDate(x.date)} />
                           <Field label="Category" value={x.category} />
                           <Field label="Amount" value={formatMoney(x.amount, currency)} accent="text-red-600" />
@@ -152,7 +152,7 @@ export default function ProjectFinancePage() {
                           <Field label="Paid To" value={x.paidTo || '—'} />
                           <Field label="Paid By" value={x.expenseBy || '—'} />
                           <Field label="Account" value={x.account || '—'} />
-                          {x.notes && <Field label="Notes" value={x.notes} full />}
+                          <Field label="Notes" value={x.notes || '—'} />
                         </div>
                       </div>
                     );
