@@ -169,7 +169,7 @@ export default function ProjectFinancePage() {
                 <div className="space-y-2">
                   {summary.payments.map((p) => (
                     <div key={p.id} className="rounded-lg border border-cream-200 p-2.5 dark:border-slate-700">
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-4">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-5">
                         <Field label="Date" value={formatDate(p.date)} />
                         <Field label="Amount" value={formatMoney(p.amount, currency)} accent="text-green-700" />
                         <Field label="Method" value={p.method || '—'} />
