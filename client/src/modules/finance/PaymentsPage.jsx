@@ -138,6 +138,7 @@ export default function PaymentsPage({ search = '' }) {
                   <th className="px-4 py-3 font-medium">Date</th>
                   <th className="px-4 py-3 font-medium">Method</th>
                   <th className="px-4 py-3 font-medium">Account</th>
+                  <th className="px-4 py-3 font-medium">Notes</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -149,14 +150,16 @@ export default function PaymentsPage({ search = '' }) {
                       {projectMap[p.projectId]?.clientName && (
                         <div className="text-xs text-slate-500">{projectMap[p.projectId].clientName}</div>
                       )}
-                      {p.notes && (
-                        <div className="mt-0.5 max-w-[240px] truncate text-xs italic text-slate-400" title={p.notes}>{p.notes}</div>
-                      )}
                     </td>
                     <td className="px-4 py-3 font-medium text-green-700">{formatMoney(p.amount, currency)}</td>
                     <td className="px-4 py-3 text-slate-500">{formatDate(p.date)}</td>
                     <td className="px-4 py-3 text-slate-600">{p.method}</td>
                     <td className="px-4 py-3 text-slate-600">{p.account}</td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {p.notes ? (
+                        <span className="block max-w-[220px] truncate" title={p.notes}>{p.notes}</span>
+                      ) : '—'}
+                    </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {can('finance.update') && (
                         <button className="pill-edit" onClick={() => openEdit(p)}>Edit</button>
