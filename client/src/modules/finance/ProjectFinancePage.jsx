@@ -15,11 +15,15 @@ function Stat({ label, value, accent }) {
 }
 
 // Compact label/value block used to show full details without tall rows.
-function Field({ label, value, accent, full }) {
+// `wrap` shows the full value (no truncation) on its own row.
+function Field({ label, value, accent, full, wrap }) {
   return (
-    <div className={`min-w-0 ${full ? 'col-span-2 sm:col-span-3' : ''}`}>
+    <div className={`min-w-0 ${full ? 'col-span-2 sm:col-span-3 lg:col-span-4' : ''}`}>
       <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
-      <p className={`truncate text-xs font-medium ${accent || 'text-slate-700 dark:text-slate-200'}`} title={typeof value === 'string' ? value : undefined}>
+      <p
+        className={`text-xs font-medium ${wrap ? 'whitespace-pre-wrap break-words' : 'truncate'} ${accent || 'text-slate-700 dark:text-slate-200'}`}
+        title={!wrap && typeof value === 'string' ? value : undefined}
+      >
         {value}
       </p>
     </div>
@@ -170,7 +174,7 @@ export default function ProjectFinancePage() {
                         <Field label="Amount" value={formatMoney(p.amount, currency)} accent="text-green-700" />
                         <Field label="Method" value={p.method || '—'} />
                         <Field label="Account" value={p.account || '—'} />
-                        {p.notes && <Field label="Notes" value={p.notes} full />}
+                        {p.notes && <Field label="Notes" value={p.notes} full wrap />}
                       </div>
                     </div>
                   ))}
