@@ -14,6 +14,18 @@ function Stat({ label, value, accent }) {
   );
 }
 
+// Compact label/value block used to show full details without tall rows.
+function Field({ label, value, accent, full }) {
+  return (
+    <div className={`min-w-0 ${full ? 'col-span-2 sm:col-span-3' : ''}`}>
+      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
+      <p className={`truncate text-xs font-medium ${accent || 'text-slate-700 dark:text-slate-200'}`} title={typeof value === 'string' ? value : undefined}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function ProjectRow({ p, view, currency, active, onClick }) {
   const pct = Number(p.totalAmount) > 0 ? Math.min(100, Math.round((Number(p.receivedAmount) / Number(p.totalAmount)) * 100)) : 0;
   // Typography hierarchy flips by view — no names displayed outside the card.
@@ -79,8 +91,8 @@ export default function ProjectFinancePage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      {/* Project list */}
-      <div className="lg:col-span-1">
+      {/* Project list — scrolls independently so the page doesn't move */}
+      <div className="lg:col-span-1 lg:sticky lg:top-4 lg:self-start">
         <div className="mb-3 flex overflow-hidden rounded-lg border border-cream-300 text-sm dark:border-slate-700">
           {['project', 'client'].map((v) => (
             <button
@@ -92,7 +104,7 @@ export default function ProjectFinancePage() {
             </button>
           ))}
         </div>
-        <div className="space-y-2">
+        <div className="scroll-thin space-y-2 overflow-y-auto pr-1" style={{ maxHeight: 'calc(100vh - 15rem)' }}>
           {sorted.map((p) => (
             <ProjectRow key={p.id} p={p} view={view} currency={currency} active={selected === p.id} onClick={() => setSelected(p.id)} />
           ))}
@@ -121,29 +133,26 @@ export default function ProjectFinancePage() {
                 <span className="ml-2 text-sm font-normal text-red-600">{formatMoney(summary.projectExpenses, currency)}</span>
               </h3>
               {summary.expenses?.length ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="text-left text-slate-400">
-                      <tr>
-                        <th className="py-2 font-medium">Date</th>
-                        <th className="py-2 font-medium">Category</th>
-                        <th className="py-2 font-medium">Paid To</th>
-                        <th className="py-2 font-medium">Expense By</th>
-                        <th className="py-2 text-right font-medium">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-cream-200 dark:divide-slate-700">
-                      {summary.expenses.map((x) => (
-                        <tr key={x.id}>
-                          <td className="py-2 text-slate-500">{formatDate(x.date)}</td>
-                          <td className="py-2 text-slate-600 dark:text-slate-300">{x.category}</td>
-                          <td className="py-2 text-slate-600 dark:text-slate-300">{x.paidTo || '—'}</td>
-                          <td className="py-2 text-slate-600 dark:text-slate-300">{x.expenseBy || '—'}</td>
-                          <td className="py-2 text-right font-medium text-red-600">{formatMoney(x.amount, currency)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="space-y-2">
+                  {summary.expenses.map((x) => {
+                    const balance = (Number(x.amount) || 0) - (Number(x.amountPaid) || 0);
+                    return (
+                      <div key={x.id} className="rounded-lg border border-cream-200 p-2.5 dark:border-slate-700">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-4">
+                          <Field label="Date" value={formatDate(x.date)} />
+                          <Field label="Category" value={x.category} />
+                          <Field label="Amount" value={formatMoney(x.amount, currency)} accent="text-red-600" />
+                          <Field label="Status" value={x.paymentStatus || '—'} />
+                          <Field label="Paid" value={formatMoney(x.amountPaid, currency)} accent="text-green-700" />
+                          <Field label="Balance" value={formatMoney(balance > 0 ? balance : 0, currency)} />
+                          <Field label="Paid To" value={x.paidTo || '—'} />
+                          <Field label="Paid By" value={x.expenseBy || '—'} />
+                          <Field label="Account" value={x.account || '—'} />
+                          {x.notes && <Field label="Notes" value={x.notes} full />}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-slate-400">No expenses.</p>
@@ -153,27 +162,18 @@ export default function ProjectFinancePage() {
             <Card>
               <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">Payment History</h3>
               {summary.payments.length ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="text-left text-slate-400">
-                      <tr>
-                        <th className="py-2 font-medium">Date</th>
-                        <th className="py-2 font-medium">Method</th>
-                        <th className="py-2 font-medium">Account</th>
-                        <th className="py-2 text-right font-medium">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-cream-200 dark:divide-slate-700">
-                      {summary.payments.map((p) => (
-                        <tr key={p.id}>
-                          <td className="py-2 text-slate-500">{formatDate(p.date)}</td>
-                          <td className="py-2 text-slate-600 dark:text-slate-300">{p.method}</td>
-                          <td className="py-2 text-slate-600 dark:text-slate-300">{p.account}</td>
-                          <td className="py-2 text-right font-medium text-green-700">{formatMoney(p.amount, currency)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="space-y-2">
+                  {summary.payments.map((p) => (
+                    <div key={p.id} className="rounded-lg border border-cream-200 p-2.5 dark:border-slate-700">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-4">
+                        <Field label="Date" value={formatDate(p.date)} />
+                        <Field label="Amount" value={formatMoney(p.amount, currency)} accent="text-green-700" />
+                        <Field label="Method" value={p.method || '—'} />
+                        <Field label="Account" value={p.account || '—'} />
+                        {p.notes && <Field label="Notes" value={p.notes} full />}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="text-sm text-slate-400">No payments recorded.</p>

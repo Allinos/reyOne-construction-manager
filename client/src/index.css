@@ -107,3 +107,23 @@
 .dark .divide-cream-200 > :not([hidden]) ~ :not([hidden]) {
   border-color: #334155;
 }
+
+/* Thin, subtle, brand-orange scrollbar for independent scroll areas. */
+.scroll-thin {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: #f97316 transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background-color: #fb923c;
+  border-radius: 9999px;
+}
+.scroll-thin::-webkit-scrollbar-thumb:hover {
+  background-color: #f97316;
+}

@@ -31,6 +31,7 @@ const listPaymentsQuery = z.object({
   projectId: z.coerce.number().int().positive().optional(),
   account: z.string().max(50).optional(),
   method: z.string().max(50).optional(),
+  search: z.string().trim().max(100).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
 });

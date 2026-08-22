@@ -25,7 +25,7 @@ export const MODULE_DEFS = [
   { key: 'expenses', section: 'finance', label: 'Expenses', path: '/expenses', icon: 'expenses', permission: 'finance.read', element: <ExpensesPage />, moduleKey: 'finance' },
   { key: 'vendors', section: 'finance', label: 'Vendors', path: '/vendors', icon: 'vendors', permission: 'vendors.read', element: <VendorsModule /> },
   { key: 'workforce', section: 'finance', label: 'Workforce', path: '/workforce', icon: 'workforce', permission: 'workforce.read', element: <WorkforcePage /> },
-  { key: 'custom_module', section: 'main', label: 'Custom Module', path: '/custom-module', icon: 'modules', permission: 'custom_module.read', element: <CustomModulePage /> },
+  { key: 'custom_module', section: 'finance', label: 'Custom Module', path: '/custom-module', icon: 'modules', permission: 'custom_module.read', element: <CustomModulePage /> },
   { key: 'users', section: 'profile', label: 'User Manager', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
   { key: 'settings', section: 'profile', label: 'Settings', path: '/settings', icon: 'settings', permission: 'settings.read', element: <SettingsModule /> },
 

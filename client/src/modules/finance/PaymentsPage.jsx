@@ -10,7 +10,7 @@ import Modal from '../../components/Modal';
 
 const blank = { projectId: '', amount: '', date: '', method: '', account: '', notes: '' };
 
-export default function PaymentsPage() {
+export default function PaymentsPage({ search = '' }) {
   const { bootstrap, can } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
@@ -27,19 +27,27 @@ export default function PaymentsPage() {
   const [modal, setModal] = useState(null); // { form, editingId }
   const [saving, setSaving] = useState(false);
   const [financeMap, setFinanceMap] = useState({});
+  const [q, setQ] = useState('');
 
   const projectMap = Object.fromEntries(projects.map((p) => [p.id, p]));
+
+  // Debounce the search coming from the Finance header so we don't fire a
+  // request on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => { setQ(search.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setResult(await listPayments({ page }));
+      setResult(await listPayments({ page, search: q || undefined }));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, q]);
 
   useEffect(() => {
     projectOptions().then(setProjects).catch(() => {});
@@ -140,6 +148,9 @@ export default function PaymentsPage() {
                       <div className="font-medium text-slate-800 dark:text-slate-100">{projectMap[p.projectId]?.name || `#${p.projectId}`}</div>
                       {projectMap[p.projectId]?.clientName && (
                         <div className="text-xs text-slate-500">{projectMap[p.projectId].clientName}</div>
+                      )}
+                      {p.notes && (
+                        <div className="mt-0.5 max-w-[240px] truncate text-xs italic text-slate-400" title={p.notes}>{p.notes}</div>
                       )}
                     </td>
                     <td className="px-4 py-3 font-medium text-green-700">{formatMoney(p.amount, currency)}</td>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Routes, Route, NavLink } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import PaymentsPage from './PaymentsPage';
 import ProjectFinancePage from './ProjectFinancePage';
 import { getOverview } from './api';
@@ -45,10 +45,29 @@ const TABS = [
 
 export default function FinanceModule() {
   const [analytics, setAnalytics] = useState(false);
+  const [search, setSearch] = useState('');
+  const location = useLocation();
+  const onPayments = location.pathname === '/finance' || location.pathname === '/finance/';
 
   return (
     <div>
-      <PageHeader title="Finance" subtitle="Payments & balances" actions={<AnalyticsButton onClick={() => setAnalytics(true)} />} />
+      <PageHeader
+        title="Finance"
+        subtitle="Payments & balances"
+        actions={
+          <div className="flex items-center gap-2">
+            {onPayments && (
+              <input
+                className="input w-40 py-1.5 sm:w-56"
+                placeholder="Search payments…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            )}
+            <AnalyticsButton onClick={() => setAnalytics(true)} />
+          </div>
+        }
+      />
       <OverviewBar />
 
       <div className="mb-5 flex gap-1 border-b border-cream-300">
@@ -69,7 +88,7 @@ export default function FinanceModule() {
       </div>
 
       <Routes>
-        <Route index element={<PaymentsPage />} />
+        <Route index element={<PaymentsPage search={search} />} />
         <Route path="project" element={<ProjectFinancePage />} />
       </Routes>
 

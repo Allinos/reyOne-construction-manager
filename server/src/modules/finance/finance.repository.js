@@ -23,6 +23,21 @@ const financeRepository = {
     ]);
     return { rows, total };
   },
+  // Project ids whose name / reference / client match a search term (payments
+  // have no relation to Project, so we resolve ids first).
+  async searchProjectIds(term) {
+    const rows = await prisma.project.findMany({
+      where: {
+        OR: [
+          { name: { contains: term } },
+          { referenceNumber: { contains: term } },
+          { clientName: { contains: term } },
+        ],
+      },
+      select: { id: true },
+    });
+    return rows.map((r) => r.id);
+  },
   sumPayments(where) {
     return prisma.payment.aggregate({ where, _sum: { amount: true } });
   },

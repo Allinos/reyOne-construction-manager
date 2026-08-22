@@ -104,6 +104,10 @@ const financeService = {
     if (query.method) where.method = query.method;
     const d = dateWhere(query);
     if (d) where.date = d;
+    if (query.search) {
+      const projectIds = await repo.searchProjectIds(query.search);
+      where.OR = [{ notes: { contains: query.search } }, { projectId: { in: projectIds } }];
+    }
     const { rows, total } = await repo.listPayments({ where, skip, take });
     return { data: rows, meta: buildMeta(page, limit, total) };
   },
