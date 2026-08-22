@@ -174,7 +174,7 @@ export default function ProjectFinancePage() {
                         <Field label="Amount" value={formatMoney(p.amount, currency)} accent="text-green-700" />
                         <Field label="Method" value={p.method || '—'} />
                         <Field label="Account" value={p.account || '—'} />
-                        {p.notes && <Field label="Notes" value={p.notes} full wrap />}
+                        <Field label="Notes" value={p.notes || '—'} />
                       </div>
                     </div>
                   ))}
