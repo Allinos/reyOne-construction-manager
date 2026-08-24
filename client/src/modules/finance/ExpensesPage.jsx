@@ -113,22 +113,24 @@ export default function ExpensesPage() {
       />
 
       {/* Analytics header — reflects the selected month */}
-      <Card className="mb-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">
-            {monthLabel ? `${monthLabel} Analytics` : 'Analytics'}
-          </h2>
+      <div className="card mb-4" style={{ padding: '10px 1.25rem' }}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-100">
+              {monthLabel ? `${monthLabel} Analytics` : 'Analytics'}
+            </p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              <div><p className="text-xs text-slate-500">Project Expenses</p><p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.project, currency) : '—'}</p></div>
+              <div><p className="text-xs text-slate-500">Company Expenses</p><p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.company, currency) : '—'}</p></div>
+              <div><p className="text-xs text-slate-500">Total Expenses</p><p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{stats ? formatMoney(stats.total, currency) : '—'}</p></div>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500">Month</label>
             <input type="month" className="input w-auto py-1.5" value={month} onChange={(e) => { setMonth(e.target.value); setPage(1); }} />
           </div>
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <div><p className="text-xs text-slate-500">Project Expenses</p><p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.project, currency) : '—'}</p></div>
-          <div><p className="text-xs text-slate-500">Company Expenses</p><p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.company, currency) : '—'}</p></div>
-          <div><p className="text-xs text-slate-500">Total Expenses</p><p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{stats ? formatMoney(stats.total, currency) : '—'}</p></div>
-        </div>
-      </Card>
+      </div>
 
       {projectId && (
         <div className="mb-3 flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:border-slate-600 dark:bg-slate-800 dark:text-brand-300">
