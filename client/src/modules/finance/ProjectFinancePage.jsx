@@ -198,7 +198,7 @@ export default function ProjectFinancePage() {
                         <tr>
                           <th className="py-1.5 font-medium">Category</th>
                           <th className="py-1.5 font-medium">Date</th>
-                          <th className="py-1.5 text-right font-medium">Amount</th>
+                          <th className="py-1.5 font-medium">Amount</th>
                           <th className="py-1.5 font-medium">Vendor / Paid To</th>
                           <th className="py-1.5 font-medium">Note</th>
                         </tr>
@@ -208,7 +208,7 @@ export default function ProjectFinancePage() {
                           <tr key={x.id}>
                             <td className="py-1.5 pr-3 text-slate-700 dark:text-slate-200">{x.category}</td>
                             <td className="py-1.5 pr-3 text-slate-500">{formatDate(x.date)}</td>
-                            <td className="py-1.5 pr-3 text-right font-medium text-red-600">{formatMoney(x.amount, currency)}</td>
+                            <td className="py-1.5 pr-3 font-medium text-red-600">{formatMoney(x.amount, currency)}</td>
                             <td className="py-1.5 pr-3 text-slate-600 dark:text-slate-300">
                               <span className="block max-w-[150px] truncate" title={payeeOf(x)}>{payeeOf(x)}</span>
                             </td>
