@@ -36,6 +36,9 @@ const clientsRepository = {
   update(id, data) {
     return prisma.client.update({ where: { id }, data });
   },
+  softDelete(id) {
+    return prisma.client.update({ where: { id }, data: { deletedAt: new Date() } });
+  },
 
   statsByClient() {
     return prisma.project.groupBy({ by: ['clientName', 'status'], where: { deletedAt: null }, _count: { _all: true } });

@@ -53,6 +53,7 @@ const PERMISSIONS = [
   // Clients
   { key: 'clients.read', module: 'clients', action: 'read', description: 'View clients' },
   { key: 'clients.update', module: 'clients', action: 'update', description: 'Edit client details' },
+  { key: 'clients.delete', module: 'clients', action: 'delete', description: 'Delete clients' },
 
   // Vendors
   { key: 'vendors.read', module: 'vendors', action: 'read', description: 'View vendors & ledgers' },

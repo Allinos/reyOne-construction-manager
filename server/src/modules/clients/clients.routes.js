@@ -12,6 +12,7 @@ function registerRoutes(router) {
   router.get('/', authorize('clients.read'), validate({ query: listQuery }), asyncHandler(controller.list));
   router.get('/:id', authorize('clients.read'), validate({ params: idParam }), asyncHandler(controller.get));
   router.patch('/:id', authorize('clients.update'), validate({ params: idParam, body: updateClientSchema }), asyncHandler(controller.update));
+  router.delete('/:id', authorize('clients.delete'), validate({ params: idParam }), asyncHandler(controller.remove));
 }
 
 module.exports = { registerRoutes };

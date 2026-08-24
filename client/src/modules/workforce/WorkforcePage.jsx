@@ -127,6 +127,7 @@ export default function WorkforcePage() {
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 font-medium">Phone</th>
+                  <th className="px-4 py-3 font-medium">Address</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3" />
                 </tr>
@@ -139,6 +140,9 @@ export default function WorkforcePage() {
                       <span className="badge" style={{ backgroundColor: `${colorFor(m.category)}22`, color: colorFor(m.category) }}>{m.category}</span>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{m.phone || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      <span className="block max-w-[200px] truncate" title={m.address || ''}>{m.address || '—'}</span>
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`badge ${m.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>{m.status}</span>
                     </td>

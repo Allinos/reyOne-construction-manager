@@ -59,6 +59,14 @@ const clientsService = {
     activity.record({ userId: actor.id, action: 'client.updated', entityType: 'client', entityId: id, req });
     return client;
   },
+
+  async remove(id, actor, req) {
+    const existing = await repo.findById(id);
+    if (!existing) throw AppError.notFound('Client not found');
+    await repo.softDelete(id);
+    activity.record({ userId: actor.id, action: 'client.deleted', entityType: 'client', entityId: id, req });
+    return { success: true };
+  },
 };
 
 module.exports = clientsService;

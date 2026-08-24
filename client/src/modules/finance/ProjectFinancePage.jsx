@@ -1,9 +1,42 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getProjectsFinance, getProjectSummary } from './api';
+import { vendorOptions } from '../vendors/api';
+import { workforceOptions } from '../workforce/api';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDate } from '../../lib/format';
 import { Card, Spinner, EmptyState, Alert, StatusBadge } from '../../components/ui';
+import Icon from '../../components/Icon';
+
+// Truncated note that reveals the full text on hover (native tooltip) and on
+// click (a small popup that auto-dismisses after ~2.5s).
+function NoteCell({ text }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return undefined;
+    const t = setTimeout(() => setOpen(false), 2500);
+    return () => clearTimeout(t);
+  }, [open]);
+  if (!text) return <span className="text-slate-400">—</span>;
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        className="block max-w-[160px] truncate text-left text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+        title={text}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {text}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-1 w-56 max-w-[70vw] rounded-lg border border-cream-300 bg-white p-2 text-xs text-slate-600 shadow-lg dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200">
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Stat({ label, value, accent }) {
   return (
@@ -61,12 +94,17 @@ function ProjectRow({ p, view, currency, active, onClick }) {
 
 export default function ProjectFinancePage() {
   const { bootstrap } = useAuth();
+  const navigate = useNavigate();
   const currency = bootstrap?.company?.currency || 'INR';
   const [projects, setProjects] = useState(null);
   const [view, setView] = useState('project'); // 'project' | 'client'
   const [selected, setSelected] = useState(null);
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState('');
+  const [vendorMap, setVendorMap] = useState({});
+  const [workforceMap, setWorkforceMap] = useState({});
+  const [expandExp, setExpandExp] = useState(false);
+  const [expandPay, setExpandPay] = useState(false);
 
   useEffect(() => {
     getProjectsFinance()
@@ -75,13 +113,24 @@ export default function ProjectFinancePage() {
         if (list.length) setSelected(list[0].id); // auto-select first — no manual search needed
       })
       .catch((err) => setError(errorMessage(err)));
+    vendorOptions().then((list) => setVendorMap(Object.fromEntries(list.map((v) => [v.id, v.name])))).catch(() => {});
+    workforceOptions().then((list) => setWorkforceMap(Object.fromEntries(list.map((w) => [w.id, w])))).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!selected) return;
     setSummary(null);
+    setExpandExp(false);
+    setExpandPay(false);
     getProjectSummary(selected).then(setSummary).catch((err) => setError(errorMessage(err)));
   }, [selected]);
+
+  // Resolve an expense's payee: vendor → workforce → manual "Paid To".
+  const payeeOf = (x) => {
+    if (x.vendorId && vendorMap[x.vendorId]) return vendorMap[x.vendorId];
+    if (x.workforceId && workforceMap[x.workforceId]) return workforceMap[x.workforceId].name;
+    return x.paidTo || '—';
+  };
 
   const sorted = useMemo(() => {
     if (!projects) return [];
@@ -132,53 +181,82 @@ export default function ProjectFinancePage() {
             </div>
 
             <Card>
-              <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">
-                Expense Summary
-                <span className="ml-2 text-sm font-normal text-red-600">{formatMoney(summary.projectExpenses, currency)}</span>
-              </h3>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 className="font-semibold text-slate-700 dark:text-slate-200">
+                  Expense Summary
+                  <span className="ml-2 text-sm font-normal text-red-600">{formatMoney(summary.projectExpenses, currency)}</span>
+                </h3>
+                <button className="btn-secondary whitespace-nowrap py-1.5 text-xs" onClick={() => navigate(`/expenses?projectId=${selected}`)}>
+                  <Icon name="expenses" className="mr-1 inline h-4 w-4 align-middle" />See all Expenses
+                </button>
+              </div>
               {summary.expenses?.length ? (
-                <div className="space-y-2">
-                  {summary.expenses.map((x) => {
-                    const balance = (Number(x.amount) || 0) - (Number(x.amountPaid) || 0);
-                    return (
-                      <div key={x.id} className="rounded-lg border border-cream-200 p-2.5 dark:border-slate-700">
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-5">
-                          <Field label="Date" value={formatDate(x.date)} />
-                          <Field label="Category" value={x.category} />
-                          <Field label="Amount" value={formatMoney(x.amount, currency)} accent="text-red-600" />
-                          <Field label="Status" value={x.paymentStatus || '—'} />
-                          <Field label="Paid" value={formatMoney(x.amountPaid, currency)} accent="text-green-700" />
-                          <Field label="Balance" value={formatMoney(balance > 0 ? balance : 0, currency)} />
-                          <Field label="Paid To" value={x.paidTo || '—'} />
-                          <Field label="Paid By" value={x.expenseBy || '—'} />
-                          <Field label="Account" value={x.account || '—'} />
-                          <Field label="Notes" value={x.notes || '—'} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-xs text-slate-400">
+                        <tr>
+                          <th className="py-1.5 font-medium">Category</th>
+                          <th className="py-1.5 font-medium">Date</th>
+                          <th className="py-1.5 text-right font-medium">Amount</th>
+                          <th className="py-1.5 font-medium">Vendor / Paid To</th>
+                          <th className="py-1.5 font-medium">Note</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-cream-200 dark:divide-slate-700">
+                        {(expandExp ? summary.expenses : summary.expenses.slice(0, 5)).map((x) => (
+                          <tr key={x.id}>
+                            <td className="py-1.5 pr-3 text-slate-700 dark:text-slate-200">{x.category}</td>
+                            <td className="py-1.5 pr-3 text-slate-500">{formatDate(x.date)}</td>
+                            <td className="py-1.5 pr-3 text-right font-medium text-red-600">{formatMoney(x.amount, currency)}</td>
+                            <td className="py-1.5 pr-3 text-slate-600 dark:text-slate-300">
+                              <span className="block max-w-[150px] truncate" title={payeeOf(x)}>{payeeOf(x)}</span>
+                            </td>
+                            <td className="py-1.5"><NoteCell text={x.notes} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {summary.expenses.length > 5 && (
+                    <button className="mt-2 text-xs font-medium text-brand-600 hover:underline" onClick={() => setExpandExp((v) => !v)}>
+                      {expandExp ? 'Show less' : `See More (${summary.expenses.length - 5} more)`}
+                    </button>
+                  )}
+                </>
               ) : (
                 <p className="text-sm text-slate-400">No expenses.</p>
               )}
             </Card>
 
             <Card>
-              <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">Payment History</h3>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 className="font-semibold text-slate-700 dark:text-slate-200">Payment History</h3>
+                <button className="btn-secondary whitespace-nowrap py-1.5 text-xs" onClick={() => navigate(`/finance?projectId=${selected}`)}>
+                  <Icon name="finance" className="mr-1 inline h-4 w-4 align-middle" />See all Payments
+                </button>
+              </div>
               {summary.payments.length ? (
-                <div className="space-y-2">
-                  {summary.payments.map((p) => (
-                    <div key={p.id} className="rounded-lg border border-cream-200 p-2.5 dark:border-slate-700">
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-5">
-                        <Field label="Date" value={formatDate(p.date)} />
-                        <Field label="Amount" value={formatMoney(p.amount, currency)} accent="text-green-700" />
-                        <Field label="Method" value={p.method || '—'} />
-                        <Field label="Account" value={p.account || '—'} />
-                        <Field label="Notes" value={p.notes || '—'} />
+                <>
+                  <div className="space-y-2">
+                    {(expandPay ? summary.payments : summary.payments.slice(0, 5)).map((p) => (
+                      <div key={p.id} className="rounded-lg border border-cream-200 p-2.5 dark:border-slate-700">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-5">
+                          <Field label="Date" value={formatDate(p.date)} />
+                          <Field label="Amount" value={formatMoney(p.amount, currency)} accent="text-green-700" />
+                          <Field label="Method" value={p.method || '—'} />
+                          <Field label="Account" value={p.account || '—'} />
+                          <Field label="Notes" value={p.notes || '—'} />
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                  {summary.payments.length > 5 && (
+                    <button className="mt-2 text-xs font-medium text-brand-600 hover:underline" onClick={() => setExpandPay((v) => !v)}>
+                      {expandPay ? 'Show less' : `See More (${summary.payments.length - 5} more)`}
+                    </button>
+                  )}
+                </>
               ) : (
                 <p className="text-sm text-slate-400">No payments recorded.</p>
               )}

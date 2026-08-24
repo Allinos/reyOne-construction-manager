@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { listExpenses, deleteExpense, projectOptions, getExpenseStats } from './api';
 import { vendorOptions } from '../vendors/api';
 import { workforceOptions } from '../workforce/api';
@@ -55,19 +55,25 @@ export default function ExpensesPage() {
     getExpenseStats(month).then(setStats).catch(() => {});
   }, [month]);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectId = searchParams.get('projectId') || '';
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, limit: 50 };
       if (scopeFilter) params.scope = scopeFilter;
-      if (month) params.month = month;
+      // Project filter (from "See all Expenses") shows every month for that
+      // project; otherwise the selected month applies.
+      if (projectId) params.projectId = Number(projectId);
+      else if (month) params.month = month;
       setResult(await listExpenses(params));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [page, scopeFilter, month]);
+  }, [page, scopeFilter, month, projectId]);
 
   useEffect(() => {
     projectOptions().then(setProjects).catch(() => {});
@@ -124,10 +130,17 @@ export default function ExpensesPage() {
         </div>
       </Card>
 
+      {projectId && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:border-slate-600 dark:bg-slate-800 dark:text-brand-300">
+          <span>Showing expenses for <b>{projectMap[projectId]?.name || `project #${projectId}`}</b></span>
+          <button className="ml-auto text-xs font-medium hover:underline" onClick={() => { setSearchParams({}); setPage(1); }}>Clear filter</button>
+        </div>
+      )}
+
       {/* List header: "Last 50 Entries" + scope tabs */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-          Last 50 Entries{monthLabel ? ` · ${monthLabel}` : ''}
+          {projectId ? 'Project Expenses' : `Last 50 Entries${monthLabel ? ` · ${monthLabel}` : ''}`}
         </h3>
         <div className="flex overflow-hidden rounded-lg border border-cream-300 text-sm dark:border-slate-700">
           {[{ v: '', l: 'All' }, { v: 'PROJECT', l: 'Project Expenses' }, { v: 'COMPANY', l: 'Company Expenses' }].map((t) => (

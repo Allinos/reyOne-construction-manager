@@ -107,6 +107,7 @@ export default function VendorsPage() {
                   <th className="px-4 py-3 font-medium">Vendor</th>
                   <th className="px-4 py-3 font-medium">Contact Person</th>
                   <th className="px-4 py-3 font-medium">Phone</th>
+                  <th className="px-4 py-3 font-medium">Address</th>
                   <th className="px-4 py-3 font-medium">GST</th>
                   <th className="px-4 py-3" />
                 </tr>
@@ -117,6 +118,9 @@ export default function VendorsPage() {
                     <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{v.name}</td>
                     <td className="px-4 py-3 text-slate-600">{v.contactPerson || '—'}</td>
                     <td className="px-4 py-3 text-slate-600">{v.phone || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      <span className="block max-w-[200px] truncate" title={v.address || ''}>{v.address || '—'}</span>
+                    </td>
                     <td className="px-4 py-3 text-slate-600">{v.gstNumber || '—'}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <button className="pill bg-cream-200 text-slate-600 hover:bg-cream-300" onClick={() => navigate(`/vendors/${v.id}`)}>Ledger</button>

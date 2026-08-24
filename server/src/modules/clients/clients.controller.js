@@ -14,6 +14,9 @@ const clientsController = {
   async update(req, res) {
     return ok(res, await service.update(req.params.id, req.body, req.user, req));
   },
+  async remove(req, res) {
+    return ok(res, await service.remove(req.params.id, req.user, req));
+  },
 };
 
 module.exports = clientsController;

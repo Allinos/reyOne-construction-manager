@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { listPayments, createPayment, updatePayment, deletePayment, projectOptions, getProjectsFinance } from './api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -38,16 +39,21 @@ export default function PaymentsPage({ search = '' }) {
     return () => clearTimeout(t);
   }, [search]);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectId = searchParams.get('projectId') || '';
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setResult(await listPayments({ page, search: q || undefined }));
+      const params = { page, search: q || undefined };
+      if (projectId) params.projectId = Number(projectId);
+      setResult(await listPayments(params));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [page, q]);
+  }, [page, q, projectId]);
 
   useEffect(() => {
     projectOptions().then(setProjects).catch(() => {});
@@ -122,6 +128,13 @@ export default function PaymentsPage({ search = '' }) {
         actions={can('finance.create') && <button className="btn-primary" onClick={openNew}>+ Record Payment</button>}
       />
       {error && <Alert>{error}</Alert>}
+
+      {projectId && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:border-slate-600 dark:bg-slate-800 dark:text-brand-300">
+          <span>Showing payments for <b>{projectMap[projectId]?.name || `project #${projectId}`}</b></span>
+          <button className="ml-auto text-xs font-medium hover:underline" onClick={() => { setSearchParams({}); setPage(1); }}>Clear filter</button>
+        </div>
+      )}
 
       <Card className="!p-0 overflow-hidden">
         {loading ? (

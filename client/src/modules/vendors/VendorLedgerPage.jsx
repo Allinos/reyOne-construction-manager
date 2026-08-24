@@ -43,7 +43,7 @@ export default function VendorLedgerPage() {
     <div>
       <PageHeader
         title={v.name}
-        subtitle={[v.contactPerson, v.phone, v.gstNumber].filter(Boolean).join(' · ') || 'Vendor ledger'}
+        subtitle={[v.contactPerson, v.phone, v.gstNumber, v.address].filter(Boolean).join(' · ') || 'Vendor ledger'}
         actions={
           <button className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-white hover:bg-brand-600" onClick={() => navigate('/vendors')} aria-label="Back">
             <Icon name="arrowLeft" className="h-4 w-4" />
