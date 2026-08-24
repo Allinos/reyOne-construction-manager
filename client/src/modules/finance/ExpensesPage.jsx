@@ -35,7 +35,7 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [analytics, setAnalytics] = useState(false);
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // drives analytics + list
+  const [month, setMonth] = useState(''); // empty = latest 30 across all months
   const [stats, setStats] = useState(null);
 
   // Human label for the selected month, e.g. "August 2026".
@@ -61,10 +61,11 @@ export default function ExpensesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page, limit: 50 };
+      const params = { page, limit: 30 };
       if (scopeFilter) params.scope = scopeFilter;
       // Project filter (from "See all Expenses") shows every month for that
-      // project; otherwise the selected month applies.
+      // project; a selected month filters to that month; otherwise the latest
+      // 30 expenses across all months are shown.
       if (projectId) params.projectId = Number(projectId);
       else if (month) params.month = month;
       setResult(await listExpenses(params));
@@ -117,7 +118,7 @@ export default function ExpensesPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-slate-600 dark:text-slate-100">
-              {monthLabel ? `${monthLabel} Analytics` : 'Analytics'}
+              {monthLabel ? `${monthLabel} Analytics` : 'Overall Analytics'}
             </p>
             <div className="flex flex-wrap gap-x-6 gap-y-2">
               <div><p className="text-xs text-slate-500">Project Expenses</p><p className="text-lg font-semibold text-red-600">{stats ? formatMoney(stats.project, currency) : '—'}</p></div>
@@ -128,6 +129,9 @@ export default function ExpensesPage() {
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500">Month</label>
             <input type="month" className="input w-auto py-1.5" value={month} onChange={(e) => { setMonth(e.target.value); setPage(1); }} />
+            {month && (
+              <button className="text-xs font-medium text-brand-600 hover:underline" onClick={() => { setMonth(''); setPage(1); }}>Reset</button>
+            )}
           </div>
         </div>
       </div>
@@ -142,7 +146,7 @@ export default function ExpensesPage() {
       {/* List header: "Last 50 Entries" + scope tabs */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-          {projectId ? 'Project Expenses' : `Last 50 Entries${monthLabel ? ` · ${monthLabel}` : ''}`}
+          {projectId ? 'Project Expenses' : (monthLabel || 'Last 30 Entries')}
         </h3>
         <div className="flex overflow-hidden rounded-lg border border-cream-300 text-sm dark:border-slate-700">
           {[{ v: '', l: 'All' }, { v: 'PROJECT', l: 'Project Expenses' }, { v: 'COMPANY', l: 'Company Expenses' }].map((t) => (
