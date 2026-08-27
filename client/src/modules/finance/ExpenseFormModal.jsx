@@ -9,15 +9,75 @@ import { formatMoney, toAmount } from '../../lib/format';
 import Modal from '../../components/Modal';
 import { Spinner } from '../../components/ui';
 
+// Searchable project selector — shows the latest 10 projects by default and
+// filters across name / client / reference as the user types, so long project
+// lists stay easy to use without heavy scrolling.
+function ProjectPicker({ projects, value, onChange }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const selected = projects.find((p) => String(p.id) === String(value));
+
+  const label = (p) => `${p.name}${p.clientName ? ` · ${p.clientName}` : ''}`;
+  const q = query.trim().toLowerCase();
+  const list = (q
+    ? projects.filter((p) => `${p.name} ${p.clientName || ''} ${p.referenceNumber || ''}`.toLowerCase().includes(q))
+    : [...projects].sort((a, b) => b.id - a.id).slice(0, 10));
+
+  if (selected && !open) {
+    return (
+      <button type="button" className="input flex w-full items-center justify-between text-left" onClick={() => setOpen(true)}>
+        <span className="truncate">
+          <span className="font-medium">{selected.name}</span>
+          {selected.clientName && <span className="text-slate-500"> · {selected.clientName}</span>}
+        </span>
+        <span className="ml-2 shrink-0 text-xs font-medium text-brand-600">Change</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <input
+        className="input"
+        autoFocus
+        placeholder="Search project or client…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onFocus={() => setOpen(true)}
+      />
+      {open && (
+        <div className="scroll-thin absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-cream-300 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          {list.length === 0 ? (
+            <p className="px-3 py-2 text-sm text-slate-400">No matching projects</p>
+          ) : (
+            list.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className="block w-full border-b border-cream-100 px-3 py-2 text-left text-sm last:border-0 hover:bg-cream-100 dark:border-slate-700 dark:hover:bg-slate-700"
+                onClick={() => { onChange(String(p.id)); setOpen(false); setQuery(''); }}
+              >
+                <span className="font-medium text-slate-800 dark:text-slate-100">{label(p)}</span>
+                <span className="block text-xs text-slate-400">{p.referenceNumber}</span>
+              </button>
+            ))
+          )}
+          {!q && <p className="px-3 py-1.5 text-[11px] text-slate-400">Showing latest 10 — type to search all</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const PAY_OPTIONS = [
   { v: 'PAID', l: 'Paid' },
   { v: 'PARTIAL', l: 'Partial Payment' },
   { v: 'CREDIT', l: 'Credit / Unpaid' },
 ];
 
-const blank = (scope) => ({
+const blank = (scope, presetProjectId = '') => ({
   scope,
-  projectId: '',
+  projectId: presetProjectId ? String(presetProjectId) : '',
   vendorId: '',
   category: '',
   amount: '',
@@ -31,7 +91,7 @@ const blank = (scope) => ({
   workforceId: '',
 });
 
-export default function ExpenseFormModal({ open, onClose, scope, editing, onSaved }) {
+export default function ExpenseFormModal({ open, onClose, scope, editing, onSaved, presetProjectId }) {
   const { bootstrap } = useAuth();
   const toast = useToast();
   const currency = bootstrap?.company?.currency || 'INR';
@@ -77,16 +137,20 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
       });
     } else {
       setPayeeMode('vendor');
-      setForm(blank(scope));
+      setForm(blank(scope, presetProjectId));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, scope, editing]);
+  }, [open, scope, editing, presetProjectId]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const remaining = form ? (Number(form.amount) || 0) - (Number(form.amountPaid) || 0) : 0;
 
   const save = async () => {
+    if (form.scope === 'PROJECT' && !form.projectId) {
+      setError('Please select a project');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -157,14 +221,7 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
           {isProject && (
             <div className="sm:col-span-2">
               <label className="label">Project <span className="text-red-500">*</span></label>
-              <select className="input" value={form.projectId} onChange={(e) => set('projectId', e.target.value)} required>
-                <option value="">Select project…</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}{p.clientName ? ` · ${p.clientName}` : ''} ({p.referenceNumber})
-                  </option>
-                ))}
-              </select>
+              <ProjectPicker projects={projects} value={form.projectId} onChange={(id) => set('projectId', id)} />
             </div>
           )}
           {isProject ? (

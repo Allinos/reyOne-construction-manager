@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { getProjectsFinance, getProjectSummary } from './api';
 import { vendorOptions } from '../vendors/api';
 import { workforceOptions } from '../workforce/api';
+import ExpenseFormModal from './ExpenseFormModal';
+import PaymentFormModal from './PaymentFormModal';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDate } from '../../lib/format';
@@ -93,7 +95,7 @@ function ProjectRow({ p, view, currency, active, onClick }) {
 }
 
 export default function ProjectFinancePage() {
-  const { bootstrap } = useAuth();
+  const { bootstrap, can } = useAuth();
   const navigate = useNavigate();
   const currency = bootstrap?.company?.currency || 'INR';
   const [projects, setProjects] = useState(null);
@@ -105,6 +107,15 @@ export default function ProjectFinancePage() {
   const [workforceMap, setWorkforceMap] = useState({});
   const [expandExp, setExpandExp] = useState(false);
   const [expandPay, setExpandPay] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+
+  // Refresh the selected project's summary and the left-hand totals after a
+  // new expense/payment is recorded.
+  const reload = () => {
+    if (selected) getProjectSummary(selected).then(setSummary).catch(() => {});
+    getProjectsFinance().then(setProjects).catch(() => {});
+  };
 
   useEffect(() => {
     getProjectsFinance()
@@ -186,9 +197,16 @@ export default function ProjectFinancePage() {
                   Expense Summary
                   <span className="ml-2 text-sm font-normal text-red-600">{formatMoney(summary.projectExpenses, currency)}</span>
                 </h3>
-                <button className="btn-secondary whitespace-nowrap py-1.5 text-xs" onClick={() => navigate(`/expenses?projectId=${selected}`)}>
-                  <Icon name="expenses" className="mr-1 inline h-4 w-4 align-middle" />See all Expenses
-                </button>
+                <div className="flex items-center gap-2">
+                  {can('finance.create') && (
+                    <button className="btn-secondary px-2 py-1.5" title="Add expense" onClick={() => setExpenseOpen(true)}>
+                      <Icon name="add" className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button className="btn-secondary whitespace-nowrap py-1.5 text-xs" onClick={() => navigate(`/expenses?projectId=${selected}`)}>
+                    <Icon name="expenses" className="mr-1 inline h-4 w-4 align-middle" />See all Expenses
+                  </button>
+                </div>
               </div>
               {summary.expenses?.length ? (
                 <>
@@ -232,9 +250,16 @@ export default function ProjectFinancePage() {
             <Card>
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h3 className="font-semibold text-slate-700 dark:text-slate-200">Payment History</h3>
-                <button className="btn-secondary whitespace-nowrap py-1.5 text-xs" onClick={() => navigate(`/finance?projectId=${selected}`)}>
-                  <Icon name="finance" className="mr-1 inline h-4 w-4 align-middle" />See all Payments
-                </button>
+                <div className="flex items-center gap-2">
+                  {can('finance.create') && (
+                    <button className="btn-secondary px-2 py-1.5" title="Record payment" onClick={() => setPaymentOpen(true)}>
+                      <Icon name="add" className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button className="btn-secondary whitespace-nowrap py-1.5 text-xs" onClick={() => navigate(`/finance?projectId=${selected}`)}>
+                    <Icon name="finance" className="mr-1 inline h-4 w-4 align-middle" />See all Payments
+                  </button>
+                </div>
               </div>
               {summary.payments.length ? (
                 <>
@@ -264,6 +289,29 @@ export default function ProjectFinancePage() {
           </div>
         )}
       </div>
+
+      {expenseOpen && (
+        <ExpenseFormModal
+          open
+          scope="PROJECT"
+          editing={null}
+          presetProjectId={selected}
+          onClose={() => setExpenseOpen(false)}
+          onSaved={reload}
+        />
+      )}
+      {paymentOpen && (
+        <PaymentFormModal
+          open
+          projectId={selected}
+          projectLabel={(() => {
+            const p = (projects || []).find((pr) => pr.id === selected);
+            return p ? `${p.name}${p.clientName ? ` · ${p.clientName}` : ''}` : '';
+          })()}
+          onClose={() => setPaymentOpen(false)}
+          onSaved={reload}
+        />
+      )}
     </div>
   );
 }
