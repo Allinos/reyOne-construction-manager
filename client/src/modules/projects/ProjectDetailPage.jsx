@@ -94,6 +94,7 @@ export default function ProjectDetailPage() {
   const enabledModules = bootstrap?.modules || [];
   const requirementsEnabled = enabledModules.some((m) => m.key === 'requirements') && can('requirements.read');
   const photosEnabled = requirementsEnabled && enabledModules.some((m) => m.key === 'photo_upload');
+  const financeEnabled = enabledModules.some((m) => m.key === 'finance') && can('finance.read');
 
   const [project, setProject] = useState(null);
   const [customDefs, setCustomDefs] = useState([]);
@@ -285,10 +286,18 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
-      {/* Requirements & Details / Photos & Docs */}
-      {requirementsEnabled && (
+      {/* Project Finance / Requirements & Details / Photos & Docs */}
+      {(requirementsEnabled || financeEnabled) && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-          <RequirementsButton projectId={project.id} />
+          <div className="flex flex-wrap gap-2">
+            {financeEnabled && (
+              <button className="btn-secondary" onClick={() => navigate(`/finance/project?projectId=${project.id}`)}>
+                <span className="mr-1.5 inline-flex align-middle"><Icon name="finance" className="h-4 w-4" /></span>
+                Project Finance
+              </button>
+            )}
+            {requirementsEnabled && <RequirementsButton projectId={project.id} />}
+          </div>
           {photosEnabled && (
             <RequirementsButton
               projectId={project.id}

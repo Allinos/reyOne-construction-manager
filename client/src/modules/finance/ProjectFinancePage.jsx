@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getProjectsFinance, getProjectSummary } from './api';
 import { vendorOptions } from '../vendors/api';
 import { workforceOptions } from '../workforce/api';
@@ -40,11 +40,12 @@ function NoteCell({ text }) {
   );
 }
 
-function Stat({ label, value, accent }) {
+function Stat({ label, value, accent, sub }) {
   return (
     <Card className="flex flex-col gap-1">
       <span className="text-sm text-slate-500">{label}</span>
       <span className={`text-xl font-semibold ${accent || 'text-slate-800 dark:text-slate-100'}`}>{value}</span>
+      {sub && <span className="text-xs text-slate-400">{sub}</span>}
     </Card>
   );
 }
@@ -97,6 +98,8 @@ function ProjectRow({ p, view, currency, active, onClick }) {
 export default function ProjectFinancePage() {
   const { bootstrap, can } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const wantProjectId = searchParams.get('projectId');
   const currency = bootstrap?.company?.currency || 'INR';
   const [projects, setProjects] = useState(null);
   const [view, setView] = useState('project'); // 'project' | 'client'
@@ -121,7 +124,11 @@ export default function ProjectFinancePage() {
     getProjectsFinance()
       .then((list) => {
         setProjects(list);
-        if (list.length) setSelected(list[0].id); // auto-select first — no manual search needed
+        // Prefer a project passed via ?projectId= (deep link from a project page);
+        // otherwise auto-select the first.
+        const wanted = wantProjectId && list.find((p) => String(p.id) === String(wantProjectId));
+        if (wanted) setSelected(wanted.id);
+        else if (list.length) setSelected(list[0].id);
       })
       .catch((err) => setError(errorMessage(err)));
     vendorOptions().then((list) => setVendorMap(Object.fromEntries(list.map((v) => [v.id, v.name])))).catch(() => {});
@@ -184,19 +191,20 @@ export default function ProjectFinancePage() {
             <div>
               <h2 className="mb-3 text-lg font-semibold text-slate-800 dark:text-slate-100">Financial Overview</h2>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                <Stat label="Total Value" value={formatMoney(summary.totalAmount, currency)} />
+                <Stat
+                  label="Total Amount"
+                  value={formatMoney(summary.totalAmount, currency)}
+                  sub={`Initial / Advance: ${formatMoney(summary.advanceAmount, currency)}`}
+                />
                 <Stat label="Received" value={formatMoney(summary.receivedAmount, currency)} accent="text-green-600" />
                 <Stat label="Balance" value={formatMoney(summary.balanceAmount, currency)} accent="text-red-600" />
-                <Stat label="Advance" value={formatMoney(summary.advanceAmount, currency)} />
+                <Stat label="Total Expense" value={formatMoney(summary.projectExpenses, currency)} accent="text-red-600" />
               </div>
             </div>
 
             <Card>
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h3 className="font-semibold text-slate-700 dark:text-slate-200">
-                  Expense Summary
-                  <span className="ml-2 text-sm font-normal text-red-600">{formatMoney(summary.projectExpenses, currency)}</span>
-                </h3>
+                <h3 className="font-semibold text-slate-700 dark:text-slate-200">Expense Summary</h3>
                 <div className="flex items-center gap-2">
                   {can('finance.create') && (
                     <button className="btn-secondary px-2 py-1.5" title="Add expense" onClick={() => setExpenseOpen(true)}>
