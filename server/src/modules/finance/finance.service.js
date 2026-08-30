@@ -387,12 +387,13 @@ const financeService = {
     const d = dateWhere(query);
     const txWhere = d ? { date: d } : {};
 
-    const [received, companyExp, projectExp, byCategory, accounts] = await Promise.all([
+    const [received, companyExp, projectExp, byCategory, accounts, projAgg] = await Promise.all([
       repo.sumPayments(txWhere),
       repo.sumExpenses({ ...txWhere, scope: 'COMPANY' }),
       repo.sumExpenses({ ...txWhere, scope: 'PROJECT' }),
       repo.expensesByCategory(txWhere),
       this.accounts(),
+      repo.sumProjectAmount(),
     ]);
 
     const totalReceived = D(received._sum.amount);
@@ -401,6 +402,7 @@ const financeService = {
     const totalExpenses = companyExpenses.plus(projectExpenses);
 
     return {
+      totalProjectValue: money(D(projAgg._sum.projectAmount)),
       totalReceived: money(totalReceived),
       companyExpenses: money(companyExpenses),
       projectExpenses: money(projectExpenses),

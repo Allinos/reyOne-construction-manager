@@ -21,13 +21,14 @@ function OverviewBar() {
 
   const accountBalance = o ? o.accounts.reduce((sum, a) => sum + Number(a.balance || 0), 0) : 0;
   const items = [
+    { label: 'Total Project Value', value: o ? formatMoney(o.totalProjectValue, currency) : '—', accent: 'text-slate-800 dark:text-slate-100' },
     { label: 'Total Received', value: o ? formatMoney(o.totalReceived, currency) : '—', accent: 'text-green-600' },
     { label: 'Total Expenses', value: o ? formatMoney(o.totalExpenses, currency) : '—', accent: 'text-red-600' },
-    { label: 'Account Balance', value: o ? formatMoney(accountBalance, currency) : '—', accent: 'text-slate-800' },
+    { label: 'Account Balance', value: o ? formatMoney(accountBalance, currency) : '—', accent: 'text-slate-800 dark:text-slate-100' },
   ];
 
   return (
-    <div className="mb-5 grid grid-cols-2 gap-3 rounded-xl border border-cream-300 bg-white p-3 sm:grid-cols-3 dark:border-slate-700 dark:bg-slate-800">
+    <div className="mb-5 grid grid-cols-2 gap-3 rounded-xl border border-cream-300 bg-white p-3 sm:grid-cols-4 dark:border-slate-700 dark:bg-slate-800">
       {items.map((it) => (
         <div key={it.label} className="px-2">
           <p className="text-xs text-slate-500">{it.label}</p>
