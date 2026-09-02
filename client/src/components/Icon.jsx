@@ -33,6 +33,7 @@ const PATHS = {
   text: 'M4 6h16M4 10h16M4 14h10M4 18h7',
   table: 'M3 4h18v16H3zM3 9h18M3 14.5h18M9 4v16M15 4v16',
   form: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 8h8M8 12h8M8 16h4',
+  help: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3M12 17h.01',
 };
 
 export default function Icon({ name, className = 'w-5 h-5', strokeWidth = 2 }) {

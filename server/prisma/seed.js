@@ -86,6 +86,17 @@ const DEFAULT_SETTINGS = [
     ],
   },
 
+  // Help centre — three configurable sections (enable/disable + HTML or URL)
+  {
+    group: 'help',
+    key: 'sections',
+    value: [
+      { key: 'tutorial', title: 'Tutorial', enabled: true, url: '', html: '<h2>Getting Started</h2><p>Welcome! Use the sidebar to navigate modules. Admins can edit this content in Settings → System → Help.</p>' },
+      { key: 'support', title: 'Support & Contact', enabled: true, url: '', html: '<h2>Support &amp; Contact</h2><p>Need help? Reach your administrator or update this content in Settings → System → Help.</p>' },
+      { key: 'faqs', title: 'FAQs', enabled: true, url: '', html: '<h2>FAQs</h2><p>Add your frequently asked questions in Settings → System → Help.</p>' },
+    ],
+  },
+
   // Custom Module — configurable page name + form schema + list visibility
   { group: 'custom_module', key: 'name', value: 'Custom Module' },
   { group: 'custom_module', key: 'fields', value: [] },

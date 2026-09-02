@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import NotificationBell from '../../modules/notifications/NotificationBell';
+import HelpModal from '../HelpModal';
 import Icon from '../Icon';
 
 function ThemeToggle() {
@@ -33,6 +35,7 @@ function ThemeToggle() {
 export default function TopNav({ onMenu }) {
   const { bootstrap, can } = useAuth();
   const invoicesEnabled = (bootstrap?.modules || []).some((m) => m.key === 'invoices') && can('invoices.read');
+  const [helpOpen, setHelpOpen] = useState(false);
 
   return (
     <header className="flex items-center justify-between border-b border-cream-300 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-800">
@@ -56,8 +59,17 @@ export default function TopNav({ onMenu }) {
           </Link>
         )}
         <ThemeToggle />
+        <button
+          className="rounded-lg p-2 text-slate-500 hover:bg-cream-200 dark:text-slate-300"
+          onClick={() => setHelpOpen(true)}
+          aria-label="Help"
+          title="Help"
+        >
+          <Icon name="help" className="h-5 w-5" />
+        </button>
         <NotificationBell />
       </div>
+      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </header>
   );
 }
