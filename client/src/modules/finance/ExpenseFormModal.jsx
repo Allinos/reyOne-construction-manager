@@ -8,66 +8,7 @@ import { errorMessage } from '../../lib/api';
 import { formatMoney, toAmount } from '../../lib/format';
 import Modal from '../../components/Modal';
 import { Spinner } from '../../components/ui';
-
-// Searchable project selector — shows the latest 10 projects by default and
-// filters across name / client / reference as the user types, so long project
-// lists stay easy to use without heavy scrolling.
-function ProjectPicker({ projects, value, onChange }) {
-  const [query, setQuery] = useState('');
-  const [open, setOpen] = useState(false);
-  const selected = projects.find((p) => String(p.id) === String(value));
-
-  const label = (p) => `${p.name}${p.clientName ? ` · ${p.clientName}` : ''}`;
-  const q = query.trim().toLowerCase();
-  const list = (q
-    ? projects.filter((p) => `${p.name} ${p.clientName || ''} ${p.referenceNumber || ''}`.toLowerCase().includes(q))
-    : [...projects].sort((a, b) => b.id - a.id).slice(0, 10));
-
-  if (selected && !open) {
-    return (
-      <button type="button" className="input flex w-full items-center justify-between text-left" onClick={() => setOpen(true)}>
-        <span className="truncate">
-          <span className="font-medium">{selected.name}</span>
-          {selected.clientName && <span className="text-slate-500"> · {selected.clientName}</span>}
-        </span>
-        <span className="ml-2 shrink-0 text-xs font-medium text-brand-600">Change</span>
-      </button>
-    );
-  }
-
-  return (
-    <div className="relative">
-      <input
-        className="input"
-        autoFocus
-        placeholder="Search project or client…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => setOpen(true)}
-      />
-      {open && (
-        <div className="scroll-thin absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-cream-300 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
-          {list.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-slate-400">No matching projects</p>
-          ) : (
-            list.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className="block w-full border-b border-cream-100 px-3 py-2 text-left text-sm last:border-0 hover:bg-cream-100 dark:border-slate-700 dark:hover:bg-slate-700"
-                onClick={() => { onChange(String(p.id)); setOpen(false); setQuery(''); }}
-              >
-                <span className="font-medium text-slate-800 dark:text-slate-100">{label(p)}</span>
-                <span className="block text-xs text-slate-400">{p.referenceNumber}</span>
-              </button>
-            ))
-          )}
-          {!q && <p className="px-3 py-1.5 text-[11px] text-slate-400">Showing latest 10 — type to search all</p>}
-        </div>
-      )}
-    </div>
-  );
-}
+import SearchSelect from '../../components/SearchSelect';
 
 const PAY_OPTIONS = [
   { v: 'PAID', l: 'Paid' },
@@ -221,7 +162,17 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
           {isProject && (
             <div className="sm:col-span-2">
               <label className="label">Project <span className="text-red-500">*</span></label>
-              <ProjectPicker projects={projects} value={form.projectId} onChange={(id) => set('projectId', id)} />
+              <SearchSelect
+                options={projects}
+                value={form.projectId}
+                onChange={(id) => set('projectId', String(id))}
+                getKey={(p) => p.id}
+                getLabel={(p) => `${p.name}${p.clientName ? ` · ${p.clientName}` : ''}`}
+                getSub={(p) => p.referenceNumber || ''}
+                getSearch={(p) => `${p.name} ${p.clientName || ''} ${p.referenceNumber || ''} ${p.id}`}
+                placeholder="Search project or client…"
+                recentHint="Showing latest 10 — type to search all"
+              />
             </div>
           )}
           {isProject ? (
@@ -241,16 +192,29 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
                 </button>
               </div>
               {payeeMode === 'vendor' && (
-                <select className="input" value={form.vendorId} onChange={(e) => set('vendorId', e.target.value)}>
-                  <option value="">Select vendor…</option>
-                  {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-                </select>
+                <SearchSelect
+                  options={vendors}
+                  value={form.vendorId}
+                  onChange={(id) => set('vendorId', String(id))}
+                  getKey={(v) => v.id}
+                  getLabel={(v) => v.name}
+                  getSearch={(v) => v.name}
+                  placeholder="Search vendor by name…"
+                  recentHint="Showing recent vendors — type to search"
+                />
               )}
               {payeeMode === 'workforce' && (
-                <select className="input" value={form.workforceId} onChange={(e) => set('workforceId', e.target.value)}>
-                  <option value="">Select workforce member…</option>
-                  {workforce.map((w) => <option key={w.id} value={w.id}>{w.name} — {w.category}</option>)}
-                </select>
+                <SearchSelect
+                  options={workforce}
+                  value={form.workforceId}
+                  onChange={(id) => set('workforceId', String(id))}
+                  getKey={(w) => w.id}
+                  getLabel={(w) => w.name}
+                  getSub={(w) => w.category}
+                  getSearch={(w) => `${w.name} ${w.category}`}
+                  placeholder="Search workforce by name…"
+                  recentHint="Showing recent members — type to search"
+                />
               )}
               {payeeMode === 'manual' && (
                 <input className="input" placeholder="e.g., Local hardware shop" value={form.paidTo} onChange={(e) => set('paidTo', e.target.value)} />
@@ -263,7 +227,7 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
                 <input className="input" placeholder="e.g., Mintu, Admin, Company Card" value={form.expenseBy} onChange={(e) => set('expenseBy', e.target.value)} />
               </div>
               <div>
-                <label className="label">Paid To</label>
+                <label className="label">Expense Payee</label>
                 <input className="input" placeholder="e.g., Office Owner, Electricity Board" value={form.paidTo} onChange={(e) => set('paidTo', e.target.value)} />
               </div>
             </>

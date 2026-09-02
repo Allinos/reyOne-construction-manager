@@ -8,6 +8,7 @@ import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDate, toAmount } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
 import Modal from '../../components/Modal';
+import SearchSelect from '../../components/SearchSelect';
 
 const blank = { projectId: '', amount: '', date: '', method: '', account: '', notes: '' };
 
@@ -207,13 +208,18 @@ export default function PaymentsPage({ search = '' }) {
           <form id="payment-form" onSubmit={save} className="space-y-4">
             {!modal.editingId && (
               <div>
-                <label className="label">Project</label>
-                <select className="input" value={modal.form.projectId} onChange={(e) => setField('projectId', e.target.value)} required>
-                  <option value="">Select project…</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.referenceNumber} — {p.name}</option>
-                  ))}
-                </select>
+                <label className="label">Project / Client</label>
+                <SearchSelect
+                  options={projects}
+                  value={modal.form.projectId}
+                  onChange={(id) => setField('projectId', id)}
+                  getKey={(p) => p.id}
+                  getLabel={(p) => `${p.name}${p.clientName ? ` · ${p.clientName}` : ''}`}
+                  getSub={(p) => `${p.referenceNumber || ''}${p.clientPhone ? ` · ${p.clientPhone}` : ''}`}
+                  getSearch={(p) => `${p.name} ${p.clientName || ''} ${p.clientPhone || ''} ${p.referenceNumber || ''} ${p.id}`}
+                  placeholder="Search project, client, phone or ref…"
+                  recentHint="Showing latest projects — type to search"
+                />
                 {modal.form.projectId && financeMap[modal.form.projectId] && (
                   <div className="mt-2 grid grid-cols-3 gap-2 rounded-lg bg-cream-100 p-2 text-center text-xs dark:bg-slate-700">
                     <div>

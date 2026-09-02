@@ -8,6 +8,7 @@ import { errorMessage } from '../../lib/api';
 import { toAmount, amountPreview } from '../../lib/format';
 import { PageHeader, Card, Spinner, Alert } from '../../components/ui';
 import Icon from '../../components/Icon';
+import SearchSelect from '../../components/SearchSelect';
 
 function Field({ label, required, children }) {
   return (
@@ -189,17 +190,19 @@ export default function ProjectFormPage() {
           </div>
 
           {!isEdit && clientMode === 'existing' && (
-            <div className="mb-4">
+            <div className="mb-4 md:w-1/2">
               <label className="label">Select Client</label>
-              <select className="input md:w-1/2" value={form.clientName} onChange={(e) => pickClient(e.target.value)}>
-                <option value="">Choose an existing client…</option>
-                {clients.map((c) => (
-                  <option key={c.name} value={c.name}>
-                    {c.name}
-                    {c.phone ? ` · ${c.phone}` : ''}
-                  </option>
-                ))}
-              </select>
+              <SearchSelect
+                options={clients}
+                value={form.clientName}
+                onChange={pickClient}
+                getKey={(c) => c.name}
+                getLabel={(c) => c.name}
+                getSub={(c) => c.phone || ''}
+                getSearch={(c) => `${c.name} ${c.phone || ''}`}
+                placeholder="Search client by name or phone…"
+                recentHint="Showing recent clients — type to search"
+              />
               <p className="mt-1 text-xs text-slate-400">Their stored details fill in below — complete the project details and create.</p>
             </div>
           )}
