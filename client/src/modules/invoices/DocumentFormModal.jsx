@@ -187,6 +187,8 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
       onClose={onClose}
       title={`${docId ? 'Edit' : 'New'} ${label}`}
       wide
+      dismissOnBackdrop={false}
+      fullscreenable
       footer={
         <>
           <button className="btn-secondary" onClick={onClose}>Cancel</button>
