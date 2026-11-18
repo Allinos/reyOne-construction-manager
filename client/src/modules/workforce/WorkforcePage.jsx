@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { listWorkforce, createWorkforce, updateWorkforce, deleteWorkforce, getOverview, getWorkforceStats } from './api';
-import { saveProfile, createPayment } from '../payroll/api';
+import { saveProfile, createPayment, createAdvance } from '../payroll/api';
+import api, { unwrap } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -14,7 +15,8 @@ import ExpenseFormModal from '../finance/ExpenseFormModal';
 import { listProjects } from '../projects/api';
 
 const blank = { name: '', category: '', workerType: 'LABOUR', firmName: '', siteProjectId: '', joiningDate: '', phone: '', address: '', notes: '', status: 'ACTIVE' };
-const TYPE = { LABOUR: 'Labour', CONTRACTOR: 'Contractor' };
+const TYPE = { LABOUR: 'Labour', CONTRACTOR: 'Labour contractor', SUBCONTRACTOR: 'Subcontractor' };
+const isContractor = (t) => t === 'CONTRACTOR' || t === 'SUBCONTRACTOR';
 const SORTS = [
   { v: 'name:asc', l: 'Name (A–Z)' },
   { v: 'category:asc', l: 'Category' },
@@ -26,7 +28,7 @@ function cleanBody(f) {
     name: f.name.trim(),
     category: f.category.trim(),
     workerType: f.workerType,
-    firmName: f.workerType === 'CONTRACTOR' ? f.firmName?.trim() || null : null,
+    firmName: isContractor(f.workerType) ? f.firmName?.trim() || null : null,
     siteProjectId: f.siteProjectId ? Number(f.siteProjectId) : null,
     joiningDate: f.joiningDate || null,
     phone: f.phone || null,
@@ -92,12 +94,72 @@ function WageModal({ member, profile, onClose, onDone }) {
   );
 }
 
-function WorkerDrawer({ member, onClose, onEdit, onChanged }) {
+function ContractModal({ member, contract, projects, onClose, onDone }) {
+  const toast = useToast();
+  const [f, setF] = useState({
+    title: contract?.title || '', projectId: contract?.projectId ? String(contract.projectId) : member.siteProjectId ? String(member.siteProjectId) : '',
+    amount: contract?.amount ?? '', retentionPercent: contract?.retentionPercent ?? 0, startDate: contract?.startDate ? String(contract.startDate).slice(0, 10) : localDate(),
+    endDate: contract?.endDate ? String(contract.endDate).slice(0, 10) : '', status: contract?.status || 'active', notes: contract?.notes || '',
+  });
+  const save = async () => {
+    if (!f.title.trim() || !(Number(f.amount) >= 0)) { toast.error('Enter the scope and agreed amount'); return; }
+    const body = { title: f.title.trim(), projectId: f.projectId ? Number(f.projectId) : null, amount: Number(f.amount), retentionPercent: Number(f.retentionPercent) || 0, startDate: f.startDate || null, endDate: f.endDate || null, status: f.status, notes: f.notes || null };
+    try {
+      if (contract) await unwrap(api.patch(`/workforce/contracts/${contract.id}`, body));
+      else await unwrap(api.post(`/workforce/${member.id}/contracts`, body));
+      toast.success(contract ? 'Contract updated' : 'Contract added');
+      onDone();
+    } catch (e) { toast.error(errorMessage(e)); }
+  };
+  return (
+    <Modal open onClose={onClose} title={`${contract ? 'Edit' : 'New'} contract · ${member.name}`} footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={save}>Save</button></>}>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2"><label className="label">Scope of work</label><input className="input" placeholder="e.g. Brickwork Block A @ ₹42/sq.ft" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+        <div className="col-span-2"><label className="label">Project</label><Select className="input" value={f.projectId} onChange={(e) => setF({ ...f, projectId: e.target.value })}><option value="">General</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></div>
+        <div><label className="label">Agreed value</label><input type="number" min="0" className="input" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></div>
+        <div><label className="label">Retention %</label><input type="number" min="0" max="50" className="input" value={f.retentionPercent} onChange={(e) => setF({ ...f, retentionPercent: e.target.value })} /></div>
+        <div><label className="label">Start</label><input type="date" className="input" value={f.startDate} onChange={(e) => setF({ ...f, startDate: e.target.value })} /></div>
+        <div><label className="label">Target finish</label><input type="date" className="input" value={f.endDate} onChange={(e) => setF({ ...f, endDate: e.target.value })} /></div>
+        {contract && <div><label className="label">Status</label><Select className="input" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option value="active">Active</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></Select></div>}
+        <div className="col-span-2"><label className="label">Notes</label><textarea className="input" rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></div>
+      </div>
+    </Modal>
+  );
+}
+
+function AdvanceModal({ member, onClose, onDone }) {
+  const { bootstrap } = useAuth();
+  const toast = useToast();
+  const methods = bootstrap?.settings?.finance?.payment_methods || ['Cash'];
+  const [f, setF] = useState({ amount: '', date: localDate(), method: methods[0], notes: '' });
+  const save = async () => {
+    if (!(Number(f.amount) > 0)) { toast.error('Enter the advance amount'); return; }
+    try {
+      await createAdvance({ personType: 'WORKFORCE', personId: member.id, amount: Number(f.amount), date: f.date, method: f.method, notes: f.notes || undefined });
+      toast.success('Advance recorded — recover it when paying wages');
+      onDone();
+    } catch (e) { toast.error(errorMessage(e)); }
+  };
+  return (
+    <Modal open onClose={onClose} title={`Advance · ${member.name}`} footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={save}>Give advance</button></>}>
+      <div className="grid grid-cols-2 gap-3">
+        <div><label className="label">Amount</label><input type="number" min="0" className="input" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></div>
+        <div><label className="label">Date</label><input type="date" className="input" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div>
+        <div><label className="label">Method</label><Select className="input" value={f.method} onChange={(e) => setF({ ...f, method: e.target.value })}>{methods.map((m) => <option key={m}>{m}</option>)}</Select></div>
+        <div><label className="label">Notes</label><input className="input" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></div>
+      </div>
+    </Modal>
+  );
+}
+
+function WorkerDrawer({ member, onClose, onEdit, onChanged, projects }) {
   const { can, bootstrap } = useAuth();
   const currency = bootstrap?.company?.currency || 'INR';
   const money = (v) => formatMoney(v, currency);
   const [data, setData] = useState(null);
-  const [modal, setModal] = useState(null); // pay | wage | expense
+  const [modal, setModal] = useState(null); // pay | wage | expense | advance | contract
+  const [contract, setContract] = useState(null);
+  const [payFor, setPayFor] = useState(null);
   const load = useCallback(() => getOverview(member.id).then(setData).catch(() => setData({})), [member.id]);
   useEffect(() => { load(); }, [load]);
   const done = () => { setModal(null); load(); onChanged(); };
@@ -114,7 +176,7 @@ function WorkerDrawer({ member, onClose, onEdit, onChanged }) {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-white">{member.name}</h3>
-              <span className={`badge ${member.workerType === 'CONTRACTOR' ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-700'}`}>{TYPE[member.workerType] || 'Labour'}</span>
+              <span className={`badge ${isContractor(member.workerType) ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-700'}`}>{TYPE[member.workerType] || 'Labour'}</span>
             </div>
             <p className="text-xs text-slate-500">{[member.category, member.firmName, member.phone].filter(Boolean).join(' · ')}</p>
           </div>
@@ -167,6 +229,38 @@ function WorkerDrawer({ member, onClose, onEdit, onChanged }) {
               </section>
             )}
 
+            {(isContractor(member.workerType) || data.contracts?.length > 0) && (
+              <section>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contracts</p>
+                  {can('workforce.update') && <button className="text-xs font-medium text-brand-600 hover:underline" onClick={() => { setContract(null); setModal('contract'); }}>+ New contract</button>}
+                </div>
+                {!data.contracts?.length ? <p className="text-sm text-slate-400">No contracts yet — add the agreed scope and value to track what's still owed.</p> : (
+                  <ul className="space-y-2">
+                    {data.contracts.map((c) => (
+                      <li key={c.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{c.title}</p>
+                            <p className="text-xs text-slate-400">{c.projectName || 'General'}{c.endDate ? ` · finish ${formatDate(c.endDate)}` : ''} · <span className="capitalize">{c.status}</span></p>
+                          </div>
+                          {can('workforce.update') && <button className="btn-ghost btn-sm" onClick={() => { setContract(c); setModal('contract'); }} aria-label="Edit contract"><Icon name="edit" className="h-3.5 w-3.5" /></button>}
+                        </div>
+                        <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
+                          <div><p className="font-semibold">{money(c.amount)}</p><p className="text-slate-400">Agreed</p></div>
+                          <div><p className="font-semibold text-emerald-700">{money(c.paid)}</p><p className="text-slate-400">Paid</p></div>
+                          <div><p className={`font-semibold ${c.outstanding > 0 ? 'text-red-600' : ''}`}>{money(c.outstanding)}</p><p className="text-slate-400">Balance{c.retention ? ` (retention ${money(c.retention)})` : ''}</p></div>
+                        </div>
+                        {financeOn && can('finance.create') && c.status === 'active' && c.payableNow > 0 && (
+                          <button className="btn-secondary btn-sm mt-2 w-full" onClick={() => { setPayFor(c); setModal('expense'); }}>Pay against this contract</button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+
             {p && (
               <section>
                 <div className="mb-1.5 flex items-center justify-between">
@@ -192,18 +286,24 @@ function WorkerDrawer({ member, onClose, onEdit, onChanged }) {
         )}
         <div className="flex flex-wrap gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-700">
           {w?.profile && can('payroll.manage') && <button className="btn-primary" onClick={() => setModal('pay')}>Pay wages</button>}
-          {financeOn && can('finance.create') && <button className={w?.profile && can('payroll.manage') ? 'btn-secondary' : 'btn-primary'} onClick={() => setModal('expense')}>{member.workerType === 'CONTRACTOR' ? 'Record contractor payment' : 'Record other payment'}</button>}
+          {can('payroll.manage') && <button className="btn-secondary" onClick={() => setModal('advance')}>Give advance</button>}
+          {financeOn && can('finance.create') && <button className={w?.profile && can('payroll.manage') ? 'btn-secondary' : 'btn-primary'} onClick={() => { setPayFor(null); setModal('expense'); }}>{isContractor(member.workerType) ? 'Record payment' : 'Record other payment'}</button>}
           {can('workforce.update') && <button className="btn-secondary ml-auto" onClick={() => onEdit(member)}><Icon name="edit" className="h-4 w-4" /> Edit</button>}
         </div>
       </aside>
       {modal === 'pay' && <PayWagesModal member={member} overview={data} onClose={() => setModal(null)} onDone={done} />}
       {modal === 'wage' && <WageModal member={member} profile={w?.profile} onClose={() => setModal(null)} onDone={done} />}
+      {modal === 'advance' && <AdvanceModal member={member} onClose={() => setModal(null)} onDone={done} />}
+      {modal === 'contract' && <ContractModal member={member} contract={contract} projects={projects} onClose={() => setModal(null)} onDone={done} />}
       <ExpenseFormModal
         open={modal === 'expense'}
-        scope={member.siteProjectId ? 'PROJECT' : 'COMPANY'}
-        presetProjectId={member.siteProjectId || ''}
+        scope={(payFor ? payFor.projectId : member.siteProjectId) ? 'PROJECT' : 'COMPANY'}
+        presetProjectId={(payFor ? payFor.projectId : member.siteProjectId) || ''}
         presetWorkforceId={member.id}
-        onClose={() => setModal(null)}
+        presetWorkContractId={payFor?.id}
+        presetAmount={payFor?.payableNow}
+        presetNotes={payFor ? `Against contract: ${payFor.title}` : ''}
+        onClose={() => { setModal(null); setPayFor(null); }}
         onSaved={done}
       />
     </div>
@@ -237,6 +337,7 @@ export default function WorkforcePage() {
       const [sortBy, order] = filters.sort.split(':');
       const params = { page: filters.page, sortBy, order };
       for (const k of ['search', 'category', 'status', 'siteProjectId']) if (filters[k]) params[k] = filters[k];
+      if (type === 'COSTS') { setLoading(false); return; }
       if (type) params.workerType = type;
       setResult(await listWorkforce(params));
     } catch (err) {
@@ -310,7 +411,8 @@ export default function WorkforcePage() {
         </div>
       )}
 
-      <Tabs tabs={[{ key: '', label: 'Everyone' }, { key: 'LABOUR', label: 'Labour' }, { key: 'CONTRACTOR', label: 'Contractors' }]} value={type} onChange={(t) => { setType(t); update({}); }} />
+      <Tabs tabs={[{ key: '', label: 'Everyone' }, { key: 'LABOUR', label: 'Labour' }, { key: 'CONTRACTOR', label: 'Contractors' }, { key: 'COSTS', label: 'Cost by project' }]} value={type} onChange={(t) => { setType(t); update({}); }} />
+      {type === 'COSTS' ? <ProjectCosts /> : <>
 
       <div className="mb-3 flex flex-wrap gap-2">
         <div className="relative min-w-[200px] flex-1">
@@ -380,13 +482,14 @@ export default function WorkforcePage() {
         )}
       </div>
       <Pagination meta={result.meta} onPage={(page) => update({ page })} />
+      </>}
 
-      {drawer && <WorkerDrawer member={drawer} onClose={() => setDrawer(null)} onEdit={openEdit} onChanged={() => { load(); loadStats(); }} />}
+      {drawer && <WorkerDrawer member={drawer} projects={projects} onClose={() => setDrawer(null)} onEdit={openEdit} onChanged={() => { load(); loadStats(); }} />}
 
       <Modal
         open={Boolean(modal)}
         onClose={() => setModal(null)}
-        title={modal?.editingId ? 'Edit details' : `Add ${modal?.form.workerType === 'CONTRACTOR' ? 'contractor' : 'worker'}`}
+        title={modal?.editingId ? 'Edit details' : `Add ${isContractor(modal?.form.workerType) ? 'contractor' : 'worker'}`}
         footer={
           <>
             <button className="btn-secondary" onClick={() => setModal(null)}>Cancel</button>
@@ -398,8 +501,8 @@ export default function WorkforcePage() {
           <form id="wf-form" onSubmit={save} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="label">Type</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[['LABOUR', 'Labour', 'Daily / monthly wage worker'], ['CONTRACTOR', 'Contractor', 'Paid per job or contract']].map(([k, t, d]) => (
+              <div className="grid grid-cols-3 gap-2">
+                {[['LABOUR', 'Labour', 'Daily / monthly wage worker'], ['CONTRACTOR', 'Labour contractor', 'Supplies a labour gang'], ['SUBCONTRACTOR', 'Subcontractor', 'Executes a trade package']].map(([k, t, d]) => (
                   <button key={k} type="button" onClick={() => setField('workerType', k)} className={`rounded-lg border px-3 py-2 text-left ${modal.form.workerType === k ? 'border-brand-500 bg-brand-50 dark:bg-slate-700' : 'border-slate-200 hover:bg-slate-50 dark:border-slate-600'}`}>
                     <span className="block text-sm font-medium">{t}</span><span className="block text-xs text-slate-500">{d}</span>
                   </button>
@@ -411,11 +514,11 @@ export default function WorkforcePage() {
               <input className="input" placeholder="e.g., Ramesh Kumar" value={modal.form.name} onChange={(e) => setField('name', e.target.value)} required />
             </div>
             <div>
-              <label className="label">{modal.form.workerType === 'CONTRACTOR' ? 'Trade' : 'Category'} <span className="text-red-500">*</span></label>
+              <label className="label">{isContractor(modal.form.workerType) ? 'Trade' : 'Category'} <span className="text-red-500">*</span></label>
               <input className="input" list="wf-categories" placeholder="e.g., Mason, Electrician" value={modal.form.category} onChange={(e) => setField('category', e.target.value)} required />
               <datalist id="wf-categories">{categories.map((c) => <option key={c.name} value={c.name} />)}</datalist>
             </div>
-            {modal.form.workerType === 'CONTRACTOR' && (
+            {isContractor(modal.form.workerType) && (
               <div className="sm:col-span-2">
                 <label className="label">Firm / team name</label>
                 <input className="input" placeholder="e.g., Sharma Electricals" value={modal.form.firmName} onChange={(e) => setField('firmName', e.target.value)} />
@@ -455,5 +558,31 @@ export default function WorkforcePage() {
         )}
       </Modal>
     </div>
+  );
+}
+
+function ProjectCosts() {
+  const { bootstrap } = useAuth();
+  const money = (v) => formatMoney(v, bootstrap?.company?.currency || 'INR');
+  const [month, setMonth] = useState('');
+  const [rows, setRows] = useState(null);
+  useEffect(() => { setRows(null); unwrap(api.get('/workforce/project-costs', { params: month ? { month } : {} })).then(setRows).catch(() => setRows([])); }, [month]);
+  return (
+    <>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <input type="month" className="input w-auto" value={month} onChange={(e) => setMonth(e.target.value)} />
+        {month && <button className="btn-secondary btn-sm" onClick={() => setMonth('')}>All time</button>}
+        <p className="ml-auto text-xs text-slate-400">Man-days from attendance × daily wage, plus contract values and money paid to workforce per project.</p>
+      </div>
+      {!rows ? <div className="flex justify-center p-10"><Spinner /></div> : rows.length === 0 ? <EmptyState title="No labour cost recorded yet" hint="Mark labour attendance against a site, or record payments to workforce for a project." /> : (
+        <div className="card overflow-hidden">
+          <table className="table-base">
+            <thead><tr><th>Project</th><th className="text-right">Workers</th><th className="text-right">Man-days</th><th className="text-right">Wage cost (est.)</th><th className="text-right">Contracted</th><th className="text-right">Paid to workforce</th></tr></thead>
+            <tbody>{rows.map((r) => <tr key={r.projectId}><td className="font-medium">{r.projectName}</td><td className="text-right">{r.workers}</td><td className="text-right tabular-nums">{r.manDays}</td><td className="text-right tabular-nums">{money(r.wageCost)}</td><td className="text-right tabular-nums">{r.contracted ? money(r.contracted) : '—'}</td><td className="text-right font-semibold tabular-nums">{money(r.paid)}</td></tr>)}</tbody>
+            <tfoot><tr className="font-semibold"><td>Total</td><td /><td className="text-right">{rows.reduce((s, r) => s + r.manDays, 0)}</td><td className="text-right">{money(rows.reduce((s, r) => s + r.wageCost, 0))}</td><td className="text-right">{money(rows.reduce((s, r) => s + r.contracted, 0))}</td><td className="text-right">{money(rows.reduce((s, r) => s + r.paid, 0))}</td></tr></tfoot>
+          </table>
+        </div>
+      )}
+    </>
   );
 }

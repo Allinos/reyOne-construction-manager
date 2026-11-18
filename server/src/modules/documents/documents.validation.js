@@ -10,6 +10,7 @@ const createDocumentSchema = z.object({
   reference: z.string().max(60).optional(),
   projectId: z.coerce.number().int().positive().optional(),
   clientId: z.coerce.number().int().positive().optional(),
+  vendorId: z.coerce.number().int().positive().optional(),
   data: dataSchema.optional(),
   status: z.enum(['draft', 'final']).optional(),
 });
@@ -20,6 +21,7 @@ const updateDocumentSchema = z
     reference: z.string().max(60).nullable().optional(),
     projectId: z.coerce.number().int().positive().nullable().optional(),
     clientId: z.coerce.number().int().positive().nullable().optional(),
+    vendorId: z.coerce.number().int().positive().nullable().optional(),
     data: dataSchema.optional(),
     status: z.enum(['draft', 'final']).optional(),
   })
@@ -38,6 +40,7 @@ const listQuery = z.object({
   category: z.string().max(40).optional(),
   projectId: z.coerce.number().int().positive().optional(),
   clientId: z.coerce.number().int().positive().optional(),
+  vendorId: z.coerce.number().int().positive().optional(),
 });
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });

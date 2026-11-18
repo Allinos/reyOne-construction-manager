@@ -22,3 +22,6 @@ export const getProjectForDocs = (id) => unwrap(api.get(`/projects/${id}`)).catc
 export const listClientsForDocs = () =>
   api.get('/clients', { params: { limit: 100 } }).then((r) => r.data.data).catch(() => []);
 export const getClientForDocs = (id) => unwrap(api.get(`/clients/${id}`)).catch(() => null);
+export const listVendorsForDocs = () =>
+  api.get('/vendors', { params: { limit: 100 } }).then((r) => r.data.data).catch(() => []);
+export const getVendorForDocs = (id) => unwrap(api.get(`/vendors/${id}`)).catch(() => null);

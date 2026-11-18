@@ -1,6 +1,7 @@
 'use strict';
 
 const prisma = require('../../config/prisma');
+const { assertPasswordPolicy } = require('../../core/services/policy');
 const { usersRepository: repo } = require('./users.repository');
 const AppError = require('../../core/errors/AppError');
 const activity = require('../../core/services/activityLog');
@@ -55,6 +56,7 @@ const usersService = {
 
   async create(payload, actor, req) {
     await assertRoleExists(payload.roleId);
+    await assertPasswordPolicy(payload.password);
     const { password, ...rest } = payload;
     const user = await repo.create({
       ...rest,
@@ -77,6 +79,10 @@ const usersService = {
 
     const user = await repo.update(id, payload);
     await syncSalaryProfile(id, payload);
+    // Turning mobile access off (or deactivating) signs the user out everywhere.
+    if (payload.mobileAccess === false || (payload.status && payload.status !== 'ACTIVE')) {
+      await prisma.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
+    }
     activity.record({ userId: actor.id, action: 'user.updated', entityType: 'user', entityId: id, req });
     return user;
   },
@@ -92,6 +98,7 @@ const usersService = {
   },
 
   async resetPassword(id, newPassword, actor, req) {
+    await assertPasswordPolicy(newPassword);
     const existing = await repo.findRawById(id);
     if (!existing) throw AppError.notFound('User not found');
     await repo.updatePassword(id, await hashPassword(newPassword));

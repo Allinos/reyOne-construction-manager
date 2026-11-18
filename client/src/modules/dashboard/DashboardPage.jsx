@@ -9,6 +9,38 @@ import { statusColor } from '../../lib/status';
 import Icon from '../../components/Icon';
 import InstallmentStatus from '../finance/InstallmentStatus';
 
+// Self check-in card (shown when Settings → Attendance → self check-in is on).
+function MyAttendance() {
+  const { bootstrap } = useAuth();
+  const [me, setMe] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const on = (bootstrap?.modules || []).some((m) => m.key === 'attendance');
+  useEffect(() => { if (on) unwrap(api.get('/attendance/me')).then(setMe).catch(() => {}); }, [on]);
+  if (!me?.enabled) return null;
+  const r = me.record;
+  const punch = async (kind) => {
+    setBusy(true);
+    setErr('');
+    try { setMe(await unwrap(api.post(`/attendance/me/check-${kind}`, {}))); } catch (e) { setErr(errorMessage(e)); } finally { setBusy(false); }
+  };
+  return (
+    <div className="card mb-5 flex flex-wrap items-center gap-4 px-4 py-3">
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-100 text-brand-800"><Icon name="attendance" className="h-5 w-5" /></span>
+      <div className="mr-auto">
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">My attendance today</p>
+        <p className="text-xs text-slate-500">
+          {r?.checkIn ? <>In {r.checkIn}{r.late && <span className="ml-1 font-medium text-amber-700">(late)</span>}{r.checkOut ? ` · Out ${r.checkOut}` : ''}</> : `Not checked in · work starts ${me.rules.workStart}`}
+        </p>
+        {err && <p className="text-xs text-red-600">{err}</p>}
+      </div>
+      {!r?.checkIn && <button className="btn-primary" disabled={busy} onClick={() => punch('in')}>Check in</button>}
+      {r?.checkIn && !r.checkOut && <button className="btn-secondary" disabled={busy} onClick={() => punch('out')}>Check out</button>}
+      {r?.checkOut && <span className="badge bg-emerald-50 text-emerald-700">Done for today</span>}
+    </div>
+  );
+}
+
 const TONE = {
   red: 'border-l-red-500 bg-red-50/70 dark:bg-red-900/10',
   amber: 'border-l-amber-500 bg-amber-50/70 dark:bg-amber-900/10',
@@ -94,6 +126,8 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">{greeting()}, {user?.name?.split(' ')[0] || 'there'}</h1>
         <p className="text-sm text-slate-500">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
       </div>
+
+      <MyAttendance />
 
       {/* Needs attention */}
       <div className="mb-6">

@@ -9,6 +9,7 @@ const listSelect = {
   category: true,
   projectId: true,
   clientId: true,
+  vendorId: true,
   reference: true,
   status: true,
   createdAt: true,

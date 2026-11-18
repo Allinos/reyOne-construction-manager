@@ -7,6 +7,23 @@ const { listPeople, resolvePeople, keyOf, projectNames } = require('../../core/s
 const { assertProjectAccess } = require('../../core/services/access');
 
 const STATUSES = ['present', 'absent', 'half_day', 'leave'];
+const { setting } = require('../../core/services/policy');
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// Attendance rules from Settings → Attendance.
+async function rules() {
+  const [start, grace, weeklyOff, selfCheckin] = await Promise.all([
+    setting('attendance', 'work_start', '09:30'),
+    setting('attendance', 'grace_minutes', 15),
+    setting('attendance', 'weekly_off', ['Sunday']),
+    setting('attendance', 'self_checkin', false),
+  ]);
+  return { workStart: start || '09:30', graceMinutes: Number(grace) || 0, weeklyOff: Array.isArray(weeklyOff) ? weeklyOff : [], selfCheckin: !!selfCheckin };
+}
+const mins = (hhmm) => { const m = /^(\d{1,2}):(\d{2})/.exec(hhmm || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+const isLate = (checkIn, r) => { const a = mins(checkIn); const b = mins(r.workStart); return a !== null && b !== null && a > b + r.graceMinutes; };
+const nowHHMM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 // "YYYY-MM-DD" -> Date at UTC midnight (matches @db.Date storage).
 function toDay(str) {
@@ -33,12 +50,14 @@ const attendanceService = {
   // Everyone with their status for the day (blank when not marked yet).
   async day(query) {
     const date = toDay(query.date);
+    const r = await rules();
     const [people, records] = await Promise.all([
       listPeople({ type: query.type }),
       prisma.attendanceRecord.findMany({ where: { date } }),
     ]);
     const byKey = new Map(records.map((r) => [keyOf(r.personType, r.personId), r]));
     const projects = await projectNames(records.map((r) => r.projectId));
+    const rl = r;
     let rows = people.map((p) => {
       const r = byKey.get(p.key);
       return {
@@ -47,14 +66,17 @@ const attendanceService = {
         checkIn: r?.checkIn || '',
         checkOut: r?.checkOut || '',
         notes: r?.notes || '',
+        late: !!(r?.checkIn && isLate(r.checkIn, rl)),
         projectId: r?.projectId || null,
         projectName: r?.projectId ? projects.get(r.projectId)?.name || null : null,
       };
     });
     if (query.projectId) rows = rows.filter((r) => !r.status || r.projectId === Number(query.projectId));
     const counts = STATUSES.reduce((acc, s) => ({ ...acc, [s]: rows.filter((r) => r.status === s).length }), {});
-    counts.unmarked = rows.filter((r) => !r.status).length;
-    return { date: query.date, rows, counts };
+    counts.unmarked = rows.filter((x) => !x.status).length;
+    counts.late = rows.filter((x) => x.late).length;
+    const weekday = DAY_NAMES[new Date(`${query.date}T12:00:00Z`).getUTCDay()];
+    return { date: query.date, rows, counts, rules: r, weeklyOff: r.weeklyOff.includes(weekday) };
   },
 
   // Bulk upsert a day's sheet. An empty status clears the record.
@@ -99,16 +121,18 @@ const attendanceService = {
   // Per-person monthly counts.
   async summary(query) {
     const range = monthRange(query.month);
+    const rl = await rules();
     const records = await prisma.attendanceRecord.findMany({
       where: { date: range },
-      select: { personType: true, personId: true, status: true },
+      select: { personType: true, personId: true, status: true, checkIn: true },
     });
     const people = await listPeople({ type: query.type });
     const agg = new Map();
     for (const r of records) {
       const k = keyOf(r.personType, r.personId);
-      const a = agg.get(k) || { present: 0, absent: 0, half_day: 0, leave: 0 };
+      const a = agg.get(k) || { present: 0, absent: 0, half_day: 0, leave: 0, late: 0 };
       a[r.status] = (a[r.status] || 0) + 1;
+      if (r.checkIn && isLate(r.checkIn, rl)) a.late += 1;
       agg.set(k, a);
     }
     // Include people who are inactive now but have records this month.
@@ -123,10 +147,47 @@ const attendanceService = {
       ...extraRefs.map((r) => ({ ...r, key: keyOf(r.personType, r.personId), ...(extra.get(keyOf(r.personType, r.personId)) || { name: 'Unknown' }) })),
     ];
     const rows = all.map((p) => {
-      const a = agg.get(p.key) || { present: 0, absent: 0, half_day: 0, leave: 0 };
+      const a = agg.get(p.key) || { present: 0, absent: 0, half_day: 0, leave: 0, late: 0 };
       return { ...p, ...a, daysWorked: a.present + a.half_day * 0.5 };
     });
-    return { month: query.month, rows };
+    // Working days in the month (up to today) excluding weekly offs.
+    const [y, m] = query.month.split('-').map(Number);
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const t = new Date();
+    const upto = y === t.getFullYear() && m === t.getMonth() + 1 ? t.getDate() : last;
+    let workingDays = 0;
+    for (let d = 1; d <= upto; d += 1) if (!rl.weeklyOff.includes(DAY_NAMES[new Date(Date.UTC(y, m - 1, d)).getUTCDay()])) workingDays += 1;
+    return { month: query.month, rows, workingDays, rules: rl };
+  },
+
+  // Self check-in / check-out (web or mobile) when enabled in Settings.
+  async mine(actor) {
+    const r = await rules();
+    const user = await prisma.user.findUnique({ where: { id: actor.id }, select: { staffType: true } });
+    const rec = await prisma.attendanceRecord.findUnique({ where: { personType_personId_date: { personType: 'USER', personId: actor.id, date: toDay(todayStr()) } } });
+    return { enabled: r.selfCheckin && user?.staffType === 'EMPLOYEE', date: todayStr(), record: rec ? { ...rec, late: !!(rec.checkIn && isLate(rec.checkIn, r)) } : null, rules: r };
+  },
+
+  async punch(action, payload, actor, req) {
+    const me = await this.mine(actor);
+    if (!me.enabled) throw AppError.forbidden('Self check-in is not enabled for you');
+    const date = toDay(me.date);
+    const where = { personType_personId_date: { personType: 'USER', personId: actor.id, date } };
+    const time = nowHHMM();
+    if (action === 'in') {
+      if (me.record?.checkIn) throw AppError.badRequest(`Already checked in at ${me.record.checkIn}`);
+      await prisma.attendanceRecord.upsert({
+        where,
+        update: { checkIn: time, status: me.record?.status || 'present', projectId: payload.projectId ?? me.record?.projectId ?? null, markedById: actor.id },
+        create: { personType: 'USER', personId: actor.id, date, status: 'present', checkIn: time, projectId: payload.projectId ?? null, notes: payload.notes || null, markedById: actor.id },
+      });
+    } else {
+      if (!me.record?.checkIn) throw AppError.badRequest('Check in first');
+      if (me.record.checkOut) throw AppError.badRequest(`Already checked out at ${me.record.checkOut}`);
+      await prisma.attendanceRecord.update({ where, data: { checkOut: time, ...(payload.notes ? { notes: payload.notes } : {}) } });
+    }
+    activity.record({ userId: actor.id, action: `attendance.check_${action}`, entityType: 'attendance', entityId: me.date, req });
+    return this.mine(actor);
   },
 
   async person(query) {

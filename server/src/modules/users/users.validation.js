@@ -14,6 +14,7 @@ const createUserSchema = z.object({
   salary: z.coerce.number().nonnegative().optional(),
   staffType: staffTypeEnum.optional(),
   joiningDate: z.coerce.date().nullable().optional(),
+  mobileAccess: z.boolean().optional(),
   roleId: z.coerce.number().int().positive(),
   status: statusEnum.optional(),
 });
@@ -27,6 +28,7 @@ const updateUserSchema = z
     salary: z.coerce.number().nonnegative().nullable().optional(),
     staffType: staffTypeEnum.optional(),
     joiningDate: z.coerce.date().nullable().optional(),
+    mobileAccess: z.boolean().optional(),
     roleId: z.coerce.number().int().positive().optional(),
     status: statusEnum.optional(),
   })

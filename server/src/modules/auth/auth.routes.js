@@ -1,5 +1,7 @@
 'use strict';
 
+const { z } = require('zod');
+
 const rateLimit = require('express-rate-limit');
 const controller = require('./auth.controller');
 const asyncHandler = require('../../core/http/asyncHandler');
@@ -21,6 +23,7 @@ function registerRoutes(router) {
   router.post('/refresh', validate({ body: refreshSchema }), asyncHandler(controller.refresh));
   router.post('/logout', validate({ body: refreshSchema }), asyncHandler(controller.logout));
   router.get('/me', authenticate, asyncHandler(controller.me));
+  router.patch('/me', authenticate, validate({ body: z.object({ name: z.string().trim().min(1).max(150).optional(), phone: z.string().max(30).nullable().optional() }).refine((d) => Object.keys(d).length > 0, { message: 'Nothing to update' }) }), asyncHandler(controller.updateProfile));
   router.post(
     '/change-password',
     authenticate,

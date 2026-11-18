@@ -8,6 +8,7 @@ import { getAllSettings } from './api';
 import CompanyPage from './CompanyPage';
 import { HelpSettings, BackupCard } from './SystemPage';
 import MobileAppPage from './MobileAppPage';
+import { AttendanceSettings, SecuritySettings } from './PolicyPages';
 import RolesPage from '../roles/RolesPage';
 import ActivityPage from '../activity/ActivityPage';
 import ModuleManagerPage from '../modulemanager/ModuleManagerPage';
@@ -31,6 +32,7 @@ const NAV = [
     label: 'Access & security',
     items: [
       { path: 'roles', label: 'Roles & permissions', icon: 'lock', perm: 'roles.read' },
+      { path: 'security', label: 'Security & sessions', icon: 'lock', perm: 'settings.update' },
       { path: 'activity', label: 'Activity log', icon: 'activity', perm: 'activity.read' },
     ],
   },
@@ -39,6 +41,7 @@ const NAV = [
     items: [
       { path: 'projects', label: 'Projects', icon: 'projects', perm: 'settings.read', module: 'projects' },
       { path: 'finance', label: 'Finance & expenses', icon: 'finance', perm: 'settings.read', module: 'finance' },
+      { path: 'attendance', label: 'Attendance', icon: 'attendance', perm: 'settings.read', module: 'attendance' },
       { path: 'people', label: 'People & workforce', icon: 'users', perm: 'settings.read' },
       { path: 'inspections', label: 'Site inspection', icon: 'inspection', perm: 'settings.read', module: 'inspections' },
       { path: 'queries', label: 'Queries', icon: 'queries', perm: 'settings.read', module: 'queries' },
@@ -190,6 +193,8 @@ export default function SettingsModule() {
             <Route path="modules" element={<Section title="Modules"><ModuleManagerPage embedded /></Section>} />
             <Route path="roles" element={<RolesPage />} />
             <Route path="activity" element={<ActivityPage />} />
+            <Route path="security" element={<Section title="Security & sessions" description="Password rules and signed-in sessions."><WithSettings render={(st) => <SecuritySettings settings={st.security || {}} />} /></Section>} />
+            <Route path="attendance" element={<Section title="Attendance" description="Working hours, weekly off and self check-in."><WithSettings render={(st) => <AttendanceSettings settings={st.attendance || {}} />} /></Section>} />
             <Route path="help" element={<Section title="Help centre" description="Content shown when people click the Help icon."><HelpSettings /></Section>} />
             <Route path="backup" element={<Section title="Backup" description="Download a copy of all company data."><BackupCard /></Section>} />
             {Object.entries(pages).map(([k, render]) => (

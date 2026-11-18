@@ -43,6 +43,7 @@ model User {
   // EMPLOYEE = on staff (attendance + payroll); APP_USER = system access only
   // (owner, partner, external CA/consultant) — excluded from attendance/payroll.
   staffType    String     @default("EMPLOYEE")
+  mobileAccess Boolean    @default(true) // may sign in to the reyOne Site app
   joiningDate  DateTime?  @db.Date
   status       UserStatus @default(ACTIVE)
   lastLoginAt  DateTime?
@@ -364,6 +365,7 @@ model GeneratedDocument {
   category    String?
   projectId   Int? // optional scalar links (decoupled)
   clientId    Int?
+  vendorId    Int?
   reference   String? // e.g. document number / ref
   data        Json     @default("{}") // filled field values
   status      String   @default("final") // draft | final
@@ -496,6 +498,7 @@ model Expense {
   billNumber    String? // supplier's bill / invoice no.
   dueDate       DateTime? // when the unpaid balance is due
   purchaseOrderId Int?
+  workContractId  Int? // payment against a labour / subcontract
   notes         String?  @db.Text
   createdById   Int?
   allocations   VendorPaymentAllocation[]
@@ -527,7 +530,7 @@ model Workforce {
   id        Int             @id @default(autoincrement())
   name      String
   category  String
-  workerType String         @default("LABOUR") // LABOUR | CONTRACTOR
+  workerType String         @default("LABOUR") // LABOUR | CONTRACTOR | SUBCONTRACTOR
   firmName  String? // contractor's company / team name
   siteProjectId Int? // site currently working at (default for attendance)
   joiningDate DateTime?     @db.Date
@@ -1017,4 +1020,27 @@ model VendorPaymentAllocation {
   @@index([paymentId])
   @@index([expenseId])
   @@map("vendor_payment_allocations")
+}
+
+// A labour contract / subcontract with a workforce member (contractor) for a
+// project: agreed value vs. payments made (Expenses with workContractId).
+model WorkContract {
+  id          Int       @id @default(autoincrement())
+  workforceId Int
+  projectId   Int?
+  title       String // scope, e.g. "Brickwork Block A — per sq.ft"
+  amount      Decimal   @db.Decimal(15, 2) // agreed contract value
+  retentionPercent Decimal @default(0) @db.Decimal(5, 2)
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String    @default("active") // active | completed | cancelled
+  notes       String?   @db.Text
+  createdById Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([workforceId])
+  @@index([projectId])
+  @@map("work_contracts")
 }

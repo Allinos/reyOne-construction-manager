@@ -12,6 +12,7 @@ const publicSelect = {
   designation: true,
   salary: true,
   staffType: true,
+  mobileAccess: true,
   joiningDate: true,
   status: true,
   lastLoginAt: true,

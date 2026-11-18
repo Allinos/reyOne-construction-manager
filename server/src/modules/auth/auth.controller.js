@@ -10,7 +10,7 @@ const authController = {
   },
 
   async refresh(req, res) {
-    const result = await service.refresh(req.body.refreshToken);
+    const result = await service.refresh(req.body.refreshToken, req);
     return ok(res, result);
   },
 
@@ -19,6 +19,9 @@ const authController = {
     return ok(res, result);
   },
 
+  async updateProfile(req, res) {
+    return ok(res, await service.updateProfile(req.user.id, req.body, req));
+  },
   async me(req, res) {
     const result = await service.me(req.user.id);
     return ok(res, result);

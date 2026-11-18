@@ -33,7 +33,7 @@ const blank = (scope, presetProjectId = '') => ({
   workforceId: '',
 });
 
-export default function ExpenseFormModal({ open, onClose, scope, editing, onSaved, presetProjectId, presetWorkforceId }) {
+export default function ExpenseFormModal({ open, onClose, scope, editing, onSaved, presetProjectId, presetWorkforceId, presetWorkContractId, presetAmount, presetCategory, presetNotes }) {
   const { bootstrap } = useAuth();
   const toast = useToast();
   const currency = bootstrap?.company?.currency || 'INR';
@@ -79,7 +79,7 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
       });
     } else {
       setPayeeMode(presetWorkforceId ? 'workforce' : 'vendor');
-      setForm({ ...blank(scope, presetProjectId), workforceId: presetWorkforceId ? String(presetWorkforceId) : '' });
+      setForm({ ...blank(scope, presetProjectId), workforceId: presetWorkforceId ? String(presetWorkforceId) : '', amount: presetAmount ? String(presetAmount) : '', category: presetCategory || '', notes: presetNotes || '' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, scope, editing, presetProjectId, presetWorkforceId]);
@@ -130,7 +130,7 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
         body.paidTo = form.paidTo || undefined;
       }
       if (editing) await updateExpense(editing.id, body);
-      else await createExpense(body);
+      else await createExpense(presetWorkContractId ? { ...body, workContractId: Number(presetWorkContractId) } : body);
       toast.success(`Expense ${editing ? 'updated' : 'added'}`);
       onSaved?.();
       onClose();

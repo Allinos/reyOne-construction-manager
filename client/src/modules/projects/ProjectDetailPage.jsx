@@ -18,6 +18,7 @@ import Modal from '../../components/Modal';
 import Icon from '../../components/Icon';
 import RequirementsButton from '../requirements/RequirementsWorkspace';
 import Select from '../../components/Select';
+import MultiSelect from '../../components/MultiSelect';
 
 // Colors <option> text and applies a status-tinted class to a <Select>.
 function StatusSelect({ value, statuses, onChange, className = '' }) {
@@ -736,21 +737,18 @@ export default function ProjectDetailPage() {
         }
       >
         {empModal && (
-          employees.length === 0 ? (
-            <p className="text-sm text-slate-400">No employees available.</p>
-          ) : (
-            <ul className="space-y-2">
-              {employees.map((u) => (
-                <li key={u.id}>
-                  <label className="flex items-center gap-3 rounded-lg border border-cream-300 px-3 py-2 dark:border-slate-700">
-                    <input type="checkbox" checked={empModal.selected.has(u.id)} onChange={() => toggleEmp(u.id)} />
-                    <span className="text-sm text-slate-700 dark:text-slate-200">{u.name}</span>
-                    <span className="ml-auto text-xs text-slate-400">{u.designation || u.role?.name}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          )
+          <div className="min-h-[14rem]">
+            <label className="label">{empModal.scope === 'project' ? 'People working on this project' : 'People on this stage'}</label>
+            <MultiSelect
+              options={employees.map((u) => ({ value: u.id, label: u.name, sub: u.designation || u.role?.name || '' }))}
+              value={[...empModal.selected]}
+              onChange={(ids) => setEmpModal((m) => ({ ...m, selected: new Set(ids) }))}
+              placeholder="Search and add people…"
+              loading={!employees.length && can('users.read')}
+              emptyText="No active users"
+            />
+            <p className="mt-2 text-xs text-slate-500">{empModal.scope === 'project' ? 'Assigned people see this project and are notified.' : 'Only people already on the project can usually see it.'}</p>
+          </div>
         )}
       </Modal>
 

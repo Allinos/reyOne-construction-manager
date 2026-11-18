@@ -20,9 +20,11 @@ const ISSUE_STATUS = { open: 'Open', in_progress: 'In progress', resolved: 'Reso
 const today = () => localDate();
 
 export const INSPECTION_STATUS = {
+  pending: { label: 'Pending', cls: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300' },
   assigned: { label: 'Assigned', cls: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200' },
   in_progress: { label: 'In progress', cls: 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
   completed: { label: 'Completed', cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
+  follow_up: { label: 'Needs follow-up', cls: 'bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
   closed: { label: 'Closed', cls: 'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-100' },
 };
 const StatusPill = ({ status }) => {
@@ -71,10 +73,10 @@ function AssignModal({ onClose, onCreated }) {
         projectId: Number(f.projectId), title: f.title.trim(), date: f.date,
         ...(f.dueDate ? { dueDate: f.dueDate } : {}),
         ...(f.templateKey ? { templateKey: f.templateKey } : {}),
-        ...(f.inspectorId ? { inspectorId: Number(f.inspectorId) } : {}),
+        ...(f.inspectorId === 'none' ? { unassigned: true } : f.inspectorId ? { inspectorId: Number(f.inspectorId) } : {}),
         ...(f.instructions.trim() ? { instructions: f.instructions.trim() } : {}),
       });
-      toast.success(Number(f.inspectorId) === user?.id ? 'Inspection started' : 'Inspection assigned — inspector notified');
+      toast.success(f.inspectorId === 'none' ? 'Inspection created — assign an inspector when ready' : Number(f.inspectorId) === user?.id ? 'Inspection started' : 'Inspection assigned — inspector notified');
       onCreated(row);
     } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
   };
@@ -83,7 +85,7 @@ function AssignModal({ onClose, onCreated }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div><label className="label">Site / Project</label><Select className="input" value={f.projectId} onChange={(e) => setF({ ...f, projectId: e.target.value })}><option value="">Select site…</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></div>
         <div><label className="label">Title</label><input className="input" placeholder="e.g. Slab L3 pre-pour check" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
-        <div><label className="label">Inspector</label><Select className="input" value={f.inspectorId} onChange={(e) => setF({ ...f, inspectorId: e.target.value })}>{users.map((u) => <option key={u.id} value={u.id}>{u.id === user?.id ? `${u.name} (me)` : u.name}{u.designation ? ` · ${u.designation}` : ''}</option>)}</Select></div>
+        <div><label className="label">Inspector</label><Select className="input" value={f.inspectorId} searchable onChange={(e) => setF({ ...f, inspectorId: e.target.value })}><option value="none">Assign later (pending)</option>{users.map((u) => <option key={u.id} value={u.id}>{u.id === user?.id ? `${u.name} (me)` : u.name}{u.designation ? ` · ${u.designation}` : ''}</option>)}</Select></div>
         <div><label className="label">Checklist template</label><Select className="input" value={f.templateKey} onChange={(e) => setF({ ...f, templateKey: e.target.value })}><option value="">Blank checklist</option>{templates.map((t) => <option key={t.key} value={t.key}>{t.name} ({t.items.length} items)</option>)}</Select></div>
         <div><label className="label">Inspection date</label><input type="date" className="input" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div>
         <div><label className="label">Due by</label><input type="date" className="input" value={f.dueDate} min={f.date} onChange={(e) => setF({ ...f, dueDate: e.target.value })} /></div>
@@ -106,7 +108,7 @@ function InspectionsList({ mine = false, onChanged }) {
   const { can } = useAuth();
   const toast = useToast();
   const [projects, setProjects] = useState([]);
-  const [filters, setFilters] = useState({ projectId: '', status: mine ? 'pending' : '' });
+  const [filters, setFilters] = useState({ projectId: '', status: mine ? 'active' : '' });
   const [rows, setRows] = useState(null);
 
   useEffect(() => { if (!mine) api.listProjectsLite().then(setProjects); }, [mine]);
@@ -122,7 +124,7 @@ function InspectionsList({ mine = false, onChanged }) {
         {!mine && <Select className="input w-auto" value={filters.projectId} onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}><option value="">All sites</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select>}
         <Select className="input w-auto" value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
           <option value="">All statuses</option>
-          <option value="pending">Not completed</option>
+          <option value="active">Not yet done</option>
           {Object.entries(INSPECTION_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </Select>
       </div>
@@ -142,7 +144,7 @@ function InspectionsList({ mine = false, onChanged }) {
                     </td>
                     <td className="text-slate-600 dark:text-slate-300">{r.inspectorName || '—'}</td>
                     <td className={`whitespace-nowrap ${r.overdue ? 'font-medium text-red-600' : 'text-slate-500'}`}>{r.dueDate ? formatDate(r.dueDate) : '—'}{r.overdue && <span className="block text-[11px]">Overdue</span>}</td>
-                    <td><Progress value={r.checklistCount ? (r.answered / r.checklistCount) * 100 : 0} className="w-24" showLabel={false} /><span className="text-[11px] text-slate-400">{r.answered}/{r.checklistCount} checked</span></td>
+                    <td><Progress value={r.checklistCount ? (r.answered / r.checklistCount) * 100 : 0} className="w-24" showLabel={false} /><span className="text-[11px] text-slate-400">{r.answered}/{r.checklistCount} checked{r.flagged ? <span className="text-amber-700"> · {r.flagged} flagged</span> : ''}</span></td>
                     <td><ScoreBar score={r.score} /></td>
                     <td className={r.openIssues ? 'font-semibold text-red-600' : 'text-slate-400'}>{r.openIssues ? `${r.openIssues} open` : r.issueCount || '—'}</td>
                     <td><StatusPill status={r.status} /></td>
@@ -212,13 +214,17 @@ function InspectionDetail() {
   if (error) return <Alert>{error}</Alert>;
   if (!data) return <div className="flex justify-center p-10"><Spinner /></div>;
   const isInspector = data.isInspector;
-  const open = ['assigned', 'in_progress'].includes(data.status);
+  const open = ['pending', 'assigned', 'in_progress'].includes(data.status) && (data.status !== 'pending' || canManage);
   const editable = open && (isInspector || canManage);
   const answeredNow = checklist.filter((c) => c.result).length;
   const left = checklist.length - answeredNow;
   const pctNow = (() => { const r = checklist.filter((c) => c.result === 'pass' || c.result === 'fail'); return r.length ? Math.round((r.filter((c) => c.result === 'pass').length / r.length) * 100) : null; })();
   const overdue = open && data.dueDate && new Date(data.dueDate) < new Date(new Date().toDateString());
-  const RESULTS = [{ k: 'pass', l: 'Pass', on: 'bg-emerald-600 text-white' }, { k: 'fail', l: 'Fail', on: 'bg-red-600 text-white' }, { k: 'na', l: 'N/A', on: 'bg-slate-500 text-white' }];
+  const RESULTS = [{ k: 'pass', l: 'Pass', on: 'bg-emerald-600 text-white' }, { k: 'fail', l: 'Fail', on: 'bg-red-600 text-white' }, { k: 'action', l: 'Action', on: 'bg-amber-500 text-amber-950', t: 'Needs corrective action' }, { k: 'na', l: 'N/A', on: 'bg-slate-500 text-white' }];
+  const raiseFromItem = (c) => setIssueForm({ description: `${c.item}${c.remark ? ` — ${c.remark}` : ''}`, severity: c.result === 'fail' ? 'high' : 'medium', assignedToId: '', correctiveAction: '', dueDate: '' });
+  const assignInspector = async (uid) => {
+    try { await api.updateInspection(id, { inspectorId: Number(uid) }); toast.success('Inspector assigned and notified'); load(); } catch (e) { toast.error(errorMessage(e)); }
+  };
 
   return (
     <div>
@@ -237,12 +243,12 @@ function InspectionDetail() {
         <div className="flex flex-wrap gap-2">
           <button className="btn-secondary" onClick={report}><Icon name="print" className="h-4 w-4" /> Report</button>
           {editable && (
-            <button className="btn-success" disabled={left > 0} title={left > 0 ? `${left} checklist item(s) still to mark` : 'Submit as completed'} onClick={() => setStatus('completed', 'Inspection submitted as completed')}>
+            <button className="btn-success" disabled={left > 0} title={left > 0 ? `${left} checklist item(s) still to mark` : 'Submit as completed'} onClick={() => setStatus('completed', 'Inspection submitted')}>
               <Icon name="check" className="h-4 w-4" /> Mark completed
             </button>
           )}
-          {canManage && data.status === 'completed' && <button className="btn-primary" onClick={() => setStatus('closed', 'Inspection closed')}>Close inspection</button>}
-          {canManage && ['completed', 'closed'].includes(data.status) && <button className="btn-secondary" onClick={() => setStatus('in_progress', 'Reopened')}>Reopen</button>}
+          {canManage && ['completed', 'follow_up'].includes(data.status) && <button className="btn-primary" onClick={() => setStatus('closed', 'Inspection closed')}>Close inspection</button>}
+          {canManage && ['completed', 'follow_up', 'closed'].includes(data.status) && <button className="btn-secondary" onClick={() => setStatus('in_progress', 'Reopened')}>Reopen</button>}
           {canManage && <button className="btn-ghost px-2.5 text-red-600 hover:bg-red-50" onClick={remove} aria-label="Delete inspection" title="Delete"><Icon name="trash" className="h-4 w-4" /></button>}
         </div>
       </div>
@@ -268,6 +274,15 @@ function InspectionDetail() {
           <p className="whitespace-pre-wrap">{data.instructions}</p>
         </div>
       )}
+      {data.status === 'pending' && canManage && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:text-amber-200">
+          <span className="font-medium">No inspector yet.</span>
+          <div className="w-64"><Select className="input py-1.5" value="" searchable placeholder="Assign inspector…" onChange={(e) => e.target.value && assignInspector(e.target.value)}><option value="">Assign inspector…</option>{users.map((u) => <option key={u.id} value={u.id}>{u.name}{u.designation ? ` · ${u.designation}` : ''}</option>)}</Select></div>
+        </div>
+      )}
+      {data.status === 'follow_up' && (
+        <div className="mb-4"><Alert type="warning">Submitted with {data.checklist.filter((c) => ['fail', 'action'].includes(c.result)).length} item(s) needing corrective action{data.issues.filter((x) => !['resolved', 'verified'].includes(x.status)).length ? ` and ${data.issues.filter((x) => !['resolved', 'verified'].includes(x.status)).length} open issue(s)` : ''}. Track fixes below; it becomes Completed when all issues are resolved.</Alert></div>
+      )}
       {isInspector && data.status === 'assigned' && (
         <div className="mb-4"><Alert type="info">This inspection is assigned to you. Mark each checklist item Pass / Fail / N/A, add notes and photos, then click <b>Mark completed</b>.</Alert></div>
       )}
@@ -287,13 +302,16 @@ function InspectionDetail() {
                     <span className={`flex-1 text-sm ${c.result ? 'text-slate-700 dark:text-slate-200' : 'font-medium text-slate-800 dark:text-slate-100'}`}>{i + 1}. {c.item}</span>
                     <div className="flex gap-1">
                       {RESULTS.map((r) => (
-                        <button key={r.k} disabled={!editable} onClick={() => setItem(i, { result: c.result === r.k ? '' : r.k })}
+                        <button key={r.k} title={r.t || r.l} disabled={!editable} onClick={() => setItem(i, { result: c.result === r.k ? '' : r.k })}
                           className={`rounded-md border px-2.5 py-1 text-xs font-semibold transition ${c.result === r.k ? `${r.on} border-transparent` : 'border-slate-200 text-slate-500 hover:bg-slate-50 disabled:hover:bg-transparent dark:border-slate-600'}`}>{r.l}</button>
                       ))}
                     </div>
                   </div>
                   {(editable || c.remark) && (
-                    <input className="input mt-1.5 py-1 text-xs" placeholder="Note (optional)…" disabled={!editable} value={c.remark || ''} onChange={(e) => setItem(i, { remark: e.target.value })} />
+                    <input className="input mt-1.5 py-1 text-xs" placeholder={['fail', 'action'].includes(c.result) ? 'What is wrong / what must be done?' : 'Note (optional)…'} disabled={!editable} value={c.remark || ''} onChange={(e) => setItem(i, { remark: e.target.value })} />
+                  )}
+                  {['fail', 'action'].includes(c.result) && (canManage || isInspector) && data.status !== 'closed' && !data.issues.some((x) => x.description.startsWith(c.item)) && (
+                    <button className="mt-1 text-xs font-medium text-brand-600 hover:underline" onClick={() => raiseFromItem(c)}>+ Raise issue for this item</button>
                   )}
                 </li>
               ))}
@@ -423,10 +441,10 @@ function InspectionsHome() {
       />
       {stats && canRead && (
         <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <Stat label="Assigned" value={stats.assigned || 0} hint="Not started" />
+          <Stat label="Pending / assigned" value={(stats.pending || 0) + (stats.assigned || 0)} hint={stats.pending ? `${stats.pending} without inspector` : 'Not started'} />
           <Stat label="In progress" value={stats.in_progress || 0} tone="info" />
-          <Stat label="Completed" value={stats.completed || 0} tone="success" hint="Awaiting close" />
-          <Stat label="Closed" value={stats.closed || 0} />
+          <Stat label="Needs follow-up" value={stats.follow_up || 0} tone={stats.follow_up ? 'warning' : 'neutral'} hint="Corrective actions open" />
+          <Stat label="Completed / closed" value={(stats.completed || 0) + (stats.closed || 0)} tone="success" />
           <Stat label="Overdue" value={stats.overdue || 0} tone={stats.overdue ? 'danger' : 'neutral'} />
         </div>
       )}

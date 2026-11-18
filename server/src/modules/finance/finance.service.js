@@ -201,6 +201,7 @@ const financeService = {
       billNumber: payload.billNumber || null,
       dueDate: payload.dueDate || null,
       workforceId: payload.workforceId ?? null,
+      workContractId: payload.workContractId ?? null,
       category: payload.category,
       amount: payload.amount,
       date: payload.date,

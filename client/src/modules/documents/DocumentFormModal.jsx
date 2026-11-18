@@ -6,7 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
 import {
   getTemplate, previewDocument, createDocument, updateDocument, getDocument,
-  listProjectsForDocs, getProjectForDocs, listClientsForDocs, getClientForDocs,
+  listProjectsForDocs, getProjectForDocs, listClientsForDocs, getClientForDocs, listVendorsForDocs, getVendorForDocs,
 } from './api';
 import { printHtml } from './print';
 import PreviewModal from './PreviewModal';
@@ -25,6 +25,8 @@ function resolveSource(source, ctx) {
     case 'client.name': return ctx.client?.name || ctx.project?.clientName || '';
     case 'client.phone': return ctx.client?.phone || ctx.project?.clientPhone || '';
     case 'client.address': return ctx.client?.address || ctx.project?.clientAddress || '';
+    case 'vendor.name': return ctx.vendor?.name || '';
+    case 'vendor.address': return [ctx.vendor?.address, ctx.vendor?.gstNumber && `GSTIN: ${ctx.vendor.gstNumber}`].filter(Boolean).join('\n');
     default: return '';
   }
 }
@@ -68,7 +70,7 @@ function ItemsEditor({ value = [], onChange, showRate }) {
   );
 }
 
-export default function DocumentFormModal({ open, templateKey, docId, presetProjectId, presetClientId, onClose, onSaved }) {
+export default function DocumentFormModal({ open, templateKey, docId, presetProjectId, presetClientId, presetVendorId, onClose, onSaved }) {
   const { bootstrap } = useAuth();
   const toast = useToast();
   const company = bootstrap?.company || {};
@@ -81,6 +83,8 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
   const [selectedProject, setSelectedProject] = useState(null);
   const [clientId, setClientId] = useState('');
   const [clients, setClients] = useState([]);
+  const [vendorId, setVendorId] = useState('');
+  const [vendors, setVendors] = useState([]);
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
 
@@ -100,6 +104,7 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
           setTitle(doc.title || t.name);
           setProjectId(doc.projectId || '');
           setClientId(doc.clientId || '');
+          setVendorId(doc.vendorId || '');
         } else {
           // Seed source defaults (company/today) for a fresh document.
           const seed = {};
@@ -113,10 +118,12 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
           setTitle(t.name);
           setProjectId('');
           setClientId('');
+          setVendorId('');
           setSelectedProject(null);
           // Pre-selected from "Create Document": fill project / client details.
           if (presetProjectId) await fillFromProject(presetProjectId, t, seed);
           else if (presetClientId) await fillFromClient(presetClientId, t, seed);
+          if (presetVendorId) await fillFromVendor(presetVendorId, t);
         }
       } catch (err) {
         toast.error(errorMessage(err));
@@ -130,6 +137,7 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
     if (open) {
       listProjectsForDocs().then(setProjects);
       listClientsForDocs().then(setClients);
+      listVendorsForDocs().then(setVendors);
     }
   }, [open]);
 
@@ -137,7 +145,7 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
   const fillSources = (t, ctxIn) => setValues((prev) => {
     const next = { ...prev };
     for (const f of t?.fields || []) {
-      if (!f.source || !(f.source.startsWith('project') || f.source.startsWith('client'))) continue;
+      if (!f.source || !(f.source.startsWith('project') || f.source.startsWith('client') || f.source.startsWith('vendor'))) continue;
       if (!next[f.key] || next[f.key] === '') {
         const v = resolveSource(f.source, { company, ...ctxIn });
         if (v) next[f.key] = v;
@@ -161,7 +169,16 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
     if (c) fillSources(t, { client: c });
   }
 
+  async function fillFromVendor(vid, t = tpl) {
+    setVendorId(vid || '');
+    if (!vid) return;
+    const v = await getVendorForDocs(vid);
+    if (v) fillSources(t, { vendor: v });
+  }
+
   const onPickProject = (pid) => fillFromProject(pid);
+  const onPickVendor = (vid) => fillFromVendor(vid);
+  const usesVendor = (tpl?.fields || []).some((f) => f.source?.startsWith('vendor'));
   const onPickClient = (cid) => fillFromClient(cid);
 
   const setVal = (key, v) => setValues((prev) => ({ ...prev, [key]: v }));
@@ -184,8 +201,9 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
       const body = { templateKey, title: title.trim() || tpl.name, data: buildData() };
       if (projectId) body.projectId = Number(projectId);
       if (clientId) body.clientId = Number(clientId);
+      if (vendorId) body.vendorId = Number(vendorId);
       if (values.reference) body.reference = values.reference;
-      const saved = docId ? await updateDocument(docId, { title: body.title, data: body.data, projectId: body.projectId ?? null, clientId: body.clientId ?? null }) : await createDocument(body);
+      const saved = docId ? await updateDocument(docId, { title: body.title, data: body.data, projectId: body.projectId ?? null, clientId: body.clientId ?? null, vendorId: body.vendorId ?? null }) : await createDocument(body);
       toast.success(docId ? 'Document updated' : 'Document created');
       onSaved?.(saved);
       if (thenPrint) {
@@ -203,7 +221,7 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
   const renderField = (f) => {
     const v = values[f.key] ?? '';
     if (f.type === 'items') {
-      const showRate = !['material_requisition', 'delivery_challan', 'goods_received_note', 'snag_list'].includes(templateKey);
+      const showRate = !tpl?.hideTotals && !['material_requisition', 'delivery_challan', 'goods_received_note', 'snag_list', 'measurement_sheet'].includes(templateKey);
       return <ItemsEditor value={Array.isArray(v) ? v : []} onChange={(rows) => setVal(f.key, rows)} showRate={showRate} />;
     }
     if (f.type === 'textarea') {
@@ -280,6 +298,12 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
             </div>
           </div>
 
+          {(usesVendor || vendorId) && (
+            <div className="sm:w-1/2">
+              <label className="label">Vendor / contractor (auto-fills)</label>
+              <SearchSelect options={vendors} value={vendorId} onChange={onPickVendor} getLabel={(v) => v.name} getSub={(v) => v.category || v.phone} placeholder="Search vendors…" />
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {tpl.fields.map((f) => (
               <div key={f.key} className={f.type === 'items' || f.type === 'textarea' ? 'sm:col-span-2' : ''}>

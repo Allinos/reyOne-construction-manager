@@ -10,8 +10,9 @@ const { accessibleProjectIds, assertProjectAccess, hasPerm } = require('../../co
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-GB') : '—');
 
+// Item results: pass | fail | action (needs corrective action) | na | '' (pending)
 function score(checklist = []) {
-  const rated = checklist.filter((c) => c.result === 'pass' || c.result === 'fail');
+  const rated = checklist.filter((c) => ['pass', 'fail', 'action'].includes(c.result));
   const pass = rated.filter((c) => c.result === 'pass').length;
   return { total: checklist.length, pass, fail: rated.length - pass, pct: rated.length ? Math.round((pass / rated.length) * 100) : null };
 }
@@ -19,6 +20,8 @@ function score(checklist = []) {
 // Legacy rows used "open" for anything not closed.
 const normStatus = (st) => (st === 'open' ? 'in_progress' : st);
 const answered = (checklist = []) => checklist.filter((c) => c.result).length;
+const flagged = (checklist = []) => checklist.filter((c) => c.result === 'fail' || c.result === 'action').length;
+const OPEN_STATES = ['pending', 'assigned', 'in_progress', 'open'];
 
 async function canSee(actor, row) {
   if (row.inspectorId === actor.id) return;
@@ -40,7 +43,7 @@ const inspectionsService = {
 
   async list(query, actor) {
     const where = { deletedAt: null };
-    if (query.status === 'pending') where.status = { in: ['assigned', 'in_progress', 'open'] };
+    if (query.status === 'active') where.status = { in: OPEN_STATES };
     else if (query.status === 'in_progress') where.status = { in: ['in_progress', 'open'] };
     else if (query.status) where.status = query.status;
     if (query.projectId) where.projectId = query.projectId;
@@ -62,7 +65,8 @@ const inspectionsService = {
       status: normStatus(r.status),
       answered: answered(checklist),
       checklistCount: (checklist || []).length,
-      overdue: !!(r.dueDate && !['completed', 'closed'].includes(normStatus(r.status)) && new Date(r.dueDate) < new Date(new Date().toDateString())),
+      overdue: !!(r.dueDate && OPEN_STATES.includes(r.status) && new Date(r.dueDate) < new Date(new Date().toDateString())),
+      flagged: flagged(checklist),
       projectName: projects.get(r.projectId)?.name || null,
       inspectorName: users.get(r.inspectorId) || null,
       score: score(checklist),
@@ -101,7 +105,7 @@ const inspectionsService = {
       const tpl = (await this.templates()).find((t) => t.key === payload.templateKey);
       checklist = (tpl?.items || []).map((item) => ({ item, result: '', remark: '' }));
     }
-    const inspectorId = payload.inspectorId || actor.id;
+    const inspectorId = payload.unassigned ? null : payload.inspectorId || actor.id;
     const row = await prisma.inspection.create({
       data: {
         projectId: payload.projectId,
@@ -110,14 +114,14 @@ const inspectionsService = {
         dueDate: payload.dueDate || null,
         inspectorId,
         instructions: payload.instructions || null,
-        status: inspectorId === actor.id ? 'in_progress' : 'assigned',
+        status: !inspectorId ? 'pending' : inspectorId === actor.id ? 'in_progress' : 'assigned',
         checklist: checklist || [],
         remarks: payload.remarks || null,
         createdById: actor.id,
       },
     });
     activity.record({ userId: actor.id, action: 'inspection.created', entityType: 'inspection', entityId: row.id, req });
-    if (inspectorId !== actor.id) {
+    if (inspectorId && inspectorId !== actor.id) {
       const project = (await projectNames([row.projectId])).get(row.projectId);
       const due = row.dueDate ? ` · due ${fmt(row.dueDate)}` : '';
       notify({ userId: inspectorId, type: 'inspection.assigned', title: 'Inspection assigned to you', message: `${row.title} — ${project?.name || 'site'}${due}`, entityType: 'inspection', entityId: row.id });
@@ -139,6 +143,7 @@ const inspectionsService = {
     }
     const current = normStatus(row.status);
     if (current === 'closed' && !isManager) throw AppError.badRequest('This inspection is closed');
+    if (isManager && data.inspectorId !== undefined && current === 'pending' && data.inspectorId) data.status = data.status || 'assigned';
     // Starting to fill the checklist moves an assigned inspection into progress.
     if (!data.status && current === 'assigned' && (data.checklist || data.remarks)) data.status = 'in_progress';
     if (data.status === 'completed') {
@@ -147,8 +152,11 @@ const inspectionsService = {
       if (left) throw AppError.badRequest(`Mark every checklist item before submitting (${left} left)`);
       data.completedAt = new Date();
       data.completedById = actor.id;
+      // Failed / action-needed items or open issues → needs follow-up.
+      const openIssues = row.issues.filter((i) => !['resolved', 'verified'].includes(i.status)).length;
+      if (flagged(list) || openIssues) data.status = 'follow_up';
     }
-    if (data.status === 'in_progress' && current === 'completed') {
+    if (data.status === 'in_progress' && ['completed', 'follow_up'].includes(current)) {
       data.completedAt = null;
       data.completedById = null;
     }
@@ -157,8 +165,8 @@ const inspectionsService = {
     }
     const updated = await prisma.inspection.update({ where: { id }, data });
     activity.record({ userId: actor.id, action: 'inspection.updated', entityType: 'inspection', entityId: id, req });
-    if (data.status === 'completed' && row.createdById && row.createdById !== actor.id) {
-      notify({ userId: row.createdById, type: 'inspection.completed', title: 'Inspection completed', message: `${row.title} was submitted for review`, entityType: 'inspection', entityId: id });
+    if (['completed', 'follow_up'].includes(data.status) && row.createdById && row.createdById !== actor.id) {
+      notify({ userId: row.createdById, type: 'inspection.completed', title: data.status === 'follow_up' ? 'Inspection needs follow-up' : 'Inspection completed', message: `${row.title} was submitted${data.status === 'follow_up' ? ' with items needing corrective action' : ''}`, entityType: 'inspection', entityId: id });
     }
     if (isManager && payload.inspectorId && payload.inspectorId !== row.inspectorId && payload.inspectorId !== actor.id) {
       notify({ userId: payload.inspectorId, type: 'inspection.assigned', title: 'Inspection assigned to you', message: row.title, entityType: 'inspection', entityId: id });
@@ -188,7 +196,7 @@ const inspectionsService = {
         dueDate: payload.dueDate || null,
       },
     });
-    if (row.status === 'closed') await prisma.inspection.update({ where: { id }, data: { status: 'completed' } });
+    if (['closed', 'completed'].includes(row.status)) await prisma.inspection.update({ where: { id }, data: { status: 'follow_up' } });
     activity.record({ userId: actor.id, action: 'inspection.issue_added', entityType: 'inspection', entityId: id, req });
     if (issue.assignedToId && issue.assignedToId !== actor.id) {
       notify({ userId: issue.assignedToId, type: 'inspection.issue_assigned', title: 'Inspection issue assigned', message: `${row.title}: ${payload.description.slice(0, 120)}`, entityType: 'inspection', entityId: id });
@@ -208,6 +216,11 @@ const inspectionsService = {
       if (payload.status === 'verified') throw AppError.forbidden('Only an inspector can verify a fix');
     }
     const updated = await prisma.inspectionIssue.update({ where: { id: issueId }, data: payload });
+    // When the last open issue is fixed, a follow-up inspection becomes completed.
+    if (payload.status && ['resolved', 'verified'].includes(payload.status) && issue.inspection.status === 'follow_up') {
+      const stillOpen = await prisma.inspectionIssue.count({ where: { inspectionId: issue.inspectionId, status: { in: ['open', 'in_progress'] } } });
+      if (!stillOpen) await prisma.inspection.update({ where: { id: issue.inspectionId }, data: { status: 'completed' } });
+    }
     activity.record({ userId: actor.id, action: 'inspection.issue_updated', entityType: 'inspection', entityId: issue.inspectionId, req });
     if (payload.assignedToId && payload.assignedToId !== issue.assignedToId && payload.assignedToId !== actor.id) {
       notify({ userId: payload.assignedToId, type: 'inspection.issue_assigned', title: 'Inspection issue assigned', message: `${issue.inspection.title}: ${issue.description.slice(0, 120)}`, entityType: 'inspection', entityId: issue.inspectionId });
@@ -239,11 +252,11 @@ const inspectionsService = {
     if (allowed !== null) where.OR = [{ projectId: { in: allowed } }, { inspectorId: actor.id }];
     const rows = await prisma.inspection.findMany({ where, select: { status: true, dueDate: true, inspectorId: true } });
     const today = new Date(new Date().toDateString());
-    const out = { assigned: 0, in_progress: 0, completed: 0, closed: 0, overdue: 0, mine: 0 };
+    const out = { pending: 0, assigned: 0, in_progress: 0, completed: 0, follow_up: 0, closed: 0, overdue: 0, mine: 0 };
     for (const r of rows) {
       const st = normStatus(r.status);
       out[st] = (out[st] || 0) + 1;
-      const pending = !['completed', 'closed'].includes(st);
+      const pending = OPEN_STATES.includes(st);
       if (pending && r.dueDate && new Date(r.dueDate) < today) out.overdue += 1;
       if (pending && r.inspectorId === actor.id) out.mine += 1;
     }
@@ -254,7 +267,7 @@ const inspectionsService = {
     const r = await this.get(id, actor);
     const company = (await prisma.company.findFirst()) || {};
     const photos = await prisma.storedFile.findMany({ where: { entityType: 'inspection', entityId: id, mimeType: { startsWith: 'image/' } }, select: { data: true, name: true, caption: true, takenAt: true, createdAt: true }, take: 24 });
-    const RES = { pass: '<b style="color:#16a34a">PASS</b>', fail: '<b style="color:#dc2626">FAIL</b>', na: '<span style="color:#94a3b8">N/A</span>' };
+    const RES = { pass: '<b style="color:#16a34a">PASS</b>', fail: '<b style="color:#dc2626">FAIL</b>', action: '<b style="color:#d97706">ACTION NEEDED</b>', na: '<span style="color:#94a3b8">N/A</span>' };
     const rows = (r.checklist || []).map((c, i) => `<tr><td>${i + 1}</td><td>${esc(c.item)}</td><td>${RES[c.result] || '—'}</td><td>${esc(c.remark)}</td></tr>`).join('');
     const issues = r.issues.map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.description)}</td><td style="text-transform:capitalize">${esc(i.severity)}</td><td>${esc(i.assignedToName || '—')}</td><td>${esc(i.correctiveAction || '—')}</td><td>${fmt(i.dueDate)}</td><td style="text-transform:capitalize">${esc(i.status.replace('_', ' '))}</td></tr>`).join('');
     const pics = photos.map((p) => `<figure><img src="${p.data}" alt=""/><figcaption>${esc(p.caption || p.name || '')} · ${p.takenAt ? `Taken ${new Date(p.takenAt).toLocaleString('en-GB')}` : `Uploaded ${fmt(p.createdAt)}`}</figcaption></figure>`).join('');

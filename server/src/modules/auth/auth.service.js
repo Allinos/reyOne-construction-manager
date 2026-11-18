@@ -1,5 +1,10 @@
 'use strict';
 
+const prisma = require('../../config/prisma');
+const { assertPasswordPolicy } = require('../../core/services/policy');
+
+const isMobile = (req) => String(req?.get?.('x-client') || '').toLowerCase() === 'mobile';
+
 const repo = require('./auth.repository');
 const AppError = require('../../core/errors/AppError');
 const activity = require('../../core/services/activityLog');
@@ -23,6 +28,8 @@ function toProfile(user) {
     phone: user.phone,
     designation: user.designation,
     status: user.status,
+    staffType: user.staffType,
+    mobileAccess: user.mobileAccess,
     role: { id: user.role.id, key: user.role.key, name: user.role.name },
     permissions: permissionKeys(user),
   };
@@ -51,6 +58,7 @@ const authService = {
 
     const valid = await comparePassword(password, user.passwordHash);
     if (!valid) throw AppError.unauthorized('Invalid email or password');
+    if (isMobile(req) && !user.mobileAccess) throw AppError.forbidden('Mobile app access is not enabled for your account. Ask your administrator.');
 
     const tokens = await issueTokens(user);
     await repo.touchLastLogin(user.id);
@@ -58,7 +66,7 @@ const authService = {
     return { user: toProfile(user), ...tokens };
   },
 
-  async refresh(refreshToken) {
+  async refresh(refreshToken, req) {
     let payload;
     try {
       payload = verifyRefreshToken(refreshToken);
@@ -74,6 +82,7 @@ const authService = {
 
     const user = await repo.findUserById(payload.sub);
     if (!user || user.status !== 'ACTIVE') throw AppError.unauthorized('User is not available');
+    if (isMobile(req) && !user.mobileAccess) throw AppError.forbidden('Mobile app access has been turned off for your account.');
 
     // Rotate: revoke the used token, issue a fresh pair.
     await repo.revokeRefreshToken(tokenHash);
@@ -88,6 +97,16 @@ const authService = {
     return { success: true };
   },
 
+  // Self-service profile edits (name / phone).
+  async updateProfile(userId, payload, req) {
+    const data = {};
+    if (payload.name !== undefined) data.name = payload.name;
+    if (payload.phone !== undefined) data.phone = payload.phone || null;
+    await prisma.user.update({ where: { id: userId }, data });
+    activity.record({ userId, action: 'auth.profile_updated', entityType: 'user', entityId: userId, req });
+    return this.me(userId);
+  },
+
   async me(userId) {
     const user = await repo.findUserById(userId);
     if (!user) throw AppError.notFound('User not found');
@@ -100,6 +119,7 @@ const authService = {
 
     const valid = await comparePassword(currentPassword, user.passwordHash);
     if (!valid) throw AppError.badRequest('Current password is incorrect');
+    await assertPasswordPolicy(newPassword);
 
     await repo.updatePassword(userId, await hashPassword(newPassword));
     // Force re-login everywhere else.

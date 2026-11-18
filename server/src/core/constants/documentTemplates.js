@@ -105,6 +105,44 @@ const TEMPLATES = [
      {{itemsTable}}
      {{#balance}}<div class="totals"><div class="grand"><span>Closing Balance</span><span>{{balance}}</span></div></div>{{/balance}}`),
 
+  t('ra_bill', 'financial', 'Running Account (RA) Bill', 'Interim progress bill to the client for work done to date.',
+    [F.ref, F.date, F.toName, F.toAddr, F.project,
+     { key: 'billNo', label: 'RA Bill No.', type: 'text', placeholder: 'e.g. RA-03' },
+     { key: 'periodFrom', label: 'Work From', type: 'date' }, { key: 'periodTo', label: 'Work Up To', type: 'date' },
+     { key: 'items', label: 'Work Done (cumulative quantities)', type: 'items' }, F.tax,
+     { key: 'previousBilled', label: 'Previously Billed (incl. tax)', type: 'money' },
+     { key: 'retentionPercent', label: 'Retention %', type: 'number', placeholder: 'e.g. 5' },
+     { key: 'advanceRecovery', label: 'Mobilisation Advance Recovery', type: 'money' }, F.notes],
+    `<div class="parties"><div class="party"><h4>Bill To</h4><strong>{{recipientName}}</strong><div class="muted">{{recipientAddress}}</div></div>
+     <div class="party r"><h4>{{billNo}}</h4>{{projectName}}<div class="muted">{{#periodFrom}}{{periodFrom}} – {{/periodFrom}}{{periodTo}}</div></div></div>
+     {{itemsTable}}
+     {{#notes}}<div class="note"><h4>Notes</h4>{{notes}}</div>{{/notes}}
+     <p class="muted">Certified that the quantities above have been measured and the work executed as per the agreement.</p>`,
+    { signatures: ['Prepared By', 'Site Engineer', 'Client / Consultant'], billing: true }),
+
+  t('contractor_bill', 'financial', 'Contractor Bill & Payment Statement', 'Measure a subcontractor / labour contractor\'s work and compute net payable.',
+    [F.ref, F.date, { key: 'contractor', label: 'Contractor / Subcontractor', type: 'text', required: true, source: 'vendor.name' },
+     { key: 'workOrderRef', label: 'Work Order Ref.', type: 'text' }, F.project,
+     { key: 'periodTo', label: 'Measured Up To', type: 'date' },
+     { key: 'items', label: 'Work Measured (cumulative)', type: 'items' }, F.tax,
+     { key: 'previousBilled', label: 'Previously Paid / Billed', type: 'money' },
+     { key: 'retentionPercent', label: 'Retention %', type: 'number' },
+     { key: 'advanceRecovery', label: 'Advance Recovery', type: 'money' },
+     { key: 'tdsPercent', label: 'TDS %', type: 'number', placeholder: 'e.g. 1 or 2' }, F.notes],
+    `<div class="parties"><div class="party"><h4>Contractor</h4><strong>{{contractor}}</strong><div class="muted">{{#workOrderRef}}WO: {{workOrderRef}}{{/workOrderRef}}</div></div>
+     <div class="party r"><h4>Project</h4>{{projectName}}<div class="muted">{{#periodTo}}Measured up to {{periodTo}}{{/periodTo}}</div></div></div>
+     {{itemsTable}}
+     {{#notes}}<div class="note"><h4>Remarks</h4>{{notes}}</div>{{/notes}}`,
+    { signatures: ['Measured By', 'Checked By', 'Contractor', 'Approved for Payment'], billing: true }),
+
+  t('boq', 'financial', 'Bill of Quantities (BOQ)', 'Itemised quantities and rates for tendering or estimating.',
+    [F.ref, F.date, F.toName, F.project, { key: 'items', label: 'BOQ Items', type: 'items' }, F.tax, F.notes, F.terms],
+    `<div class="parties"><div class="party"><h4>Prepared For</h4><strong>{{recipientName}}</strong></div>
+     <div class="party r"><h4>Project</h4>{{projectName}}</div></div>
+     {{itemsTable}}
+     {{#notes}}<div class="note"><h4>Specifications / Notes</h4>{{notes}}</div>{{/notes}}
+     {{#terms}}<div class="terms"><strong>Conditions</strong><br>{{terms}}</div>{{/terms}}`),
+
   // --- Agreements --------------------------------------------------------
   t('construction_agreement', 'agreements', 'Construction Agreement', 'Main works agreement between owner & contractor.',
     [F.date, { key: 'owner', label: 'Owner / Client', type: 'text', required: true, source: 'client.name' },
@@ -121,7 +159,7 @@ const TEMPLATES = [
     { signatures: ['Owner', 'Contractor'] }),
 
   t('subcontractor_agreement', 'agreements', 'Subcontractor Agreement', 'Agreement with a subcontractor.',
-    [F.date, { key: 'subcontractor', label: 'Subcontractor', type: 'text', required: true }, F.project,
+    [F.date, { key: 'subcontractor', label: 'Subcontractor', type: 'text', required: true, source: 'vendor.name' }, F.project,
      { key: 'workScope', label: 'Work / Trade', type: 'textarea', required: true },
      { key: 'rate', label: 'Rate / Value', type: 'text' }, { key: 'duration', label: 'Duration', type: 'text' }, F.terms],
     `<p>This Subcontract Agreement dated {{date}} is between {{company.name}} ("Main Contractor") and <strong>{{subcontractor}}</strong> ("Subcontractor") for the project {{projectName}}.</p>
@@ -165,7 +203,7 @@ const TEMPLATES = [
 
   // --- Orders & Procurement ---------------------------------------------
   t('purchase_order', 'orders', 'Purchase Order', 'Order materials/goods from a vendor.',
-    [F.ref, F.date, { key: 'vendor', label: 'Vendor', type: 'text', required: true }, { key: 'vendorAddress', label: 'Vendor Address', type: 'textarea' },
+    [F.ref, F.date, { key: 'vendor', label: 'Vendor', type: 'text', required: true, source: 'vendor.name' }, { key: 'vendorAddress', label: 'Vendor Address', type: 'textarea', source: 'vendor.address' },
      F.project, { key: 'deliverTo', label: 'Deliver To', type: 'textarea', source: 'project.address' }, F.items, F.tax, F.terms],
     `<div class="parties"><div class="party"><h4>Vendor</h4><strong>{{vendor}}</strong><div class="muted">{{vendorAddress}}</div></div>
      <div class="party r"><h4>Deliver To</h4><div class="muted">{{deliverTo}}</div></div></div>
@@ -263,6 +301,15 @@ const TEMPLATES = [
     `<p>The project <strong>{{projectName}}</strong> is hereby handed over to <strong>{{client}}</strong> on {{date}}.</p>
      {{#items}}<h4>Items Handed Over</h4><p>{{items}}</p>{{/items}}{{#remarks}}<h4>Remarks</h4><p>{{remarks}}</p>{{/remarks}}`,
     { signatures: ['Handed Over By', 'Received By'] }),
+
+  t('measurement_sheet', 'site', 'Measurement Sheet', 'Record measured quantities of work for billing.',
+    [F.ref, F.date, F.project, { key: 'contractor', label: 'Contractor / Agency', type: 'text', source: 'vendor.name' },
+     { key: 'location', label: 'Location / Floor', type: 'text' }, { key: 'items', label: 'Measurements (item & quantity)', type: 'items' }, F.notes],
+    `<div class="parties"><div class="party"><h4>Agency</h4><strong>{{contractor}}</strong></div>
+     <div class="party r"><h4>Project</h4>{{projectName}}<div class="muted">{{location}}</div></div></div>
+     {{itemsTable}}
+     {{#notes}}<div class="note">{{notes}}</div>{{/notes}}`,
+    { signatures: ['Measured By', 'Contractor', 'Checked By'], hideTotals: true }),
 
   t('snag_list', 'site', 'Snag / Punch List', 'List of defects to rectify before handover.',
     [F.ref, F.date, F.project, { key: 'area', label: 'Area / Unit', type: 'text' }, F.items],
@@ -417,9 +464,26 @@ function itemsTableHtml(template, data, currency, opts = {}) {
     const taxPct = Number(data.taxPercent) || 0;
     const tax = (subtotal * taxPct) / 100;
     const grand = subtotal + tax;
+    // Running-account / contractor bills: deductions down to net payable.
+    let deductions = '';
+    if (opts.billing) {
+      const prev = Number(data.previousBilled) || 0;
+      const thisBill = grand - prev;
+      const retPct = Number(data.retentionPercent) || 0;
+      const retention = (thisBill * retPct) / 100;
+      const adv = Number(data.advanceRecovery) || 0;
+      const tdsPct = Number(data.tdsPercent) || 0;
+      const tds = (thisBill * tdsPct) / 100;
+      const net = thisBill - retention - adv - tds;
+      deductions = `${prev ? `<div><span>Less: previously billed</span><span>− ${money(prev)}</span></div><div><span>Value of this bill</span><span>${money(thisBill)}</span></div>` : ''}${
+        retPct ? `<div><span>Less: retention (${retPct}%)</span><span>− ${money(retention)}</span></div>` : ''}${
+        adv ? `<div><span>Less: advance recovery</span><span>− ${money(adv)}</span></div>` : ''}${
+        tdsPct ? `<div><span>Less: TDS (${tdsPct}%)</span><span>− ${money(tds)}</span></div>` : ''
+      }<div class="grand"><span>Net payable</span><span>${money(net)}</span></div>`;
+    }
     totals = `<div class="totals"><div><span>Subtotal</span><span>${money(subtotal)}</span></div>${
       taxPct ? `<div><span>Tax (${taxPct}%)</span><span>${money(tax)}</span></div>` : ''
-    }<div class="grand"><span>Total</span><span>${money(grand)}</span></div></div>`;
+    }<div class="${opts.billing ? '' : 'grand'}"><span>${opts.billing ? 'Cumulative value of work done' : 'Total'}</span><span>${money(grand)}</span></div>${deductions}</div>`;
   }
   return `<table class="items"><thead>${head}</thead><tbody>${body || '<tr><td colspan="5" class="muted">No items</td></tr>'}</tbody></table>${totals}`;
 }
@@ -466,7 +530,7 @@ function renderDocument(template, data = {}, company = {}, branding = {}) {
   map.title = esc(template.name);
   // Precompute the items table so the {{itemsTable}} placeholder resolves in the
   // same interpolation pass (raw HTML, not escaped).
-  map.itemsTable = itemsTableHtml(template, data, currency, { hideTotals: template.hideTotals });
+  map.itemsTable = itemsTableHtml(template, data, currency, { hideTotals: template.hideTotals, billing: template.billing });
 
   const body = interpolate(template.body, map);
 

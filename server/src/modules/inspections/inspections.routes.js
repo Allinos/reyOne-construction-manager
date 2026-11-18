@@ -11,16 +11,16 @@ const AppError = require('../../core/errors/AppError');
 const { hasPerm } = require('../../core/services/access');
 
 const id = z.coerce.number().int().positive();
-const checkItem = z.object({ item: z.string().min(1).max(300), result: z.enum(['pass', 'fail', 'na', '']).optional(), remark: z.string().max(1000).optional().nullable() });
+const checkItem = z.object({ item: z.string().min(1).max(300), result: z.enum(['pass', 'fail', 'action', 'na', '']).optional(), remark: z.string().max(1000).optional().nullable() });
 const severity = z.enum(['low', 'medium', 'high', 'critical']);
 const issueStatus = z.enum(['open', 'in_progress', 'resolved', 'verified']);
 
 const s = {
   idParam: z.object({ id }),
   issueParam: z.object({ issueId: id }),
-  listQuery: z.object({ status: z.enum(['pending', 'assigned', 'in_progress', 'completed', 'closed', 'open']).optional(), projectId: id.optional(), mine: z.enum(['true', 'false']).optional() }),
+  listQuery: z.object({ status: z.enum(['active', 'pending', 'assigned', 'in_progress', 'completed', 'follow_up', 'closed', 'open']).optional(), projectId: id.optional(), mine: z.enum(['true', 'false']).optional() }),
   issuesQuery: z.object({ mine: z.enum(['true', 'false']).optional(), status: z.string().optional() }),
-  create: z.object({ projectId: id, title: z.string().min(1).max(200), date: z.coerce.date().optional(), inspectorId: id.optional(), templateKey: z.string().max(60).optional(), checklist: z.array(checkItem).max(200).optional(), remarks: z.string().max(5000).optional(), instructions: z.string().max(5000).optional(), dueDate: z.coerce.date().optional().nullable() }),
+  create: z.object({ projectId: id, title: z.string().min(1).max(200), date: z.coerce.date().optional(), inspectorId: id.optional(), templateKey: z.string().max(60).optional(), checklist: z.array(checkItem).max(200).optional(), remarks: z.string().max(5000).optional(), instructions: z.string().max(5000).optional(), dueDate: z.coerce.date().optional().nullable(), unassigned: z.boolean().optional() }),
   update: z.object({ title: z.string().min(1).max(200).optional(), date: z.coerce.date().optional(), checklist: z.array(checkItem).max(200).optional(), remarks: z.string().max(5000).nullable().optional(), instructions: z.string().max(5000).nullable().optional(), dueDate: z.coerce.date().nullable().optional(), inspectorId: id.optional(), status: z.enum(['assigned', 'in_progress', 'completed', 'closed']).optional() }).refine((d) => Object.keys(d).length > 0, { message: 'No fields to update' }),
   issue: z.object({ description: z.string().min(1).max(3000), severity: severity.optional(), assignedToId: id.optional().nullable(), correctiveAction: z.string().max(3000).optional(), dueDate: z.coerce.date().optional().nullable() }),
   issueUpdate: z.object({ description: z.string().min(1).max(3000).optional(), severity: severity.optional(), assignedToId: id.nullable().optional(), correctiveAction: z.string().max(3000).nullable().optional(), dueDate: z.coerce.date().nullable().optional(), status: issueStatus.optional() }).refine((d) => Object.keys(d).length > 0, { message: 'No fields to update' }),

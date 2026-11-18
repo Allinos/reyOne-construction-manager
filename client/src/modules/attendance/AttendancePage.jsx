@@ -144,6 +144,8 @@ function DailySheet() {
             <span key={s.key} className={`rounded-full px-2 py-0.5 font-medium ${s.cls}`}>{s.label}: {counts[s.key]}</span>
           ))}
           <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">Unmarked: {counts.unmarked}</span>
+          {data?.counts?.late > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-800">Late: {data.counts.late}</span>}
+          {data?.weeklyOff && <span className="rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700">Weekly off</span>}
           {canMark && (
             <span className="ml-auto flex gap-2">
               <button className="btn-secondary btn-sm" onClick={() => markAll('present')} title="Marks everyone not yet marked">Mark unmarked present</button>
@@ -164,7 +166,7 @@ function DailySheet() {
             {rows.map((r) => (
               <li key={r.key} className={`flex flex-wrap items-center gap-3 px-4 py-2 ${edits[r.key] ? 'bg-amber-50/70 dark:bg-slate-800' : ''}`}>
                 <div className="min-w-[10rem] flex-1">
-                  <p className="font-medium text-slate-800 dark:text-slate-100">{r.name}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-100">{r.name}{r.late && <span className="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">Late</span>}</p>
                   <p className="text-xs text-slate-400">{r.group}{r.detail ? ` · ${r.detail}` : ''}{r.projectName ? ` · ${r.projectName}` : ''}</p>
                 </div>
                 <div className="flex gap-1">
@@ -231,6 +233,7 @@ function MonthlySummary() {
         </div>
       </Card>
       {error && <Alert>{error}</Alert>}
+      {data?.workingDays != null && <p className="mb-2 text-xs text-slate-500">{data.workingDays} working day(s) so far this month · weekly off: {(data.rules?.weeklyOff || []).join(', ') || 'none'}</p>}
       <Card className="!p-0 overflow-hidden">
         {!data ? (
           <div className="flex justify-center p-10"><Spinner /></div>
@@ -246,6 +249,7 @@ function MonthlySummary() {
                   <th className="px-3 py-3 text-center font-medium text-amber-600">Half</th>
                   <th className="px-3 py-3 text-center font-medium text-red-600">Absent</th>
                   <th className="px-3 py-3 text-center font-medium text-sky-700">Leave</th>
+                  <th className="px-3 py-3 text-center font-medium text-amber-700">Late</th>
                   <th className="px-3 py-3 text-center font-medium">Days Worked</th>
                 </tr>
               </thead>
@@ -253,14 +257,15 @@ function MonthlySummary() {
                 {data.rows.map((r) => (
                   <tr key={r.key}>
                     <td className="px-4 py-2.5">
-                      <p className="font-medium text-slate-800 dark:text-slate-100">{r.name}</p>
+                      <p className="font-medium text-slate-800 dark:text-slate-100">{r.name}{r.late && <span className="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">Late</span>}</p>
                       <p className="text-xs text-slate-400">{r.group}{r.detail ? ` · ${r.detail}` : ''}</p>
                     </td>
                     <td className="px-3 py-2.5 text-center">{r.present}</td>
                     <td className="px-3 py-2.5 text-center">{r.half_day}</td>
                     <td className="px-3 py-2.5 text-center">{r.absent}</td>
                     <td className="px-3 py-2.5 text-center">{r.leave}</td>
-                    <td className="px-3 py-2.5 text-center font-semibold text-brand-600">{r.daysWorked}</td>
+                    <td className="px-3 py-2.5 text-center">{r.late || 0}</td>
+                    <td className="px-3 py-2.5 text-center font-semibold text-slate-900 dark:text-white">{r.daysWorked}{data.workingDays ? <span className="font-normal text-slate-400"> / {data.workingDays}</span> : ''}</td>
                   </tr>
                 ))}
               </tbody>

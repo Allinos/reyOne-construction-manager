@@ -46,6 +46,8 @@ function UserDetail({ user, currency }) {
           <Row label="Phone" value={user.phone} />
           <Row label="Designation" value={user.designation} />
           <Row label="Type" value={STAFF_TYPES[user.staffType] || 'Employee'} />
+          <Row label="Mobile app" value={user.mobileAccess === false ? 'No access' : 'Allowed'} />
+          <Row label="Last sign-in" value={user.lastLoginAt ? formatDate(user.lastLoginAt) : 'Never'} />
           {user.staffType !== 'APP_USER' && <Row label="Monthly salary" value={user.salary != null ? formatMoney(user.salary, currency) : '—'} />}
           {user.joiningDate && <Row label="Joined" value={formatDate(user.joiningDate)} />}
           <Row label="Member since" value={formatDate(user.createdAt)} />
@@ -65,7 +67,7 @@ function UserDetail({ user, currency }) {
 }
 
 const STATUSES = ['ACTIVE', 'INACTIVE', 'SUSPENDED'];
-const blank = { name: '', email: '', password: '', phone: '', designation: '', roleId: '', salary: '', status: 'ACTIVE', staffType: 'EMPLOYEE', joiningDate: '' };
+const blank = { name: '', email: '', password: '', phone: '', designation: '', roleId: '', salary: '', status: 'ACTIVE', staffType: 'EMPLOYEE', joiningDate: '', mobileAccess: true };
 export const STAFF_TYPES = { EMPLOYEE: 'Employee', APP_USER: 'App user only' };
 
 export default function UsersPage() {
@@ -116,7 +118,7 @@ export default function UsersPage() {
       form: {
         name: u.name, email: u.email, phone: u.phone || '', designation: u.designation || '',
         roleId: u.roleId, salary: u.salary ?? '', status: u.status, password: '',
-        staffType: u.staffType || 'EMPLOYEE', joiningDate: u.joiningDate ? String(u.joiningDate).slice(0, 10) : '',
+        staffType: u.staffType || 'EMPLOYEE', joiningDate: u.joiningDate ? String(u.joiningDate).slice(0, 10) : '', mobileAccess: u.mobileAccess !== false,
       },
     });
 
@@ -131,6 +133,7 @@ export default function UsersPage() {
         roleId: Number(f.roleId), status: f.status,
         staffType: f.staffType,
         joiningDate: f.joiningDate || null,
+        mobileAccess: !!f.mobileAccess,
         salary: f.staffType !== 'EMPLOYEE' ? undefined : f.salary === '' ? (modal.editingId ? null : undefined) : Number(f.salary),
       };
       if (modal.editingId) {
@@ -341,6 +344,13 @@ export default function UsersPage() {
                 </div>
               </>
             )}
+            <label className="col-span-2 flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-600">
+              <span>
+                <span className="block text-sm font-medium text-slate-800 dark:text-slate-100">Mobile app access</span>
+                <span className="block text-xs text-slate-500">Allow sign-in to the reyOne Site app (only when the Mobile App module is on). Turning it off signs them out of the app.</span>
+              </span>
+              <input type="checkbox" className="mt-1 h-4 w-4 accent-brand-600" checked={!!modal.form.mobileAccess} onChange={(e) => setField('mobileAccess', e.target.checked)} />
+            </label>
             <div>
               <label className="label">Status</label>
               <Select className="input" value={modal.form.status} onChange={(e) => setField('status', e.target.value)}>

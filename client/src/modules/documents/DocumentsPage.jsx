@@ -11,7 +11,7 @@ import SearchSelect from '../../components/SearchSelect';
 import Select from '../../components/Select';
 import {
   getCatalog, getTemplate, previewDocument, listDocuments, renderDocument, deleteDocument,
-  listProjectsForDocs, listClientsForDocs,
+  listProjectsForDocs, listClientsForDocs, listVendorsForDocs,
 } from './api';
 import { printHtml } from './print';
 import DocumentFormModal from './DocumentFormModal';
@@ -99,19 +99,23 @@ function CreateDocumentModal({ open, catalog, onClose, onContinue, preset }) {
   const [clients, setClients] = useState([]);
   const [projectId, setProjectId] = useState('');
   const [clientId, setClientId] = useState('');
+  const [vendors, setVendors] = useState([]);
+  const [vendorId, setVendorId] = useState('');
   const [templateKey, setTemplateKey] = useState('');
 
   useEffect(() => {
     if (!open) return;
     listProjectsForDocs().then(setProjects);
     listClientsForDocs().then(setClients);
+    listVendorsForDocs().then(setVendors);
     setProjectId('');
     setClientId('');
+    setVendorId('');
     setTemplateKey(preset?.templateKey || '');
     setForType('project');
   }, [open, preset]);
 
-  const ready = templateKey && (forType === 'none' || (forType === 'project' ? projectId : clientId));
+  const ready = templateKey && (forType === 'none' || { project: projectId, client: clientId, vendor: vendorId }[forType]);
 
   return (
     <Modal
@@ -128,6 +132,7 @@ function CreateDocumentModal({ open, catalog, onClose, onContinue, preset }) {
               templateKey,
               projectId: forType === 'project' ? projectId : '',
               clientId: forType === 'client' ? clientId : '',
+              vendorId: forType === 'vendor' ? vendorId : '',
             })}
           >
             Continue
@@ -138,8 +143,8 @@ function CreateDocumentModal({ open, catalog, onClose, onContinue, preset }) {
       <div className="space-y-4">
         <div>
           <label className="label">Document for</label>
-          <div className="grid grid-cols-3 gap-2">
-            {[{ k: 'project', l: 'A project' }, { k: 'client', l: 'A client' }, { k: 'none', l: 'General' }].map((o) => (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[{ k: 'project', l: 'Project' }, { k: 'client', l: 'Client' }, { k: 'vendor', l: 'Vendor / contractor' }, { k: 'none', l: 'General' }].map((o) => (
               <button
                 key={o.k}
                 type="button"
@@ -162,6 +167,12 @@ function CreateDocumentModal({ open, catalog, onClose, onContinue, preset }) {
               getSub={(p) => [p.referenceNumber, p.clientName].filter(Boolean).join(' · ')}
               placeholder="Search projects…"
             />
+          </div>
+        )}
+        {forType === 'vendor' && (
+          <div>
+            <label className="label">Vendor / contractor</label>
+            <SearchSelect options={vendors} value={vendorId} onChange={setVendorId} getLabel={(v) => v.name} getSub={(v) => v.category || v.phone} placeholder="Search vendors…" />
           </div>
         )}
         {forType === 'client' && (
@@ -340,7 +351,7 @@ export default function DocumentsPage() {
                           <p className="text-xs text-slate-400">{tplName[d.templateKey] || d.templateKey}{d.reference ? ` · ${d.reference}` : ''}</p>
                         </td>
                         <td className="text-slate-600 dark:text-slate-300">
-                          {d.projectName || d.clientName ? (
+                          {d.vendorName ? <p>{d.vendorName}<span className="block text-xs text-slate-400">Vendor</span></p> : d.projectName || d.clientName ? (
                             <>
                               <p>{d.projectName || d.clientName}</p>
                               {d.projectName && d.clientName && <p className="text-xs text-slate-400">{d.clientName}</p>}
@@ -400,6 +411,7 @@ export default function DocumentsPage() {
         docId={form?.docId}
         presetProjectId={form?.projectId}
         presetClientId={form?.clientId}
+        presetVendorId={form?.vendorId}
         onClose={() => setForm(null)}
         onSaved={() => loadDocs(filters)}
       />

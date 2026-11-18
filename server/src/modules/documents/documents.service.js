@@ -18,6 +18,8 @@ function templateDetail(tpl) {
     description: tpl.description,
     fields: tpl.fields,
     signatures: tpl.signatures || ['Authorized Signatory'],
+    hideTotals: !!tpl.hideTotals,
+    billing: !!tpl.billing,
   };
 }
 
@@ -44,6 +46,7 @@ const documentsService = {
     if (query.category) where.category = query.category;
     if (query.projectId) where.projectId = Number(query.projectId);
     if (query.clientId) where.clientId = Number(query.clientId);
+    if (query.vendorId) where.vendorId = Number(query.vendorId);
     if (query.search) {
       where.OR = [
         { title: { contains: query.search } },
@@ -54,6 +57,9 @@ const documentsService = {
     // Attach linked project / client names for display.
     const pIds = [...new Set(rows.map((r) => r.projectId).filter(Boolean))];
     const cIds = [...new Set(rows.map((r) => r.clientId).filter(Boolean))];
+    const vIds = [...new Set(rows.map((r) => r.vendorId).filter(Boolean))];
+    const vendors = vIds.length ? await prisma.vendor.findMany({ where: { id: { in: vIds } }, select: { id: true, name: true } }) : [];
+    const vm = new Map(vendors.map((v) => [v.id, v.name]));
     const [projects, clients] = await Promise.all([
       pIds.length ? prisma.project.findMany({ where: { id: { in: pIds } }, select: { id: true, name: true, clientName: true } }) : [],
       cIds.length ? prisma.client.findMany({ where: { id: { in: cIds } }, select: { id: true, name: true } }) : [],
@@ -64,6 +70,7 @@ const documentsService = {
       ...r,
       projectName: pm.get(r.projectId)?.name || null,
       clientName: cm.get(r.clientId) || pm.get(r.projectId)?.clientName || null,
+      vendorName: vm.get(r.vendorId) || null,
     }));
     return { data, meta: buildMeta(page, limit, total) };
   },
@@ -83,6 +90,7 @@ const documentsService = {
       category: tpl.category,
       projectId: payload.projectId ?? null,
       clientId: payload.clientId ?? null,
+      vendorId: payload.vendorId ?? null,
       reference: payload.reference ?? (payload.data && payload.data.reference) ?? null,
       data: payload.data ?? {},
       status: payload.status || 'final',
@@ -102,6 +110,7 @@ const documentsService = {
     if (payload.status !== undefined) data.status = payload.status;
     if (payload.projectId !== undefined) data.projectId = payload.projectId;
     if (payload.clientId !== undefined) data.clientId = payload.clientId;
+    if (payload.vendorId !== undefined) data.vendorId = payload.vendorId;
     const doc = await repo.update(id, data);
     activity.record({ userId: actor.id, action: 'document.updated', entityType: 'document', entityId: id, req });
     return doc;
