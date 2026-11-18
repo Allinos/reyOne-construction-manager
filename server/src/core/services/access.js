@@ -46,4 +46,17 @@ async function assertProjectAccess(actor, projectId) {
   }
 }
 
-module.exports = { hasPerm, seesAllProjects, accessibleProjectIds, scopeWhere, assertProjectAccess };
+// Active users whose role grants `key` (or the Owner wildcard).
+async function usersWithPermission(key) {
+  const rows = await prisma.user.findMany({
+    where: {
+      deletedAt: null,
+      status: 'ACTIVE',
+      role: { permissions: { some: { permission: { key: { in: [key, '*'] } } } } },
+    },
+    select: { id: true },
+  });
+  return rows.map((r) => r.id);
+}
+
+module.exports = { usersWithPermission, hasPerm, seesAllProjects, accessibleProjectIds, scopeWhere, assertProjectAccess };

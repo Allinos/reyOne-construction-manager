@@ -14,6 +14,7 @@ import WorkforcePage from '../modules/workforce/WorkforcePage';
 import CustomModulePage from '../modules/custom_module/CustomModulePage';
 import AttendancePage from '../modules/attendance/AttendancePage';
 import PayrollPage from '../modules/payroll/PayrollPage';
+import MaterialsPage from '../modules/materials/MaterialsPage';
 
 // Frontend module registry — mirrors the backend modules. `section` groups the
 // item in the sidebar; `hidden` keeps a routed module out of the nav (used for
@@ -25,6 +26,7 @@ export const MODULE_DEFS = [
   { key: 'clients', section: 'main', label: 'Clients', path: '/clients', icon: 'clients', permission: 'clients.read', element: <ClientsModule /> },
   { key: 'documents', section: 'main', label: 'Documents', path: '/documents', icon: 'documents', permission: 'documents.read', element: <DocumentsModule /> },
   { key: 'attendance', section: 'operations', label: 'Attendance', path: '/attendance', icon: 'attendance', permission: 'attendance.read', element: <AttendancePage /> },
+  { key: 'materials', section: 'operations', label: 'Materials', path: '/materials', icon: 'materials', permission: 'materials.read', element: <MaterialsPage /> },
   { key: 'finance', section: 'finance', label: 'Finance', path: '/finance', icon: 'finance', permission: 'finance.read', element: <FinanceModule /> },
   { key: 'expenses', section: 'finance', label: 'Expenses', path: '/expenses', icon: 'expenses', permission: 'finance.read', element: <ExpensesPage />, moduleKey: 'finance' },
   { key: 'vendors', section: 'finance', label: 'Vendors', path: '/vendors', icon: 'vendors', permission: 'vendors.read', element: <VendorsModule /> },

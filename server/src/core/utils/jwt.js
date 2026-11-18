@@ -7,8 +7,10 @@ const env = require('../../config/env');
 const signAccessToken = (payload) =>
   jwt.sign(payload, env.jwt.accessSecret, { expiresIn: env.jwt.accessExpiresIn });
 
+// A random jwtid makes every refresh token unique, so two logins of the same
+// user within one second (e.g. web + mobile) never collide on the unique column.
 const signRefreshToken = (payload) =>
-  jwt.sign(payload, env.jwt.refreshSecret, { expiresIn: env.jwt.refreshExpiresIn });
+  jwt.sign(payload, env.jwt.refreshSecret, { expiresIn: env.jwt.refreshExpiresIn, jwtid: crypto.randomUUID() });
 
 const verifyAccessToken = (token) => jwt.verify(token, env.jwt.accessSecret);
 const verifyRefreshToken = (token) => jwt.verify(token, env.jwt.refreshSecret);
