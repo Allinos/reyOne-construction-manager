@@ -105,6 +105,7 @@ export default function ProjectsListPage() {
                   <th className="px-4 py-3 font-medium">Project</th>
                   <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Progress</th>
                   <th className="px-4 py-3 font-medium">Agreement</th>
                 </tr>
               </thead>
@@ -121,6 +122,14 @@ export default function ProjectsListPage() {
                     <td className="px-4 py-3 text-slate-600">{p.category || '—'}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={p.status} label={statusLabel(p.status)} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-16 rounded-full bg-cream-200 dark:bg-slate-700">
+                          <div className="h-1.5 rounded-full bg-brand-500" style={{ width: `${p.progress ?? 0}%` }} />
+                        </div>
+                        <span className="text-xs text-slate-500">{p.progress ?? 0}%</span>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-slate-500">{formatDate(p.agreementDate)}</td>
                   </tr>

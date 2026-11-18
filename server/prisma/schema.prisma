@@ -222,13 +222,21 @@ model Project {
   category        String?
   status          String    @default("pending")
   agreementDate   DateTime?
+  // Timeline (for progress tracking & the Gantt view)
+  startDate       DateTime?
+  endDate         DateTime? // target completion date
   projectAmount   Decimal   @default(0) @db.Decimal(15, 2)
   advanceAmount   Decimal   @default(0) @db.Decimal(15, 2)
+  // Completion % (0-100). "auto" recomputes from phase/task completion on every
+  // write; "manual" lets a user pin the value and is never overwritten.
+  progress        Int       @default(0)
+  progressMode    String    @default("auto") // auto | manual
   // Client-specific configurable fields (governed by field_definitions)
   customFields    Json?
   createdById     Int?
   phases          ProjectPhase[]
   assignees       ProjectAssignee[]
+  approvals       ProjectApproval[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -259,6 +267,7 @@ model ProjectPhase {
   project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name      String
   status    String          @default("pending")
+  startDate DateTime?
   deadline  DateTime?
   sortOrder Int             @default(0)
   tasks     PhaseTask[]
@@ -309,6 +318,33 @@ model TaskAssignee {
   @@id([taskId, userId])
   @@index([userId])
   @@map("task_assignees")
+}
+
+// Lightweight approval/request workflow on a project (phase sign-off, budget
+// approval, material/finance request, or a general ask). Raised by site staff,
+// decided by a user holding `projects.approve`. Decoupled scalar links only.
+model ProjectApproval {
+  id            Int       @id @default(autoincrement())
+  projectId     Int
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId       Int? // optional link to the phase this is about
+  type          String    @default("general") // phase_completion | budget | material | general
+  title         String
+  description   String?   @db.Text
+  amount        Decimal?  @db.Decimal(15, 2) // optional (budget/finance requests)
+  priority      String    @default("normal") // low | normal | high | urgent
+  status        String    @default("pending") // pending | approved | rejected
+  requestedById Int
+  decidedById   Int?
+  decidedAt     DateTime?
+  decisionNote  String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([status])
+  @@map("project_approvals")
 }
 
 // ===========================================================================

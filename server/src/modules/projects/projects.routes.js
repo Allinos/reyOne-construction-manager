@@ -14,6 +14,9 @@ const {
   addTaskSchema,
   updateTaskSchema,
   assignEmployeesSchema,
+  createApprovalSchema,
+  decideApprovalSchema,
+  approvalParams,
   idParam,
   phaseParams,
   taskParams,
@@ -84,6 +87,28 @@ function registerRoutes(router) {
     authorize('projects.update'),
     validate({ params: taskParams }),
     asyncHandler(controller.removeTask),
+  );
+
+  // Approvals / requests
+  router.get(
+    '/:id/approvals',
+    authorize('projects.read'),
+    validate({ params: idParam }),
+    asyncHandler(controller.listApprovals),
+  );
+  // Any project member can raise a request (gated by read access).
+  router.post(
+    '/:id/approvals',
+    authorize('projects.read'),
+    validate({ params: idParam, body: createApprovalSchema }),
+    asyncHandler(controller.createApproval),
+  );
+  // Only approvers can decide.
+  router.patch(
+    '/:id/approvals/:approvalId',
+    authorize('projects.approve'),
+    validate({ params: approvalParams, body: decideApprovalSchema }),
+    asyncHandler(controller.decideApproval),
   );
 }
 

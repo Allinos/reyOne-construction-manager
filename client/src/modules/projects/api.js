@@ -20,6 +20,12 @@ export const assignProjectEmployees = (id, userIds) => unwrap(api.post(`/project
 export const listEmployees = () =>
   api.get('/users', { params: { limit: 100, status: 'ACTIVE' } }).then((r) => r.data.data).catch(() => []);
 
+// Approvals / requests
+export const listApprovals = (id) => unwrap(api.get(`/projects/${id}/approvals`));
+export const createApproval = (id, body) => unwrap(api.post(`/projects/${id}/approvals`, body));
+export const decideApproval = (id, approvalId, body) =>
+  unwrap(api.patch(`/projects/${id}/approvals/${approvalId}`, body));
+
 export const addTask = (id, phaseId, body) => unwrap(api.post(`/projects/${id}/phases/${phaseId}/tasks`, body));
 export const updateTask = (id, phaseId, taskId, body) =>
   unwrap(api.patch(`/projects/${id}/phases/${phaseId}/tasks/${taskId}`, body));

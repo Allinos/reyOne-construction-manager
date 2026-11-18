@@ -10,12 +10,17 @@ const listSelect = {
   category: true,
   status: true,
   agreementDate: true,
+  startDate: true,
+  endDate: true,
   projectAmount: true,
   advanceAmount: true,
+  progress: true,
+  progressMode: true,
   createdAt: true,
 };
 
-// Full detail include: project assignees + phases -> tasks + assignees, ordered.
+// Full detail include: project assignees + phases -> tasks + assignees, ordered,
+// plus the approval/request thread (newest first).
 const detailInclude = {
   assignees: true,
   phases: {
@@ -27,6 +32,9 @@ const detailInclude = {
         include: { assignees: true },
       },
     },
+  },
+  approvals: {
+    orderBy: [{ id: 'desc' }],
   },
 };
 
@@ -70,6 +78,35 @@ const projectsRepository = {
   },
   sumAmount() {
     return prisma.project.aggregate({ where: { deletedAt: null }, _sum: { projectAmount: true } });
+  },
+
+  // --- analytics extras ---
+  avgProgress() {
+    return prisma.project.aggregate({ where: { deletedAt: null }, _avg: { progress: true } });
+  },
+  // Lightweight: one int column, bucketed in JS for the progress distribution.
+  progressValues() {
+    return prisma.project.findMany({ where: { deletedAt: null }, select: { progress: true, status: true } });
+  },
+  // Not completed and past the target end date.
+  overdueCount() {
+    return prisma.project.count({
+      where: { deletedAt: null, status: { not: 'completed' }, endDate: { lt: new Date() } },
+    });
+  },
+  // Not completed with a target end date inside the next `days` days.
+  upcomingDeadlines(days = 30) {
+    const now = new Date();
+    const until = new Date(now.getTime() + days * 86400000);
+    return prisma.project.findMany({
+      where: { deletedAt: null, status: { not: 'completed' }, endDate: { gte: now, lte: until } },
+      select: { id: true, referenceNumber: true, name: true, endDate: true, progress: true, status: true },
+      orderBy: { endDate: 'asc' },
+      take: 10,
+    });
+  },
+  pendingApprovalCount() {
+    return prisma.projectApproval.count({ where: { status: 'pending' } });
   },
 
   findByReference(referenceNumber) {
@@ -155,6 +192,36 @@ const projectsRepository = {
         skipDuplicates: true,
       }),
     ]);
+  },
+
+  // --- progress ---
+  // Lean inputs for auto-progress: project status/mode + phase/task statuses.
+  progressInputs(id) {
+    return prisma.project.findFirst({
+      where: { id, deletedAt: null },
+      select: {
+        status: true,
+        progressMode: true,
+        phases: { select: { status: true, tasks: { select: { status: true } } } },
+      },
+    });
+  },
+  setProgress(id, progress) {
+    return prisma.project.update({ where: { id }, data: { progress } });
+  },
+
+  // --- approvals / requests ---
+  listApprovals(where) {
+    return prisma.projectApproval.findMany({ where, orderBy: [{ id: 'desc' }] });
+  },
+  findApproval(id) {
+    return prisma.projectApproval.findUnique({ where: { id } });
+  },
+  createApproval(data) {
+    return prisma.projectApproval.create({ data });
+  },
+  updateApproval(id, data) {
+    return prisma.projectApproval.update({ where: { id }, data });
   },
 
   // Resolves assignee user ids to lightweight user objects for output.

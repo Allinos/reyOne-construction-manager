@@ -54,6 +54,17 @@ const projectsController = {
   async removeTask(req, res) {
     return ok(res, await service.removeTask(req.params.id, req.params.phaseId, req.params.taskId, req.user, req));
   },
+
+  // Approvals / requests
+  async listApprovals(req, res) {
+    return ok(res, await service.listApprovals(req.params.id));
+  },
+  async createApproval(req, res) {
+    return created(res, await service.createApproval(req.params.id, req.body, req.user, req));
+  },
+  async decideApproval(req, res) {
+    return ok(res, await service.decideApproval(req.params.id, req.params.approvalId, req.body, req.user, req));
+  },
 };
 
 module.exports = projectsController;

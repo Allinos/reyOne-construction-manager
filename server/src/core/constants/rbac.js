@@ -37,6 +37,7 @@ const PERMISSIONS = [
   { key: 'projects.create', module: 'projects', action: 'create', description: 'Create projects' },
   { key: 'projects.update', module: 'projects', action: 'update', description: 'Edit projects' },
   { key: 'projects.delete', module: 'projects', action: 'delete', description: 'Delete projects' },
+  { key: 'projects.approve', module: 'projects', action: 'approve', description: 'Approve or reject project requests' },
 
   // Finance
   { key: 'finance.read', module: 'finance', action: 'read', description: 'View finance' },
@@ -105,7 +106,7 @@ const DEFAULT_ROLES = [
     description: 'Manages projects and their teams',
     permissions: [
       'dashboard.read',
-      'projects.read', 'projects.create', 'projects.update',
+      'projects.read', 'projects.create', 'projects.update', 'projects.approve',
       'finance.read',
       'clients.read',
       'vendors.read',

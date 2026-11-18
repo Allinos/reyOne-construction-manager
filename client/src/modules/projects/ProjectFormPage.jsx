@@ -31,6 +31,8 @@ const emptyForm = {
   category: '',
   status: 'pending',
   agreementDate: '',
+  startDate: '',
+  endDate: '',
   projectAmount: '',
   advanceAmount: '',
 };
@@ -75,6 +77,8 @@ export default function ProjectFormPage() {
             category: p.category || '',
             status: p.status || 'pending',
             agreementDate: p.agreementDate ? p.agreementDate.slice(0, 10) : '',
+            startDate: p.startDate ? p.startDate.slice(0, 10) : '',
+            endDate: p.endDate ? p.endDate.slice(0, 10) : '',
             projectAmount: p.projectAmount ?? '',
             advanceAmount: p.advanceAmount ?? '',
           });
@@ -130,6 +134,8 @@ export default function ProjectFormPage() {
       };
       if (!body.referenceNumber) delete body.referenceNumber;
       if (!body.agreementDate) delete body.agreementDate;
+      if (!body.startDate) delete body.startDate;
+      if (!body.endDate) delete body.endDate;
 
       if (isEdit) {
         await updateProject(id, body);
@@ -257,6 +263,12 @@ export default function ProjectFormPage() {
             </Field>
             <Field label="Agreement / Working Date">
               <input type="date" className="input" value={form.agreementDate} onChange={(e) => set('agreementDate', e.target.value)} />
+            </Field>
+            <Field label="Start Date">
+              <input type="date" className="input" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
+            </Field>
+            <Field label="Target Completion">
+              <input type="date" className="input" value={form.endDate} onChange={(e) => set('endDate', e.target.value)} />
             </Field>
             <Field label="Project Amount">
               <input type="number" step="0.01" min="0" className="input" placeholder="e.g., 1500000" value={form.projectAmount} onChange={(e) => set('projectAmount', e.target.value)} />

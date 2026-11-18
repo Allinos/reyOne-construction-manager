@@ -4,7 +4,9 @@ import {
   getProject, deleteProject, updateProject, updatePhase, deletePhase, addPhase,
   addTask, updateTask, deleteTask, getFieldDefs,
   assignProjectEmployees, listEmployees,
+  listApprovals, createApproval, decideApproval,
 } from './api';
+import GanttChart from '../../components/GanttChart';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -80,6 +82,34 @@ function DeadlineField({ value, canEdit, onChange }) {
   );
 }
 
+// A thin progress bar with an optional inline label.
+function ProgressBar({ value = 0, height = 'h-2.5', color = '#F97316' }) {
+  const v = Math.max(0, Math.min(100, Math.round(value)));
+  return (
+    <div className={`w-full rounded-full bg-cream-200 dark:bg-slate-700 ${height}`}>
+      <div className={`${height} rounded-full transition-all`} style={{ width: `${v}%`, backgroundColor: color }} />
+    </div>
+  );
+}
+
+const APPROVAL_STATUS = {
+  pending: { label: 'Pending', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
+  approved: { label: 'Approved', cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
+  rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
+};
+const PRIORITY_CLS = {
+  low: 'text-slate-400',
+  normal: 'text-slate-500',
+  high: 'text-amber-600',
+  urgent: 'text-red-600',
+};
+const APPROVAL_TYPES = [
+  { key: 'general', label: 'General request' },
+  { key: 'phase_completion', label: 'Phase completion' },
+  { key: 'budget', label: 'Budget / finance' },
+  { key: 'material', label: 'Material request' },
+];
+
 export default function ProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -91,6 +121,7 @@ export default function ProjectDetailPage() {
   const masterTasks = bootstrap?.settings?.projects?.task_templates || [];
   const statusLabel = (key) => statuses.find((s) => s.key === key)?.label || key;
   const canEdit = can('projects.update');
+  const canApprove = can('projects.approve');
   const enabledModules = bootstrap?.modules || [];
   const requirementsEnabled = enabledModules.some((m) => m.key === 'requirements') && can('requirements.read');
   const photosEnabled = requirementsEnabled && enabledModules.some((m) => m.key === 'photo_upload');
@@ -102,12 +133,19 @@ export default function ProjectDetailPage() {
   const [error, setError] = useState('');
   const [empModal, setEmpModal] = useState(null); // { scope, phaseId, selected:Set }
   const [taskModal, setTaskModal] = useState(null); // { phaseId, taskId, title }
+  const [approvals, setApprovals] = useState([]);
+  const [approvalModal, setApprovalModal] = useState(null); // { type, title, description, priority, phaseId }
 
   const load = useCallback(async () => {
     try {
-      const [p, defs] = await Promise.all([getProject(id), getFieldDefs().catch(() => [])]);
+      const [p, defs, appr] = await Promise.all([
+        getProject(id),
+        getFieldDefs().catch(() => []),
+        listApprovals(id).catch(() => []),
+      ]);
       setProject(p);
       setCustomDefs(defs.filter((d) => d.isCustom));
+      setApprovals(appr || []);
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -144,6 +182,15 @@ export default function ProjectDetailPage() {
   // --- project ---
   const changeStatus = (status) =>
     optimistic((p) => ({ ...p, status }), () => updateProject(id, { status }), 'Status updated successfully');
+  // Progress: switching mode reloads (server recomputes auto %); manual slider is optimistic.
+  const changeProgressMode = (mode) => guard(() => updateProject(id, { progressMode: mode }), 'Progress mode updated');
+  const changeManualProgress = (value) => {
+    const v = Math.max(0, Math.min(100, Number(value) || 0));
+    optimistic(
+      (p) => ({ ...p, progress: v, progressMode: 'manual' }),
+      () => updateProject(id, { progress: v, progressMode: 'manual' }),
+    );
+  };
   const onDelete = async () => {
     const ok = await confirm({ title: 'Delete project?', message: `This will remove ${project.name}.`, confirmLabel: 'Delete' });
     if (ok) guard(() => deleteProject(id), 'Project deleted').then(() => navigate('/projects'));
@@ -174,6 +221,8 @@ export default function ProjectDetailPage() {
     optimistic((p) => patchPhase(p, phase.id, { status }), () => updatePhase(id, phase.id, { status }), 'Phase status updated successfully');
   const setPhaseDeadline = (phase, deadline) =>
     optimistic((p) => patchPhase(p, phase.id, { deadline }), () => updatePhase(id, phase.id, { deadline }), 'Deadline updated');
+  const setPhaseStart = (phase, startDate) =>
+    optimistic((p) => patchPhase(p, phase.id, { startDate }), () => updatePhase(id, phase.id, { startDate }), 'Start date updated');
   const onAddPhase = () => {
     const name = window.prompt('New stage name');
     if (name?.trim()) guard(() => addPhase(id, { name: name.trim() }), 'Stage added');
@@ -237,6 +286,24 @@ export default function ProjectDetailPage() {
     if (ok) guard(() => deleteTask(id, phase.id, task.id), 'Task deleted');
   };
 
+  // --- approvals / requests ---
+  const openRequest = () => setApprovalModal({ type: 'general', title: '', description: '', priority: 'normal', phaseId: '' });
+  const submitRequest = () => {
+    const title = (approvalModal.title || '').trim();
+    if (!title) {
+      toast.error('Please enter a title');
+      return;
+    }
+    const body = { type: approvalModal.type, title, priority: approvalModal.priority };
+    if ((approvalModal.description || '').trim()) body.description = approvalModal.description.trim();
+    if (approvalModal.phaseId) body.phaseId = Number(approvalModal.phaseId);
+    guard(() => createApproval(id, body), 'Request submitted').then(() => setApprovalModal(null));
+  };
+  const decide = (approval, decision) =>
+    guard(() => decideApproval(id, approval.id, { decision }), decision === 'approve' ? 'Request approved' : 'Request rejected');
+
+  const pendingApprovals = approvals.filter((a) => a.status === 'pending');
+
   if (error) return <Alert>{error}</Alert>;
   if (!project) return <FullPageLoader />;
 
@@ -282,7 +349,44 @@ export default function ProjectDetailPage() {
           <Info label="Address" value={project.clientAddress} />
           <Info label="Project Amount" value={formatMoney(project.projectAmount, currency)} />
           <Info label="Agreement Date" value={formatDate(project.agreementDate)} />
+          <Info label="Start Date" value={formatDate(project.startDate)} />
+          <Info label="Target Completion" value={formatDate(project.endDate)} />
           {customDefs.map((d) => <Info key={d.key} label={d.label} value={project.customFields?.[d.key]} />)}
+        </div>
+
+        {/* Overall progress */}
+        <div className="mt-4 border-t border-cream-200 pt-4 dark:border-slate-700">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Overall Progress</span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-semibold text-brand-600">{project.progress ?? 0}%</span>
+              {canEdit && (
+                <select
+                  className="input w-auto py-1 text-xs"
+                  value={project.progressMode || 'auto'}
+                  onChange={(e) => changeProgressMode(e.target.value)}
+                  title="Auto = from stage/task completion. Manual = set it yourself."
+                >
+                  <option value="auto">Auto</option>
+                  <option value="manual">Manual</option>
+                </select>
+              )}
+            </div>
+          </div>
+          <ProgressBar value={project.progress ?? 0} height="h-3" />
+          {project.progressMode === 'manual' && canEdit && (
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={project.progress ?? 0}
+              onChange={(e) => changeManualProgress(e.target.value)}
+              className="mt-2 w-full accent-brand-500"
+            />
+          )}
+          {project.progressMode !== 'manual' && (
+            <p className="mt-1 text-xs text-slate-400">Calculated automatically from stage &amp; task completion.</p>
+          )}
         </div>
       </div>
 
@@ -306,6 +410,14 @@ export default function ProjectDetailPage() {
               icon="photo"
             />
           )}
+        </div>
+      )}
+
+      {/* Timeline / Gantt */}
+      {project.phases.length > 0 && (
+        <div className="card mb-6 p-5">
+          <h2 className="mb-4 text-lg font-semibold text-slate-800 dark:text-slate-100">Timeline</h2>
+          <GanttChart phases={project.phases} project={project} statusLabel={statusLabel} />
         </div>
       )}
 
@@ -338,6 +450,15 @@ export default function ProjectDetailPage() {
                 )}
                 <button className="btn-secondary py-1.5" onClick={() => canEdit && openPhaseEmp(phase)} disabled={!canEdit}>Employee</button>
                 <button className="btn-secondary py-1.5" onClick={() => canEdit && openAddTask(phase)} disabled={!canEdit}>+ Task</button>
+              </div>
+
+              {/* Phase progress */}
+              <div className="mb-4">
+                <div className="mb-1 flex justify-between text-xs">
+                  <span className="text-slate-500">Progress</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-200">{phase.progress ?? 0}%</span>
+                </div>
+                <ProgressBar value={phase.progress ?? 0} color={statusColor(phase.status)} />
               </div>
 
               {/* Assigned employees */}
@@ -387,8 +508,12 @@ export default function ProjectDetailPage() {
                 <p className="mb-4 text-sm text-slate-400">No tasks.</p>
               )}
 
-              {/* Deadline */}
+              {/* Schedule */}
               <div className="border-t border-cream-200 pt-3 dark:border-slate-700">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-medium text-brand-700 dark:text-brand-300">Start</span>
+                  <DeadlineField value={phase.startDate} canEdit={canEdit} onChange={(d) => setPhaseStart(phase, d)} />
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-brand-700 dark:text-brand-300">Deadline</span>
                   <DeadlineField value={phase.deadline} canEdit={canEdit} onChange={(d) => setPhaseDeadline(phase, d)} />
@@ -402,6 +527,131 @@ export default function ProjectDetailPage() {
           ))}
         </div>
       )}
+
+      {/* Approvals & Requests */}
+      <div className="mt-8 mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+          Approvals &amp; Requests
+          {pendingApprovals.length > 0 && (
+            <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+              {pendingApprovals.length} pending
+            </span>
+          )}
+        </h2>
+        <button className="btn-ghost text-brand-600" onClick={openRequest}>+ New Request</button>
+      </div>
+
+      {approvals.length === 0 ? (
+        <div className="card p-6 text-sm text-slate-400">No requests yet.</div>
+      ) : (
+        <div className="card divide-y divide-cream-200 dark:divide-slate-700">
+          {approvals.map((a) => {
+            const st = APPROVAL_STATUS[a.status] || APPROVAL_STATUS.pending;
+            const typeLabel = APPROVAL_TYPES.find((t) => t.key === a.type)?.label || a.type;
+            return (
+              <div key={a.id} className="flex flex-wrap items-start gap-3 p-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-slate-800 dark:text-slate-100">{a.title}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
+                    <span className="badge bg-cream-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200">{typeLabel}</span>
+                    {a.priority && a.priority !== 'normal' && (
+                      <span className={`text-xs font-semibold uppercase ${PRIORITY_CLS[a.priority] || ''}`}>{a.priority}</span>
+                    )}
+                  </div>
+                  {a.description && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{a.description}</p>}
+                  <p className="mt-1 text-xs text-slate-400">
+                    By {a.requestedBy?.name || 'Unknown'} · {formatDate(a.createdAt)}
+                    {a.amount != null && <> · {formatMoney(a.amount, currency)}</>}
+                    {a.status !== 'pending' && a.decidedBy && <> · {st.label} by {a.decidedBy.name}</>}
+                  </p>
+                </div>
+                {a.status === 'pending' && canApprove && (
+                  <div className="flex gap-2">
+                    <button className="btn-secondary py-1 text-green-600" onClick={() => decide(a, 'approve')}>Approve</button>
+                    <button className="btn-secondary py-1 text-red-600" onClick={() => decide(a, 'reject')}>Reject</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* New request modal */}
+      <Modal
+        open={Boolean(approvalModal)}
+        onClose={() => setApprovalModal(null)}
+        title="New Request / Approval"
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setApprovalModal(null)}>Cancel</button>
+            <button className="btn-primary" onClick={submitRequest}>Submit</button>
+          </>
+        }
+      >
+        {approvalModal && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label">Type</label>
+                <select
+                  className="input"
+                  value={approvalModal.type}
+                  onChange={(e) => setApprovalModal((m) => ({ ...m, type: e.target.value }))}
+                >
+                  {APPROVAL_TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Priority</label>
+                <select
+                  className="input"
+                  value={approvalModal.priority}
+                  onChange={(e) => setApprovalModal((m) => ({ ...m, priority: e.target.value }))}
+                >
+                  <option value="low">Low</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+            </div>
+            {project.phases.length > 0 && (
+              <div>
+                <label className="label">Related stage (optional)</label>
+                <select
+                  className="input"
+                  value={approvalModal.phaseId}
+                  onChange={(e) => setApprovalModal((m) => ({ ...m, phaseId: e.target.value }))}
+                >
+                  <option value="">—</option>
+                  {project.phases.map((ph) => <option key={ph.id} value={ph.id}>{ph.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="label">Title</label>
+              <input
+                className="input"
+                autoFocus
+                placeholder="e.g. Approve Foundation stage completion"
+                value={approvalModal.title}
+                onChange={(e) => setApprovalModal((m) => ({ ...m, title: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label">Details (optional)</label>
+              <textarea
+                className="input"
+                rows={3}
+                value={approvalModal.description}
+                onChange={(e) => setApprovalModal((m) => ({ ...m, description: e.target.value }))}
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Employee picker modal (project or phase) */}
       <Modal

@@ -4,7 +4,7 @@ const prisma = require('../../config/prisma');
 const repo = require('./projects.repository');
 const AppError = require('../../core/errors/AppError');
 const activity = require('../../core/services/activityLog');
-const { notifyMany } = require('../../core/services/notify');
+const { notify, notifyMany } = require('../../core/services/notify');
 const { getPagination, buildMeta } = require('../../core/utils/pagination');
 
 // --- helpers -------------------------------------------------------------
@@ -68,7 +68,32 @@ function collectUserIds(project) {
       for (const a of task.assignees || []) ids.add(a.userId);
     }
   }
+  for (const ap of project.approvals || []) {
+    if (ap.requestedById) ids.add(ap.requestedById);
+    if (ap.decidedById) ids.add(ap.decidedById);
+  }
   return [...ids];
+}
+
+// --- progress ---------------------------------------------------------------
+// A phase is 100% when marked completed, otherwise its completed-task ratio.
+// A phase with no tasks contributes 0 until it is marked completed.
+function phaseProgress(phase) {
+  if (phase.status === 'completed') return 100;
+  const tasks = phase.tasks || [];
+  if (!tasks.length) return 0;
+  const done = tasks.filter((t) => t.status === 'completed').length;
+  return Math.round((done / tasks.length) * 100);
+}
+
+// Project progress = equal-weighted average of its phases (100 when the project
+// itself is completed, 0 when it has no phases).
+function computeProgress(project) {
+  if (project.status === 'completed') return 100;
+  const phases = project.phases || [];
+  if (!phases.length) return 0;
+  const sum = phases.reduce((s, ph) => s + phaseProgress(ph), 0);
+  return Math.round(sum / phases.length);
 }
 
 // Replaces raw {userId} assignee rows with resolved user objects for output.
@@ -78,17 +103,31 @@ async function decorate(project) {
   const byId = new Map(users.map((u) => [u.id, u]));
   const mapAssignees = (list) => (list || []).map((a) => byId.get(a.userId)).filter(Boolean);
 
+  const phases = (project.phases || []).map((phase) => ({
+    ...phase,
+    progress: phaseProgress(phase),
+    assignees: mapAssignees(phase.assignees),
+    tasks: (phase.tasks || []).map((task) => ({
+      ...task,
+      assignees: mapAssignees(task.assignees),
+    })),
+  }));
+
+  // Auto-mode projects report live progress; manual-mode uses the stored value.
+  const progress = project.progressMode === 'manual' ? project.progress : computeProgress(project);
+
+  const approvals = (project.approvals || []).map((ap) => ({
+    ...ap,
+    requestedBy: byId.get(ap.requestedById) || null,
+    decidedBy: ap.decidedById ? byId.get(ap.decidedById) || null : null,
+  }));
+
   return {
     ...project,
+    progress,
     assignees: mapAssignees(project.assignees),
-    phases: (project.phases || []).map((phase) => ({
-      ...phase,
-      assignees: mapAssignees(phase.assignees),
-      tasks: (phase.tasks || []).map((task) => ({
-        ...task,
-        assignees: mapAssignees(task.assignees),
-      })),
-    })),
+    phases,
+    approvals,
   };
 }
 
@@ -161,17 +200,53 @@ const projectsService = {
   },
 
   async analytics() {
-    const [statusRows, categoryRows, total, amountAgg] = await Promise.all([
-      repo.statusCounts(),
-      repo.categoryCounts(),
-      repo.countActive(),
-      repo.sumAmount(),
-    ]);
+    const [statusRows, categoryRows, total, amountAgg, avgAgg, progressRows, overdue, upcoming, pendingApprovals] =
+      await Promise.all([
+        repo.statusCounts(),
+        repo.categoryCounts(),
+        repo.countActive(),
+        repo.sumAmount(),
+        repo.avgProgress(),
+        repo.progressValues(),
+        repo.overdueCount(),
+        repo.upcomingDeadlines(30),
+        repo.pendingApprovalCount(),
+      ]);
     const byStatus = statusRows.map((r) => ({ label: r.status, value: r._count._all }));
     const byCategory = categoryRows.map((r) => ({ label: r.category || 'Uncategorized', value: r._count._all }));
+
+    // Completion distribution across all active projects.
+    const buckets = [
+      { label: 'Not started', min: 0, max: 0 },
+      { label: '1–25%', min: 1, max: 25 },
+      { label: '26–50%', min: 26, max: 50 },
+      { label: '51–75%', min: 51, max: 75 },
+      { label: '76–99%', min: 76, max: 99 },
+      { label: 'Completed', min: 100, max: 100 },
+    ];
+    const progressBuckets = buckets.map((b) => ({
+      label: b.label,
+      value: progressRows.filter((p) => p.progress >= b.min && p.progress <= b.max).length,
+    }));
+    const completed = progressRows.filter((p) => p.progress >= 100 || p.status === 'completed').length;
+
     return {
       totalProjects: total,
       totalValue: (amountAgg._sum.projectAmount || 0).toString(),
+      avgProgress: Math.round(avgAgg._avg.progress || 0),
+      completed,
+      inProgress: total - completed,
+      overdue,
+      pendingApprovals,
+      upcoming: upcoming.map((u) => ({
+        id: u.id,
+        referenceNumber: u.referenceNumber,
+        name: u.name,
+        endDate: u.endDate,
+        progress: u.progress,
+        status: u.status,
+      })),
+      progressBuckets,
       byStatus,
       byCategory,
     };
@@ -202,14 +277,19 @@ const projectsService = {
       category: payload.category,
       status: payload.status || 'pending',
       agreementDate: payload.agreementDate,
+      startDate: payload.startDate ?? null,
+      endDate: payload.endDate ?? null,
       projectAmount: payload.projectAmount ?? 0,
       advanceAmount: payload.advanceAmount ?? 0,
+      progressMode: payload.progressMode === 'manual' ? 'manual' : 'auto',
+      progress: payload.progressMode === 'manual' ? payload.progress ?? 0 : 0,
       customFields: payload.customFields ?? undefined,
       createdById: actor.id,
       phases: {
         create: phases.map((phase, i) => ({
           name: phase.name,
           status: phase.status || 'pending',
+          startDate: phase.startDate ?? null,
           deadline: phase.deadline,
           sortOrder: phase.sortOrder ?? i,
           assignees: { create: [...new Set(phase.assigneeIds || [])].map((userId) => ({ userId })) },
@@ -229,6 +309,7 @@ const projectsService = {
 
     const project = await repo.create(data);
     activity.record({ userId: actor.id, action: 'project.created', entityType: 'project', entityId: project.id, req });
+    await this.syncProgress(project.id);
 
     // Keep the Clients directory in sync (create if new; never clobber enriched fields).
     try {
@@ -284,7 +365,7 @@ const projectsService = {
     const data = { ...payload };
     if (data.clientEmail === '') data.clientEmail = null;
 
-    const project = await repo.update(id, data);
+    await repo.update(id, data);
     activity.record({ userId: actor.id, action: 'project.updated', entityType: 'project', entityId: id, req });
 
     // Notify assigned employees when the project status changes.
@@ -298,7 +379,9 @@ const projectsService = {
         entityId: id,
       });
     }
-    return decorate(project);
+    // A status change (or a switch back to auto) can move the completion %.
+    await this.syncProgress(id);
+    return this.get(id);
   },
 
   async remove(id, actor, req) {
@@ -307,6 +390,97 @@ const projectsService = {
     await repo.softDelete(id);
     activity.record({ userId: actor.id, action: 'project.deleted', entityType: 'project', entityId: id, req });
     return { success: true };
+  },
+
+  // Recompute and persist the stored completion % (auto mode only). Called
+  // after any change that can move it, so the list view stays correct without
+  // loading every phase/task.
+  async syncProgress(projectId) {
+    const inputs = await repo.progressInputs(projectId);
+    if (!inputs || inputs.progressMode === 'manual') return;
+    await repo.setProgress(projectId, computeProgress(inputs));
+  },
+
+  // --- approvals / requests ---
+  // Who hears about a new request: the project's assignees and its creator
+  // (minus the requester). In practice this reaches the project manager, who
+  // holds `projects.approve`.
+  async approverRecipients(projectId, excludeUserId) {
+    const [assignees, project] = await Promise.all([
+      repo.projectAssigneeUserIds(projectId),
+      repo.findRawById(projectId),
+    ]);
+    const ids = new Set(assignees);
+    if (project?.createdById) ids.add(project.createdById);
+    ids.delete(excludeUserId);
+    return [...ids];
+  },
+
+  async listApprovals(projectId) {
+    await this.assertProject(projectId);
+    const rows = await repo.listApprovals({ projectId });
+    const ids = [...new Set(rows.flatMap((r) => [r.requestedById, r.decidedById]).filter(Boolean))];
+    const users = ids.length ? await repo.activeUsersByIds(ids) : [];
+    const byId = new Map(users.map((u) => [u.id, u]));
+    return rows.map((r) => ({
+      ...r,
+      requestedBy: byId.get(r.requestedById) || null,
+      decidedBy: r.decidedById ? byId.get(r.decidedById) || null : null,
+    }));
+  },
+
+  async createApproval(projectId, payload, actor, req) {
+    await this.assertProject(projectId);
+    if (payload.phaseId) await this.assertPhase(projectId, payload.phaseId);
+    const approval = await repo.createApproval({
+      projectId,
+      phaseId: payload.phaseId ?? null,
+      type: payload.type || 'general',
+      title: payload.title,
+      description: payload.description ?? null,
+      amount: payload.amount ?? null,
+      priority: payload.priority || 'normal',
+      requestedById: actor.id,
+    });
+    activity.record({ userId: actor.id, action: 'project.approval_requested', entityType: 'project', entityId: projectId, req });
+
+    const project = await repo.findRawById(projectId);
+    const recipients = await this.approverRecipients(projectId, actor.id);
+    notifyMany(recipients, {
+      type: 'project.approval_requested',
+      title: 'Approval requested',
+      message: `${actor.name || 'A user'} requested approval: "${payload.title}" on ${project?.name || 'a project'}.`,
+      entityType: 'project',
+      entityId: projectId,
+    });
+    return approval;
+  },
+
+  async decideApproval(projectId, approvalId, payload, actor, req) {
+    await this.assertProject(projectId);
+    const approval = await repo.findApproval(approvalId);
+    if (!approval || approval.projectId !== projectId) throw AppError.notFound('Approval request not found');
+    if (approval.status !== 'pending') throw AppError.badRequest('This request has already been decided');
+
+    const status = payload.decision === 'approve' ? 'approved' : 'rejected';
+    const updated = await repo.updateApproval(approvalId, {
+      status,
+      decidedById: actor.id,
+      decidedAt: new Date(),
+      decisionNote: payload.note ?? null,
+    });
+    activity.record({ userId: actor.id, action: `project.approval_${status}`, entityType: 'project', entityId: projectId, req });
+
+    const project = await repo.findRawById(projectId);
+    notify({
+      userId: approval.requestedById,
+      type: 'project.approval_decided',
+      title: `Request ${status}`,
+      message: `Your request "${approval.title}" on ${project?.name || 'a project'} was ${status}.`,
+      entityType: 'project',
+      entityId: projectId,
+    });
+    return updated;
   },
 
   // --- phases ---
@@ -331,6 +505,7 @@ const projectsService = {
       projectId,
       name: payload.name,
       status: payload.status || 'pending',
+      startDate: payload.startDate ?? null,
       deadline: payload.deadline,
       sortOrder: payload.sortOrder ?? 0,
       assignees: { create: assigneeIds.map((userId) => ({ userId })) },
@@ -346,6 +521,7 @@ const projectsService = {
       },
     });
     activity.record({ userId: actor.id, action: 'phase.created', entityType: 'project', entityId: projectId, req });
+    await this.syncProgress(projectId);
     return this.get(projectId);
   },
 
@@ -357,6 +533,7 @@ const projectsService = {
       await repo.setPhaseAssignees(phaseId, await validateAssignees(assigneeIds));
     }
     activity.record({ userId: actor.id, action: 'phase.updated', entityType: 'project', entityId: projectId, req });
+    await this.syncProgress(projectId);
     return this.get(projectId);
   },
 
@@ -364,6 +541,7 @@ const projectsService = {
     await this.assertPhase(projectId, phaseId);
     await repo.deletePhase(phaseId);
     activity.record({ userId: actor.id, action: 'phase.deleted', entityType: 'project', entityId: projectId, req });
+    await this.syncProgress(projectId);
     return this.get(projectId);
   },
 
@@ -387,6 +565,7 @@ const projectsService = {
       assignees: { create: assigneeIds.map((userId) => ({ userId })) },
     });
     activity.record({ userId: actor.id, action: 'task.created', entityType: 'project', entityId: projectId, req });
+    await this.syncProgress(projectId);
     return this.get(projectId);
   },
 
@@ -399,6 +578,7 @@ const projectsService = {
       await repo.setTaskAssignees(taskId, await validateAssignees(assigneeIds));
     }
     activity.record({ userId: actor.id, action: 'task.updated', entityType: 'project', entityId: projectId, req });
+    await this.syncProgress(projectId);
     return this.get(projectId);
   },
 
@@ -407,6 +587,7 @@ const projectsService = {
     await this.assertTask(phaseId, taskId);
     await repo.deleteTask(taskId);
     activity.record({ userId: actor.id, action: 'task.deleted', entityType: 'project', entityId: projectId, req });
+    await this.syncProgress(projectId);
     return this.get(projectId);
   },
 };
