@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { listNotifications, unreadCount, markRead, markAllRead, deleteNotification } from './api';
 import { formatDateTime } from '../../lib/format';
 import { Spinner } from '../../components/ui';
@@ -11,9 +12,33 @@ const TYPE_DOT = {
   'expense.added': 'bg-red-500',
   deadline: 'bg-purple-500',
   system: 'bg-slate-400',
+  'project.approval_requested': 'bg-amber-500',
+  'project.approval_decided': 'bg-green-500',
+  'materials.request': 'bg-orange-500',
+  'materials.request_decided': 'bg-green-500',
+  'materials.request_fulfilled': 'bg-green-500',
+  'query.created': 'bg-sky-500',
+  'query.assigned': 'bg-sky-500',
+  'query.reply': 'bg-sky-400',
+  'query.status': 'bg-slate-500',
+  'inspection.issue_assigned': 'bg-red-500',
+  'inspection.issue_resolved': 'bg-green-500',
 };
 
+// Where a notification should take the user when tapped.
+export function notificationLink(n) {
+  const id = n.entityId;
+  switch (n.entityType) {
+    case 'project': return id ? `/projects/${id}` : '/projects';
+    case 'query': return id ? `/queries?id=${id}` : '/queries';
+    case 'inspection': return id ? `/inspections/${id}` : '/inspections';
+    case 'material_request': return '/materials';
+    default: return null;
+  }
+}
+
 export default function NotificationBell() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
   const [items, setItems] = useState(null);
@@ -96,8 +121,12 @@ export default function NotificationBell() {
                   {items.map((n) => (
                     <li
                       key={n.id}
-                      className={`flex gap-3 px-4 py-3 ${n.readAt ? '' : 'bg-brand-50/60 dark:bg-slate-700/40'}`}
-                      onClick={() => onRead(n)}
+                      className={`flex cursor-pointer gap-3 px-4 py-3 hover:bg-cream-100 dark:hover:bg-slate-700 ${n.readAt ? '' : 'bg-brand-50/60 dark:bg-slate-700/40'}`}
+                      onClick={() => {
+                        onRead(n);
+                        const to = notificationLink(n);
+                        if (to) { setOpen(false); navigate(to); }
+                      }}
                       role="button"
                     >
                       <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${TYPE_DOT[n.type] || 'bg-slate-400'}`} />

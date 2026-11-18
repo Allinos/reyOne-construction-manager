@@ -1,20 +1,16 @@
-# server/public
+# Static assets
 
-Static hosting folder. Drop a built frontend (e.g. a Vite/React `dist/` output)
-here and the API server will serve it automatically:
+Files here are served from the site root.
 
-- Files in this folder are served at the site root (`/`).
-- Any non-API `GET` request that doesn't match a file falls back to
-  `index.html` (SPA client-side routing support).
-- API routes (`/api/v1/...`) and `/health` are unaffected.
+## Brand logo
 
-To deploy the client into this folder:
+To use your own logo across the app (login screen + sidebar), drop a file named
+**`logo.png`** in this folder:
 
-```bash
-cd client
-npm run build
-cp -r dist/* ../server/public/
+```
+client/public/logo.png
 ```
 
-The API also stays reachable at `/api/v1`. Build artifacts copied here are
-gitignored (except this README) so they don't bloat the repo.
+`BrandLogo` (`src/components/BrandLogo.jsx`) loads `/logo.png` automatically. If
+the file is missing, it falls back to a built-in on-brand infinity mark, so the
+UI always looks finished. A square, transparent PNG (e.g. 512×512) works best.

@@ -144,6 +144,19 @@ const DEFAULT_SETTINGS = [
       defaultNotes: 'Thank you for your business.',
     },
   },
+  // Site inspection checklist templates (editable in Settings).
+  {
+    group: 'inspections',
+    key: 'checklists',
+    value: [
+      { key: 'general_site', name: 'General Site Safety', items: ['Barricading & signage in place', 'PPE worn by all workers', 'Scaffolding secure & tagged', 'First-aid kit available', 'Housekeeping / debris cleared', 'Electrical connections safe', 'Fire extinguisher accessible', 'Material stacking safe'] },
+      { key: 'foundation', name: 'Foundation / Footing', items: ['Excavation depth as per drawing', 'Soil bed compacted', 'PCC level & thickness', 'Reinforcement size & spacing', 'Cover blocks provided', 'Shuttering line & level', 'Concrete grade / slump checked', 'Curing arranged'] },
+      { key: 'rcc_slab', name: 'RCC Slab / Beam', items: ['Shuttering & props stable', 'Bar bending schedule followed', 'Lap lengths correct', 'Electrical conduits placed', 'Cover blocks provided', 'Cube samples taken', 'Vibration during pour', 'Curing for 14+ days'] },
+      { key: 'masonry', name: 'Brickwork / Masonry', items: ['Bricks soaked', 'Mortar ratio correct', 'Line, level & plumb', 'Joints fully filled', 'Lintels / sills as per drawing', 'Curing done'] },
+      { key: 'finishing', name: 'Finishing / Handover', items: ['Plaster surface even', 'Tiles level, no hollowness', 'Paint uniform', 'Doors & windows operate smoothly', 'Plumbing leak test passed', 'Electrical points tested', 'Site cleaned'] },
+    ],
+  },
+  { group: 'queries', key: 'categories', value: ['General', 'Design / Drawing', 'Materials', 'Payment', 'Site Issue', 'Client Request'] },
 ];
 
 async function seedCompany() {
