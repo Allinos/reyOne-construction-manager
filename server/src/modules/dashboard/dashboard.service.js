@@ -3,6 +3,7 @@
 const { Prisma } = require('@prisma/client');
 const repo = require('./dashboard.repository');
 const financeService = require('../finance/finance.service');
+const { accessibleProjectIds, hasPerm } = require('../../core/services/access');
 
 const D = (v) => new Prisma.Decimal(v ?? 0);
 
@@ -92,11 +93,13 @@ const dashboardService = {
     };
   },
 
-  async activity() {
+  // Scoped to the user's projects; the audit trail only for activity.read.
+  async activity(actor) {
+    const ids = await accessibleProjectIds(actor);
     const [recentProjects, recentActivities, upcomingDeadlines] = await Promise.all([
-      repo.recentProjects(5),
-      repo.recentActivities(10),
-      repo.upcomingDeadlines(10),
+      repo.recentProjects(5, ids),
+      hasPerm(actor, 'activity.read') ? repo.recentActivities(10) : [],
+      repo.upcomingDeadlines(10, ids),
     ]);
     return { recentProjects, recentActivities, upcomingDeadlines };
   },

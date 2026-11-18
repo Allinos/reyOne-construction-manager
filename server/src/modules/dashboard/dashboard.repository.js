@@ -16,9 +16,9 @@ const dashboardRepository = {
     return prisma.user.count({ where: { deletedAt: null } });
   },
 
-  recentProjects(take = 5) {
+  recentProjects(take = 5, ids = null) {
     return prisma.project.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, ...(ids ? { id: { in: ids } } : {}) },
       orderBy: { createdAt: 'desc' },
       take,
       select: { id: true, referenceNumber: true, name: true, clientName: true, status: true, createdAt: true },
@@ -31,9 +31,9 @@ const dashboardRepository = {
       include: { user: { select: { id: true, name: true } } },
     });
   },
-  upcomingDeadlines(take = 10) {
+  upcomingDeadlines(take = 10, ids = null) {
     return prisma.projectPhase.findMany({
-      where: { deadline: { gte: new Date() }, status: { not: 'completed' }, project: { deletedAt: null } },
+      where: { deadline: { gte: new Date() }, status: { not: 'completed' }, project: { deletedAt: null, ...(ids ? { id: { in: ids } } : {}) } },
       orderBy: { deadline: 'asc' },
       take,
       include: { project: { select: { id: true, referenceNumber: true, name: true } } },

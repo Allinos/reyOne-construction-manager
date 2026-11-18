@@ -11,7 +11,7 @@ const dashboardController = {
     return ok(res, await service.charts(req.query));
   },
   async activity(req, res) {
-    return ok(res, await service.activity());
+    return ok(res, await service.activity(req.user));
   },
 };
 
