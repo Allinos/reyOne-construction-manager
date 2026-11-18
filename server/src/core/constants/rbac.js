@@ -38,6 +38,30 @@ const PERMISSIONS = [
   { key: 'projects.update', module: 'projects', action: 'update', description: 'Edit projects' },
   { key: 'projects.delete', module: 'projects', action: 'delete', description: 'Delete projects' },
   { key: 'projects.approve', module: 'projects', action: 'approve', description: 'Approve or reject project requests' },
+  { key: 'projects.view_all', module: 'projects', action: 'view_all', description: 'See all projects (otherwise only assigned ones)' },
+
+  // Attendance
+  { key: 'attendance.read', module: 'attendance', action: 'read', description: 'View attendance' },
+  { key: 'attendance.mark', module: 'attendance', action: 'mark', description: 'Mark attendance' },
+
+  // Payroll (salary data is restricted to these permissions)
+  { key: 'payroll.read', module: 'payroll', action: 'read', description: 'View salaries, payments & advances' },
+  { key: 'payroll.manage', module: 'payroll', action: 'manage', description: 'Configure salaries, record payments & advances' },
+
+  // Materials & Inventory
+  { key: 'materials.read', module: 'materials', action: 'read', description: 'View materials & stock' },
+  { key: 'materials.request', module: 'materials', action: 'request', description: 'Raise material requests & record site consumption' },
+  { key: 'materials.approve', module: 'materials', action: 'approve', description: 'Approve / reject material requests' },
+  { key: 'materials.manage', module: 'materials', action: 'manage', description: 'Manage materials, purchases, transfers & stock' },
+
+  // Site Inspection
+  { key: 'inspections.read', module: 'inspections', action: 'read', description: 'View inspections' },
+  { key: 'inspections.manage', module: 'inspections', action: 'manage', description: 'Create inspections & manage issues' },
+
+  // Queries
+  { key: 'queries.read', module: 'queries', action: 'read', description: 'View & reply to queries' },
+  { key: 'queries.create', module: 'queries', action: 'create', description: 'Raise queries' },
+  { key: 'queries.manage', module: 'queries', action: 'manage', description: 'See all queries, assign & close' },
 
   // Finance
   { key: 'finance.read', module: 'finance', action: 'read', description: 'View finance' },
@@ -112,7 +136,11 @@ const DEFAULT_ROLES = [
     description: 'Manages projects and their teams',
     permissions: [
       'dashboard.read',
-      'projects.read', 'projects.create', 'projects.update', 'projects.approve',
+      'projects.read', 'projects.create', 'projects.update', 'projects.approve', 'projects.view_all',
+      'attendance.read', 'attendance.mark',
+      'materials.read', 'materials.request', 'materials.approve', 'materials.manage',
+      'inspections.read', 'inspections.manage',
+      'queries.read', 'queries.create', 'queries.manage',
       'finance.read',
       'clients.read',
       'vendors.read',
@@ -125,16 +153,26 @@ const DEFAULT_ROLES = [
   },
   {
     key: 'site_engineer',
-    name: 'Site Engineer',
-    description: 'Works on assigned projects and phases',
-    permissions: ['dashboard.read', 'projects.read', 'projects.update', 'requirements.read', 'requirements.update', 'workforce.read'],
+    name: 'Site Incharge',
+    description: 'Runs assigned sites: attendance, materials, inspections, queries',
+    permissions: [
+      'dashboard.read', 'projects.read', 'projects.update', 'requirements.read', 'requirements.update', 'workforce.read',
+      'attendance.read', 'attendance.mark',
+      'materials.read', 'materials.request',
+      'inspections.read', 'inspections.manage',
+      'queries.read', 'queries.create',
+      'documents.read', 'documents.create',
+    ],
   },
   {
     key: 'accountant',
-    name: 'Accountant',
-    description: 'Manages project and company finance',
+    name: 'Accountant / CA',
+    description: 'Manages finance, payroll and procurement accounting',
     permissions: [
-      'dashboard.read',
+      'dashboard.read', 'projects.view_all',
+      'attendance.read', 'payroll.read', 'payroll.manage',
+      'materials.read', 'materials.manage',
+      'queries.read', 'queries.create',
       'finance.read', 'finance.create', 'finance.update', 'finance.delete',
       'projects.read',
       'invoices.read', 'invoices.create', 'invoices.update', 'invoices.delete',
@@ -149,14 +187,14 @@ const DEFAULT_ROLES = [
   {
     key: 'store_manager',
     name: 'Store Manager',
-    description: 'Manages stores/inventory (module added later)',
-    permissions: ['dashboard.read', 'projects.read'],
+    description: 'Manages materials, stock, procurement and transfers',
+    permissions: ['dashboard.read', 'projects.read', 'projects.view_all', 'vendors.read', 'materials.read', 'materials.request', 'materials.manage', 'queries.read', 'queries.create'],
   },
   {
     key: 'employee',
     name: 'Employee',
-    description: 'Basic access',
-    permissions: ['dashboard.read', 'projects.read'],
+    description: 'Basic access to assigned projects',
+    permissions: ['dashboard.read', 'projects.read', 'queries.read', 'queries.create'],
   },
 ];
 

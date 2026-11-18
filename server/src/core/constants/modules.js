@@ -43,10 +43,12 @@ const MODULE_CATALOG = [
   // Flutter app is activated for this client and exposes the enabled modules.
   { key: 'mobile_app', name: 'Mobile App', isCore: false, enabled: false, sortOrder: 24, description: 'Activate the Flutter mobile app for this client', virtual: true },
 
-  // Future modules — seeded disabled so they appear in the Module Manager
-  { key: 'attendance', name: 'Attendance', isCore: false, enabled: false, sortOrder: 25, description: 'Coming soon' },
-  { key: 'payroll', name: 'Payroll', isCore: false, enabled: false, sortOrder: 26, description: 'Coming soon' },
-  { key: 'inventory', name: 'Inventory', isCore: false, enabled: false, sortOrder: 27, description: 'Coming soon' },
+  // Operations modules
+  { key: 'attendance', name: 'Attendance', isCore: false, enabled: true, sortOrder: 25, description: 'Daily attendance for employees & labour' },
+  { key: 'payroll', name: 'Salary & Payroll', isCore: false, enabled: true, sortOrder: 26, description: 'Salaries, payments, advances & pending dues' },
+  { key: 'materials', name: 'Materials & Inventory', isCore: false, enabled: true, sortOrder: 27, description: 'Requests, approvals, procurement, stock & consumption' },
+  { key: 'inspections', name: 'Site Inspection', isCore: false, enabled: true, sortOrder: 28, description: 'Checklists, photos, issues & corrective actions' },
+  { key: 'queries', name: 'Queries', isCore: false, enabled: true, sortOrder: 29, description: 'Project/site queries with assignment & replies' },
 ];
 
 module.exports = { MODULE_CATALOG };

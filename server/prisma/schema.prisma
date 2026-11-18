@@ -591,6 +591,8 @@ model Vendor {
   gstNumber     String?
   address       String?   @db.Text
   notes         String?   @db.Text
+  rating        Int? // 1-5 vendor rating
+  ratingNote    String?   @db.Text
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
@@ -616,4 +618,270 @@ model Client {
   deletedAt     DateTime?
 
   @@map("clients")
+}
+
+// ===========================================================================
+// SHARED: stored files (bills, receipts, photos, attachments). Base64 data URL
+// kept in the DB — fine at this scale; swap for object storage later without
+// changing callers (they only see id/name/mimeType/data).
+// ===========================================================================
+model StoredFile {
+  id           Int      @id @default(autoincrement())
+  entityType   String // vendor_bill | expense | query | query_reply | inspection | client
+  entityId     Int
+  name         String?
+  mimeType     String?
+  size         Int?
+  data         String   @db.LongText
+  uploadedById Int?
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@map("stored_files")
+}
+
+// ===========================================================================
+// MODULE: Attendance & Payroll
+// A "person" is either a system user (employee) or a workforce member
+// (labour / contractor): personType = USER | WORKFORCE, personId = its id.
+// ===========================================================================
+model SalaryProfile {
+  id            Int      @id @default(autoincrement())
+  personType    String // USER | WORKFORCE
+  personId      Int
+  payType       String   @default("monthly") // monthly | daily
+  rate          Decimal  @db.Decimal(15, 2) // monthly salary or daily wage
+  effectiveFrom DateTime?
+  notes         String?  @db.Text
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([personType, personId])
+  @@map("salary_profiles")
+}
+
+model AttendanceRecord {
+  id          Int      @id @default(autoincrement())
+  personType  String
+  personId    Int
+  date        DateTime @db.Date
+  status      String // present | absent | half_day | leave
+  projectId   Int?
+  checkIn     String? // HH:MM
+  checkOut    String?
+  notes       String?
+  markedById  Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([personType, personId, date])
+  @@index([date])
+  @@index([projectId])
+  @@map("attendance_records")
+}
+
+model SalaryAdvance {
+  id          Int      @id @default(autoincrement())
+  personType  String
+  personId    Int
+  amount      Decimal  @db.Decimal(15, 2)
+  date        DateTime
+  method      String?
+  notes       String?  @db.Text
+  expenseId   Int? // mirrored Finance expense
+  createdById Int?
+  createdAt   DateTime @default(now())
+  deletedAt   DateTime?
+
+  @@index([personType, personId])
+  @@map("salary_advances")
+}
+
+model SalaryPayment {
+  id               Int      @id @default(autoincrement())
+  personType       String
+  personId         Int
+  period           String // YYYY-MM the payment settles
+  grossAmount      Decimal  @db.Decimal(15, 2) // salary amount being settled
+  advanceDeduction Decimal  @default(0) @db.Decimal(15, 2)
+  otherDeduction   Decimal  @default(0) @db.Decimal(15, 2)
+  bonus            Decimal  @default(0) @db.Decimal(15, 2)
+  netPaid          Decimal  @db.Decimal(15, 2)
+  date             DateTime
+  method           String?
+  notes            String?  @db.Text
+  expenseId        Int? // mirrored Finance expense
+  createdById      Int?
+  createdAt        DateTime @default(now())
+  deletedAt        DateTime?
+
+  @@index([personType, personId])
+  @@index([period])
+  @@map("salary_payments")
+}
+
+// ===========================================================================
+// MODULE: Materials & Inventory
+// Stock lives at a location: projectId = null is the central store, otherwise
+// a project site. Balance = sum of signed movement quantities.
+// ===========================================================================
+model Material {
+  id           Int      @id @default(autoincrement())
+  name         String
+  unit         String   @default("nos")
+  category     String?
+  reorderLevel Decimal  @default(0) @db.Decimal(15, 3)
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  @@index([deletedAt])
+  @@map("materials")
+}
+
+model StockMovement {
+  id          Int      @id @default(autoincrement())
+  materialId  Int
+  projectId   Int? // location; null = central store
+  type        String // PURCHASE | TRANSFER_IN | TRANSFER_OUT | CONSUME | ADJUST | RETURN
+  quantity    Decimal  @db.Decimal(15, 3) // signed: + into location, - out
+  rate        Decimal? @db.Decimal(15, 2)
+  vendorId    Int?
+  requestId   Int?
+  date        DateTime
+  notes       String?  @db.Text
+  createdById Int?
+  createdAt   DateTime @default(now())
+
+  @@index([materialId, projectId])
+  @@index([vendorId])
+  @@index([date])
+  @@map("stock_movements")
+}
+
+model MaterialRequest {
+  id            Int       @id @default(autoincrement())
+  projectId     Int
+  requestedById Int
+  status        String    @default("pending") // pending | approved | rejected | fulfilled
+  priority      String    @default("normal")
+  neededBy      DateTime?
+  notes         String?   @db.Text
+  items         Json // [{ materialId, name, unit, quantity, approvedQty }]
+  decidedById   Int?
+  decidedAt     DateTime?
+  decisionNote  String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([projectId])
+  @@index([status])
+  @@map("material_requests")
+}
+
+// ===========================================================================
+// MODULE: Site Inspection
+// ===========================================================================
+model Inspection {
+  id          Int      @id @default(autoincrement())
+  projectId   Int
+  title       String
+  date        DateTime
+  inspectorId Int?
+  status      String   @default("open") // open | closed
+  checklist   Json // [{ item, result: pass|fail|na, remark }]
+  remarks     String?  @db.Text
+  createdById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+  issues      InspectionIssue[]
+
+  @@index([projectId])
+  @@index([status])
+  @@map("inspections")
+}
+
+model InspectionIssue {
+  id               Int        @id @default(autoincrement())
+  inspectionId     Int
+  inspection       Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  description      String     @db.Text
+  severity         String     @default("medium") // low | medium | high | critical
+  assignedToId     Int?
+  correctiveAction String?    @db.Text
+  dueDate          DateTime?
+  status           String     @default("open") // open | in_progress | resolved | verified
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@index([inspectionId])
+  @@index([assignedToId])
+  @@map("inspection_issues")
+}
+
+// ===========================================================================
+// MODULE: Queries
+// ===========================================================================
+model Query {
+  id          Int      @id @default(autoincrement())
+  projectId   Int?
+  title       String
+  description String?  @db.Text
+  priority    String   @default("normal") // low | normal | high | urgent
+  status      String   @default("open") // open | in_progress | resolved | closed
+  visibility  String   @default("assigned") // assigned | all
+  assigneeIds Json     @default("[]")
+  createdById Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+  replies     QueryReply[]
+
+  @@index([projectId])
+  @@index([status])
+  @@map("queries")
+}
+
+model QueryReply {
+  id        Int      @id @default(autoincrement())
+  queryId   Int
+  query     Query    @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  userId    Int
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([queryId])
+  @@map("query_replies")
+}
+
+// ===========================================================================
+// Clients depth: communication log + payment schedule (installments)
+// ===========================================================================
+model ClientNote {
+  id          Int      @id @default(autoincrement())
+  clientId    Int
+  type        String   @default("note") // note | call | meeting | email | site_visit
+  note        String   @db.Text
+  createdById Int?
+  createdAt   DateTime @default(now())
+
+  @@index([clientId])
+  @@map("client_notes")
+}
+
+model PaymentSchedule {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  title     String
+  dueDate   DateTime
+  amount    Decimal  @db.Decimal(15, 2)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@map("payment_schedules")
 }

@@ -6,6 +6,7 @@ const AppError = require('../../core/errors/AppError');
 const activity = require('../../core/services/activityLog');
 const { notify, notifyMany } = require('../../core/services/notify');
 const { getPagination, buildMeta } = require('../../core/utils/pagination');
+const { accessibleProjectIds, assertProjectAccess } = require('../../core/services/access');
 
 // --- helpers -------------------------------------------------------------
 
@@ -143,6 +144,9 @@ const projectsService = {
     if ((query.mine === 'true' || query.mine === true) && actor) {
       where.assignees = { some: { userId: actor.id } };
     }
+    // Project-based access: without projects.view_all, only assigned projects.
+    const allowed = await accessibleProjectIds(actor);
+    if (allowed !== null) where.id = { in: allowed };
     if (query.search) {
       where.OR = [
         { referenceNumber: { contains: query.search } },
@@ -174,7 +178,8 @@ const projectsService = {
     return this.get(projectId);
   },
 
-  async get(id) {
+  async get(id, actor) {
+    if (actor) await assertProjectAccess(actor, id);
     const project = await repo.findById(id);
     if (!project) throw AppError.notFound('Project not found');
     return decorate(project);
@@ -416,8 +421,9 @@ const projectsService = {
     return [...ids];
   },
 
-  async listApprovals(projectId) {
+  async listApprovals(projectId, actor) {
     await this.assertProject(projectId);
+    if (actor) await assertProjectAccess(actor, projectId);
     const rows = await repo.listApprovals({ projectId });
     const ids = [...new Set(rows.flatMap((r) => [r.requestedById, r.decidedById]).filter(Boolean))];
     const users = ids.length ? await repo.activeUsersByIds(ids) : [];

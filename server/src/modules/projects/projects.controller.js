@@ -12,7 +12,7 @@ const projectsController = {
     return ok(res, await service.assignEmployees(req.params.id, req.body.userIds, req.user, req));
   },
   async get(req, res) {
-    return ok(res, await service.get(req.params.id));
+    return ok(res, await service.get(req.params.id, req.user));
   },
   async clients(req, res) {
     return ok(res, await service.listClients());
@@ -57,7 +57,7 @@ const projectsController = {
 
   // Approvals / requests
   async listApprovals(req, res) {
-    return ok(res, await service.listApprovals(req.params.id));
+    return ok(res, await service.listApprovals(req.params.id, req.user));
   },
   async createApproval(req, res) {
     return created(res, await service.createApproval(req.params.id, req.body, req.user, req));

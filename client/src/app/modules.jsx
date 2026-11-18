@@ -12,6 +12,8 @@ import VendorsModule from '../modules/vendors/VendorsModule';
 import ClientsModule from '../modules/clients/ClientsModule';
 import WorkforcePage from '../modules/workforce/WorkforcePage';
 import CustomModulePage from '../modules/custom_module/CustomModulePage';
+import AttendancePage from '../modules/attendance/AttendancePage';
+import PayrollPage from '../modules/payroll/PayrollPage';
 
 // Frontend module registry — mirrors the backend modules. `section` groups the
 // item in the sidebar; `hidden` keeps a routed module out of the nav (used for
@@ -22,9 +24,11 @@ export const MODULE_DEFS = [
   { key: 'projects', section: 'main', label: 'Projects', path: '/projects', icon: 'projects', permission: 'projects.read', element: <ProjectsModule /> },
   { key: 'clients', section: 'main', label: 'Clients', path: '/clients', icon: 'clients', permission: 'clients.read', element: <ClientsModule /> },
   { key: 'documents', section: 'main', label: 'Documents', path: '/documents', icon: 'documents', permission: 'documents.read', element: <DocumentsModule /> },
+  { key: 'attendance', section: 'operations', label: 'Attendance', path: '/attendance', icon: 'attendance', permission: 'attendance.read', element: <AttendancePage /> },
   { key: 'finance', section: 'finance', label: 'Finance', path: '/finance', icon: 'finance', permission: 'finance.read', element: <FinanceModule /> },
   { key: 'expenses', section: 'finance', label: 'Expenses', path: '/expenses', icon: 'expenses', permission: 'finance.read', element: <ExpensesPage />, moduleKey: 'finance' },
   { key: 'vendors', section: 'finance', label: 'Vendors', path: '/vendors', icon: 'vendors', permission: 'vendors.read', element: <VendorsModule /> },
+  { key: 'payroll', section: 'finance', label: 'Salary & Payroll', path: '/payroll', icon: 'payroll', permission: 'payroll.read', element: <PayrollPage /> },
   { key: 'workforce', section: 'finance', label: 'Workforce', path: '/workforce', icon: 'workforce', permission: 'workforce.read', element: <WorkforcePage /> },
   { key: 'custom_module', section: 'finance', label: 'Custom Module', path: '/custom-module', icon: 'modules', permission: 'custom_module.read', element: <CustomModulePage /> },
   { key: 'users', section: 'profile', label: 'User Manager', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
@@ -43,6 +47,7 @@ const EXTRA_NAV = [
 
 export const SECTIONS = [
   { key: 'main', label: 'Dashboard' },
+  { key: 'operations', label: 'Site Operations' },
   { key: 'finance', label: 'Finance' },
   { key: 'profile', label: 'Profile' },
 ];
