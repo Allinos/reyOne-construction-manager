@@ -348,7 +348,37 @@ model ProjectApproval {
 }
 
 // ===========================================================================
+// MODULE: Documents
+// A document generated from a template in the library. The template bodies live
+// in code (document template catalog); only the filled values + metadata are
+// stored here. Rendering merges template + values + company branding on demand.
+// ===========================================================================
+model GeneratedDocument {
+  id          Int      @id @default(autoincrement())
+  templateKey String
+  title       String
+  category    String?
+  projectId   Int? // optional scalar links (decoupled)
+  clientId    Int?
+  reference   String? // e.g. document number / ref
+  data        Json     @default("{}") // filled field values
+  status      String   @default("final") // draft | final
+  createdById Int?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([templateKey])
+  @@index([projectId])
+  @@index([deletedAt])
+  @@map("generated_documents")
+}
+
+// ===========================================================================
 // MODULE: Invoices & Quotations
+// Retired from the product UI (superseded by the Documents module). Model kept
+// so existing records are preserved rather than dropped.
 // One table serves both document types. Items are stored as JSON; totals are
 // computed server-side. projectId is a scalar link to keep it decoupled.
 // ===========================================================================

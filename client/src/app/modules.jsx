@@ -7,7 +7,7 @@ import RolesPage from '../modules/roles/RolesPage';
 import SettingsModule from '../modules/settings/SettingsModule';
 import ModuleManagerPage from '../modules/modulemanager/ModuleManagerPage';
 import ActivityPage from '../modules/activity/ActivityPage';
-import InvoicesPage from '../modules/invoices/InvoicesPage';
+import DocumentsModule from '../modules/documents/DocumentsModule';
 import VendorsModule from '../modules/vendors/VendorsModule';
 import ClientsModule from '../modules/clients/ClientsModule';
 import WorkforcePage from '../modules/workforce/WorkforcePage';
@@ -21,6 +21,7 @@ export const MODULE_DEFS = [
   { key: 'dashboard', section: 'main', label: 'Dashboard', path: '/', icon: 'dashboard', permission: 'dashboard.read', element: <DashboardPage /> },
   { key: 'projects', section: 'main', label: 'Projects', path: '/projects', icon: 'projects', permission: 'projects.read', element: <ProjectsModule /> },
   { key: 'clients', section: 'main', label: 'Clients', path: '/clients', icon: 'clients', permission: 'clients.read', element: <ClientsModule /> },
+  { key: 'documents', section: 'main', label: 'Documents', path: '/documents', icon: 'documents', permission: 'documents.read', element: <DocumentsModule /> },
   { key: 'finance', section: 'finance', label: 'Finance', path: '/finance', icon: 'finance', permission: 'finance.read', element: <FinanceModule /> },
   { key: 'expenses', section: 'finance', label: 'Expenses', path: '/expenses', icon: 'expenses', permission: 'finance.read', element: <ExpensesPage />, moduleKey: 'finance' },
   { key: 'vendors', section: 'finance', label: 'Vendors', path: '/vendors', icon: 'vendors', permission: 'vendors.read', element: <VendorsModule /> },
@@ -28,9 +29,6 @@ export const MODULE_DEFS = [
   { key: 'custom_module', section: 'finance', label: 'Custom Module', path: '/custom-module', icon: 'modules', permission: 'custom_module.read', element: <CustomModulePage /> },
   { key: 'users', section: 'profile', label: 'User Manager', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
   { key: 'settings', section: 'profile', label: 'Settings', path: '/settings', icon: 'settings', permission: 'settings.read', element: <SettingsModule /> },
-
-  // Invoices — routed but reached from the top nav (hidden from sidebar).
-  { key: 'invoices', section: null, hidden: true, label: 'Invoices & Quotations', path: '/invoices', icon: 'invoice', permission: 'invoices.read', element: <InvoicesPage /> },
 
   // Admin screens — routed but hidden from the sidebar (reachable via Settings).
   { key: 'roles', section: null, hidden: true, label: 'Roles', path: '/roles', icon: 'roles', permission: 'roles.read', element: <RolesPage /> },

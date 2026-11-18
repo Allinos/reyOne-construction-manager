@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
-import { useAuth } from '../../context/AuthContext';
 import NotificationBell from '../../modules/notifications/NotificationBell';
 import HelpModal from '../HelpModal';
 import Icon from '../Icon';
@@ -33,8 +31,6 @@ function ThemeToggle() {
 }
 
 export default function TopNav({ onMenu }) {
-  const { bootstrap, can } = useAuth();
-  const invoicesEnabled = (bootstrap?.modules || []).some((m) => m.key === 'invoices') && can('invoices.read');
   const [helpOpen, setHelpOpen] = useState(false);
 
   return (
@@ -43,21 +39,6 @@ export default function TopNav({ onMenu }) {
         <Icon name="menu" />
       </button>
       <div className="flex items-center gap-1">
-        {invoicesEnabled && (
-          <Link
-            to="/invoices"
-            className="mr-1 flex items-center gap-2 rounded-lg bg-brand-500 px-3 py-1.5 text-white shadow-sm transition-colors hover:bg-brand-600"
-            title="Invoices & Quotations"
-            aria-label="Invoices & Quotations"
-          >
-            <Icon name="add" className="h-4 w-4" />
-            <span className="text-left text-xs font-semibold leading-tight">
-              Invoice
-              <br />
-              Quotation
-            </span>
-          </Link>
-        )}
         <ThemeToggle />
         <button
           className="rounded-lg p-2 text-slate-500 hover:bg-cream-200 dark:text-slate-300"

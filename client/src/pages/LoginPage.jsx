@@ -53,7 +53,7 @@ export default function LoginPage() {
           </p>
           <ul className="mt-8 space-y-2 text-sm text-white/80">
             <li className="flex items-center gap-2"><Dot /> Projects, phases &amp; requirements</li>
-            <li className="flex items-center gap-2"><Dot /> Expenses, invoices &amp; vendor ledgers</li>
+            <li className="flex items-center gap-2"><Dot /> Expenses, documents &amp; vendor ledgers</li>
             <li className="flex items-center gap-2"><Dot /> Workforce &amp; role-based access</li>
           </ul>
         </div>

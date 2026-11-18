@@ -45,11 +45,17 @@ const PERMISSIONS = [
   { key: 'finance.update', module: 'finance', action: 'update', description: 'Edit finance records' },
   { key: 'finance.delete', module: 'finance', action: 'delete', description: 'Delete finance records' },
 
-  // Invoices & Quotations
+  // Invoices & Quotations (legacy — superseded by Documents)
   { key: 'invoices.read', module: 'invoices', action: 'read', description: 'View invoices & quotations' },
   { key: 'invoices.create', module: 'invoices', action: 'create', description: 'Create invoices & quotations' },
   { key: 'invoices.update', module: 'invoices', action: 'update', description: 'Edit invoices, quotations & config' },
   { key: 'invoices.delete', module: 'invoices', action: 'delete', description: 'Delete invoices & quotations' },
+
+  // Documents (template library)
+  { key: 'documents.read', module: 'documents', action: 'read', description: 'View & download documents' },
+  { key: 'documents.create', module: 'documents', action: 'create', description: 'Create documents from templates' },
+  { key: 'documents.update', module: 'documents', action: 'update', description: 'Edit documents' },
+  { key: 'documents.delete', module: 'documents', action: 'delete', description: 'Delete documents' },
 
   // Clients
   { key: 'clients.read', module: 'clients', action: 'read', description: 'View clients' },
@@ -112,6 +118,7 @@ const DEFAULT_ROLES = [
       'vendors.read',
       'workforce.read', 'workforce.create', 'workforce.update',
       'requirements.read', 'requirements.update',
+      'documents.read', 'documents.create', 'documents.update',
       'users.read',
       'activity.read',
     ],
@@ -131,6 +138,7 @@ const DEFAULT_ROLES = [
       'finance.read', 'finance.create', 'finance.update', 'finance.delete',
       'projects.read',
       'invoices.read', 'invoices.create', 'invoices.update', 'invoices.delete',
+      'documents.read', 'documents.create', 'documents.update', 'documents.delete',
       'clients.read', 'clients.update',
       'vendors.read', 'vendors.create', 'vendors.update', 'vendors.delete',
       'workforce.read', 'workforce.create', 'workforce.update', 'workforce.delete',

@@ -20,7 +20,9 @@ const MODULE_CATALOG = [
   { key: 'dashboard', name: 'Dashboard', isCore: false, enabled: true, sortOrder: 10, description: 'Company overview' },
   { key: 'projects', name: 'Projects', isCore: false, enabled: true, sortOrder: 11, description: 'Project & phase management' },
   { key: 'finance', name: 'Finance', isCore: false, enabled: true, sortOrder: 12, description: 'Project & company finance' },
-  { key: 'invoices', name: 'Invoices & Quotations', isCore: false, enabled: true, sortOrder: 13, description: 'Quotations & invoices with PDF' },
+  { key: 'documents', name: 'Documents', isCore: false, enabled: true, sortOrder: 13, description: 'Document template library & generator' },
+  // Invoices & Quotations — retired; folded into the Documents template library.
+  { key: 'invoices', name: 'Invoices & Quotations (legacy)', isCore: false, enabled: false, sortOrder: 23, description: 'Superseded by Documents' },
   { key: 'clients', name: 'Clients', isCore: false, enabled: true, sortOrder: 14, description: 'Client directory & profiles' },
   { key: 'vendors', name: 'Vendors', isCore: false, enabled: true, sortOrder: 15, description: 'Vendors & ledgers' },
   { key: 'workforce', name: 'Workforce', isCore: false, enabled: true, sortOrder: 16, description: 'Contractors, labour, technicians' },
@@ -37,10 +39,14 @@ const MODULE_CATALOG = [
   // Custom Module — fully configurable page (name set in Settings)
   { key: 'custom_module', name: 'Custom Module', isCore: false, enabled: true, sortOrder: 22, description: 'Fully customizable form, list & analytics' },
 
+  // Mobile App — a client-capability flag (no backend routes). When enabled, the
+  // Flutter app is activated for this client and exposes the enabled modules.
+  { key: 'mobile_app', name: 'Mobile App', isCore: false, enabled: false, sortOrder: 24, description: 'Activate the Flutter mobile app for this client', virtual: true },
+
   // Future modules — seeded disabled so they appear in the Module Manager
-  { key: 'attendance', name: 'Attendance', isCore: false, enabled: false, sortOrder: 20, description: 'Coming soon' },
-  { key: 'payroll', name: 'Payroll', isCore: false, enabled: false, sortOrder: 21, description: 'Coming soon' },
-  { key: 'inventory', name: 'Inventory', isCore: false, enabled: false, sortOrder: 22, description: 'Coming soon' },
+  { key: 'attendance', name: 'Attendance', isCore: false, enabled: false, sortOrder: 25, description: 'Coming soon' },
+  { key: 'payroll', name: 'Payroll', isCore: false, enabled: false, sortOrder: 26, description: 'Coming soon' },
+  { key: 'inventory', name: 'Inventory', isCore: false, enabled: false, sortOrder: 27, description: 'Coming soon' },
 ];
 
 module.exports = { MODULE_CATALOG };
