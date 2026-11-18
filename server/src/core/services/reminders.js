@@ -71,7 +71,43 @@ async function runReminders() {
     }
   }
 
+  if (await isEnabled('inspections')) {
+    const late = await prisma.inspection.findMany({ where: { deletedAt: null, status: { in: ['assigned', 'in_progress', 'open'] }, dueDate: { lt: new Date() }, inspectorId: { not: null } }, select: { id: true, title: true, dueDate: true, inspectorId: true } });
+    for (const i of late) {
+      // eslint-disable-next-line no-await-in-loop
+      sent += await sendOnce([i.inspectorId], { type: 'inspection.overdue', title: `Inspection overdue: ${i.title}`.slice(0, 190), message: `Was due ${fmt(i.dueDate)}.`, entityType: 'inspection', entityId: i.id });
+    }
+  }
+
+  if (await isEnabled('queries')) {
+    const qs = await prisma.query.findMany({ where: { deletedAt: null, status: { in: ['assigned', 'awaiting_response', 'in_progress'] }, dueDate: { lt: new Date() } }, select: { id: true, number: true, title: true, dueDate: true, assigneeIds: true } });
+    for (const q of qs) {
+      const to = (Array.isArray(q.assigneeIds) ? q.assigneeIds : []).map(Number);
+      // eslint-disable-next-line no-await-in-loop
+      if (to.length) sent += await sendOnce(to, { type: 'query.overdue', title: `Response overdue: ${q.number || 'query'} ${q.title}`.slice(0, 190), message: `Response was due ${fmt(q.dueDate)}.`, entityType: 'query', entityId: q.id });
+    }
+  }
+
+  if (await isEnabled('vendors')) {
+    const bills = await prisma.expense.findMany({ where: { vendorId: { not: null }, paymentStatus: { in: ['CREDIT', 'PARTIAL'] }, dueDate: { lte: new Date(now + 2 * DAY) } }, select: { id: true, vendorId: true, billNumber: true, amount: true, amountPaid: true, dueDate: true } });
+    if (bills.length) {
+      const payers = await usersWithPermission('vendors.pay');
+      const vendors = await prisma.vendor.findMany({ where: { id: { in: [...new Set(bills.map((b) => b.vendorId))] } }, select: { id: true, name: true } });
+      const vn = new Map(vendors.map((v) => [v.id, v.name]));
+      for (const b of bills) {
+        const overdue = b.dueDate < new Date(new Date().toDateString());
+        // eslint-disable-next-line no-await-in-loop
+        sent += await sendOnce(payers, { type: overdue ? 'vendor.bill_overdue' : 'vendor.bill_due', title: `${overdue ? 'Overdue' : 'Due soon'}: ${vn.get(b.vendorId) || 'vendor'} bill ${b.billNumber || `#${b.id}`}`.slice(0, 190), message: `${money(Number(b.amount) - Number(b.amountPaid))} due ${fmt(b.dueDate)}.`, entityType: 'vendor', entityId: b.vendorId });
+      }
+    }
+  }
+
   if (await isEnabled('materials')) {
+    const latePOs = await prisma.purchaseOrder.findMany({ where: { deletedAt: null, status: { in: ['ordered', 'partially_received'] }, expectedDate: { lt: new Date() } }, select: { id: true, number: true, createdById: true, expectedDate: true } });
+    for (const po of latePOs) {
+      // eslint-disable-next-line no-await-in-loop
+      if (po.createdById) sent += await sendOnce([po.createdById], { type: 'materials.po_late', title: `${po.number} delivery is late`, message: `Expected ${fmt(po.expectedDate)} — follow up with the vendor.`, entityType: 'purchase_order', entityId: po.id });
+    }
     const stale = await prisma.materialRequest.findMany({ where: { status: 'pending', createdAt: { lt: new Date(now - 2 * DAY) } }, select: { id: true } });
     if (stale.length) {
       const approvers = await usersWithPermission('materials.approve');

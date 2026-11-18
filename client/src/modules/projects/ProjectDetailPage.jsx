@@ -126,6 +126,7 @@ export default function ProjectDetailPage() {
   const requirementsEnabled = enabledModules.some((m) => m.key === 'requirements') && can('requirements.read');
   const photosEnabled = requirementsEnabled && enabledModules.some((m) => m.key === 'photo_upload');
   const financeEnabled = enabledModules.some((m) => m.key === 'finance') && can('finance.read');
+  const queriesEnabled = enabledModules.some((m) => m.key === 'queries') && can('queries.create');
 
   const [project, setProject] = useState(null);
   const [customDefs, setCustomDefs] = useState([]);
@@ -587,9 +588,10 @@ export default function ProjectDetailPage() {
                               <DeadlineField value={phase.deadline} canEdit={canEdit} onChange={(d) => setPhaseDeadline(phase, d)} />
                             </div>
                           </div>
-                          {canEdit && (
-                            <button className="text-xs font-medium text-red-600 hover:underline" onClick={() => onDeletePhase(phase)}>Delete stage</button>
-                          )}
+                          <div className="flex flex-wrap gap-3">
+                            {queriesEnabled && <button className="text-xs font-medium text-brand-600 hover:underline" onClick={() => navigate(`/queries?new=1&projectId=${project.id}&phaseId=${phase.id}`)}>Raise query on this stage</button>}
+                            {canEdit && <button className="text-xs font-medium text-red-600 hover:underline" onClick={() => onDeletePhase(phase)}>Delete stage</button>}
+                          </div>
                         </div>
                       </div>
                     )}

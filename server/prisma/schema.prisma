@@ -849,13 +849,28 @@ model InspectionIssue {
 // ===========================================================================
 model Query {
   id          Int      @id @default(autoincrement())
+  number      String? // Q-0001
+  type        String   @default("rfi") // rfi | clarification | site_issue | design_change | approval | general
+  category    String?
   projectId   Int?
+  phaseId     Int? // the stage/phase the query relates to
+  location    String? // block / floor / grid / room
+  workItem    String? // activity or BOQ item
   title       String
   description String?  @db.Text
   priority    String   @default("normal") // low | normal | high | urgent
-  status      String   @default("open") // open | in_progress | resolved | closed
+  // open → assigned → (awaiting_response ↔ responded) → resolved → closed
+  status      String   @default("open")
   visibility  String   @default("assigned") // assigned | all
   assigneeIds Json     @default("[]")
+  mentionIds  Json     @default("[]") // tagged people (kept informed)
+  dueDate     DateTime?
+  costImpact     Boolean @default(false)
+  scheduleImpact Boolean @default(false)
+  resolution  String?  @db.Text
+  resolvedById Int?
+  resolvedAt  DateTime?
+  closedAt    DateTime?
   createdById Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -872,6 +887,7 @@ model QueryReply {
   queryId   Int
   query     Query    @relation(fields: [queryId], references: [id], onDelete: Cascade)
   userId    Int
+  kind      String   @default("reply") // reply | response | event
   message   String   @db.Text
   createdAt DateTime @default(now())
 

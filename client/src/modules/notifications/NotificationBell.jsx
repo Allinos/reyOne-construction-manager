@@ -21,6 +21,13 @@ const TYPE_DOT = {
   'query.assigned': 'bg-sky-500',
   'query.reply': 'bg-sky-400',
   'query.status': 'bg-slate-500',
+  'query.mention': 'bg-sky-500',
+  'query.overdue': 'bg-red-500',
+  'inspection.overdue': 'bg-red-500',
+  'vendor.bill_overdue': 'bg-red-500',
+  'vendor.bill_due': 'bg-amber-500',
+  'materials.received': 'bg-green-500',
+  'materials.po_late': 'bg-red-500',
   'inspection.issue_assigned': 'bg-red-500',
   'inspection.issue_resolved': 'bg-green-500',
   'inspection.assigned': 'bg-blue-500',
@@ -35,6 +42,8 @@ export function notificationLink(n) {
     case 'query': return id ? `/queries?id=${id}` : '/queries';
     case 'inspection': return id ? `/inspections/${id}` : '/inspections';
     case 'material_request': return '/materials';
+    case 'purchase_order': return id ? `/materials?po=${id}` : '/materials';
+    case 'vendor': return id ? `/vendors/${id}` : '/vendors';
     default: return null;
   }
 }

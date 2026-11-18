@@ -37,6 +37,9 @@ export default function Select({
   searchable,
   placeholder = 'Select…',
   title,
+  clearable = false,
+  loading = false,
+  emptyText = 'No matches',
   'aria-label': ariaLabel,
 }) {
   const options = useMemo(() => flatten(children), [children]);
@@ -150,9 +153,20 @@ export default function Select({
         onClick={() => setOpen((o) => !o)}
         onKeyDown={onKey}
       >
-        <span className={`min-w-0 truncate ${selected ? '' : 'text-slate-400'}`}>
-          {selected ? selected.label : placeholder}
+        <span className={`min-w-0 truncate ${selected && selected.value !== '' ? '' : selected ? '' : 'text-slate-400'}`}>
+          {loading && !selected ? 'Loading…' : selected ? selected.label : placeholder}
         </span>
+        {clearable && current !== '' && !disabled && (
+          <span
+            role="button"
+            tabIndex={-1}
+            aria-label="Clear selection"
+            className="-mr-1 ml-auto rounded px-1 text-slate-400 hover:text-red-600"
+            onClick={(e) => { e.stopPropagation(); if (value === undefined) setInner(''); onChange?.({ target: { value: '', name }, currentTarget: { value: '', name } }); }}
+          >
+            ×
+          </span>
+        )}
         <svg className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06z" clipRule="evenodd" />
         </svg>
@@ -177,7 +191,8 @@ export default function Select({
             </div>
           )}
           <ul ref={listRef} role="listbox" className="scroll-thin flex-1 overflow-y-auto py-1" tabIndex={-1}>
-            {list.length === 0 && <li className="px-3 py-2 text-sm text-slate-400">No matches</li>}
+            {loading && <li className="px-3 py-2 text-sm text-slate-400">Loading…</li>}
+            {!loading && list.length === 0 && <li className="px-3 py-2 text-sm text-slate-400">{q ? 'No matches' : emptyText}</li>}
             {list.map((o, i) => {
               const header = o.group && o.group !== lastGroup ? o.group : null;
               lastGroup = o.group;

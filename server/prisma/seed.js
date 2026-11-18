@@ -254,8 +254,22 @@ async function seedAdmin() {
   console.log(`  ✓ admin created: ${env.seed.adminEmail}`);
 }
 
+// Columns added by `prisma db push` on MariaDB can leave existing rows with an
+// empty string in new JSON columns; normalise them so Prisma can read them.
+async function repairJsonDefaults() {
+  const fixes = [
+    ['queries', 'mentionIds', '[]'],
+    ['queries', 'assigneeIds', '[]'],
+  ];
+  for (const [table, col, val] of fixes) {
+    // eslint-disable-next-line no-await-in-loop
+    await prisma.$executeRawUnsafe(`UPDATE \`${table}\` SET \`${col}\` = '${val}' WHERE \`${col}\` IS NULL OR \`${col}\` = ''`).catch(() => {});
+  }
+}
+
 async function main() {
   console.log('Seeding database...');
+  await repairJsonDefaults();
   await seedCompany();
   await seedPermissions();
   await seedRoles();

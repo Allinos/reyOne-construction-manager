@@ -39,10 +39,14 @@ async function insights(actor) {
       mine.projects = assigned;
     }
     if (on.has('queries') && can('queries.read')) {
-      const qs = await prisma.query.findMany({ where: { deletedAt: null, status: { in: ['open', 'in_progress'] } }, select: { id: true, title: true, priority: true, assigneeIds: true, createdById: true } });
-      const forMe = qs.filter((q) => (Array.isArray(q.assigneeIds) ? q.assigneeIds : []).map(Number).includes(actor.id));
+      const qs = await prisma.query.findMany({ where: { deletedAt: null, status: { in: ['open', 'in_progress', 'assigned', 'awaiting_response', 'responded'] } }, select: { id: true, title: true, priority: true, status: true, dueDate: true, assigneeIds: true, createdById: true } });
+      // Waiting on me to respond, or a response waiting for me to review.
+      const forMe = qs.filter((q) => ['assigned', 'in_progress', 'awaiting_response'].includes(q.status) && (Array.isArray(q.assigneeIds) ? q.assigneeIds : []).map(Number).includes(actor.id));
+      const toReview = qs.filter((q) => q.status === 'responded' && q.createdById === actor.id);
       mine.queries = forMe.length;
-      if (forMe.length) out.attention.push({ kind: 'queries', count: forMe.length, label: `${forMe.length} quer${forMe.length === 1 ? 'y' : 'ies'} assigned to you`, to: '/queries', tone: forMe.some((q) => q.priority === 'urgent') ? 'red' : 'sky' });
+      const late = forMe.filter((q) => q.dueDate && q.dueDate < new Date()).length;
+      if (forMe.length) out.attention.push({ kind: 'queries', count: forMe.length, label: `${forMe.length} quer${forMe.length === 1 ? 'y needs' : 'ies need'} your response${late ? ` · ${late} overdue` : ''}`, to: forMe.length === 1 ? `/queries?id=${forMe[0].id}` : '/queries', tone: late || forMe.some((q) => q.priority === 'urgent') ? 'red' : 'sky' });
+      if (toReview.length) out.attention.push({ kind: 'queries_answered', count: toReview.length, label: `${toReview.length} of your quer${toReview.length === 1 ? 'y has' : 'ies have'} been answered — review & resolve`, to: toReview.length === 1 ? `/queries?id=${toReview[0].id}` : '/queries', tone: 'sky' });
     }
     if (on.has('inspections')) {
       const todo = await prisma.inspection.findMany({ where: { inspectorId: actor.id, deletedAt: null, status: { in: ['assigned', 'in_progress', 'open'] } }, select: { id: true, dueDate: true } });
@@ -176,8 +180,8 @@ async function insights(actor) {
   if (on.has('queries') && can('queries.manage')) {
     tasks.push((async () => {
       const [open, urgent] = await Promise.all([
-        prisma.query.count({ where: { deletedAt: null, status: { in: ['open', 'in_progress'] } } }),
-        prisma.query.count({ where: { deletedAt: null, status: { in: ['open', 'in_progress'] }, priority: { in: ['urgent', 'high'] } } }),
+        prisma.query.count({ where: { deletedAt: null, status: { in: ['open', 'in_progress', 'assigned', 'awaiting_response', 'responded'] } } }),
+        prisma.query.count({ where: { deletedAt: null, status: { in: ['open', 'in_progress', 'assigned', 'awaiting_response', 'responded'] }, priority: { in: ['urgent', 'high'] } } }),
       ]);
       out.queries = { open, urgent };
     })());
