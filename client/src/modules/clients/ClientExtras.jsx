@@ -9,6 +9,7 @@ import Attachments from '../../components/Attachments';
 import InstallmentStatus from '../finance/InstallmentStatus';
 import { getReceipt } from '../finance/accountsApi';
 import { printHtml } from '../documents/print';
+import Select from '../../components/Select';
 
 const NOTE_TYPES = { note: 'Note', call: 'Call', meeting: 'Meeting', email: 'Email', site_visit: 'Site visit', whatsapp: 'WhatsApp' };
 const NOTE_DOT = { note: 'bg-slate-400', call: 'bg-green-500', meeting: 'bg-purple-500', email: 'bg-sky-500', site_visit: 'bg-orange-500', whatsapp: 'bg-emerald-500' };
@@ -99,7 +100,7 @@ export function ClientNotes({ clientId }) {
     <Card className="mt-6">
       <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">Notes &amp; Communication</h3>
       <div className="mb-4 flex flex-col gap-2 sm:flex-row">
-        <select className="input sm:w-36" value={type} onChange={(e) => setType(e.target.value)}>{Object.entries(NOTE_TYPES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+        <Select className="input sm:w-36" value={type} onChange={(e) => setType(e.target.value)}>{Object.entries(NOTE_TYPES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
         <textarea className="input flex-1" rows={2} placeholder="What was discussed? Next steps…" value={note} onChange={(e) => setNote(e.target.value)} />
         <button className="btn-primary sm:self-end" onClick={add} disabled={!note.trim()}>Log</button>
       </div>

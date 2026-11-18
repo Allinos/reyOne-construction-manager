@@ -13,12 +13,29 @@ async function assertRoleExists(roleId) {
   return role;
 }
 
+// The salary entered in User Management is the employee's monthly salary in
+// Payroll — keep the payroll profile in step so both screens agree.
+async function syncSalaryProfile(userId, payload) {
+  if (payload.salary === undefined) return;
+  const ref = { personType: 'USER', personId: userId };
+  if (payload.salary === null) {
+    await prisma.salaryProfile.updateMany({ where: ref, data: { active: false } });
+    return;
+  }
+  await prisma.salaryProfile.upsert({
+    where: { personType_personId: ref },
+    update: { rate: payload.salary, payType: 'monthly', active: true },
+    create: { ...ref, rate: payload.salary, payType: 'monthly' },
+  });
+}
+
 const usersService = {
   async list(query) {
     const { page, limit, skip, take } = getPagination(query);
     const where = { deletedAt: null };
     if (query.status) where.status = query.status;
     if (query.roleId) where.roleId = query.roleId;
+    if (query.staffType) where.staffType = query.staffType;
     if (query.search) {
       where.OR = [
         { name: { contains: query.search } },
@@ -43,6 +60,7 @@ const usersService = {
       ...rest,
       passwordHash: await hashPassword(password),
     });
+    await syncSalaryProfile(user.id, payload);
     activity.record({ userId: actor.id, action: 'user.created', entityType: 'user', entityId: user.id, req });
     return user;
   },
@@ -58,6 +76,7 @@ const usersService = {
     }
 
     const user = await repo.update(id, payload);
+    await syncSalaryProfile(id, payload);
     activity.record({ userId: actor.id, action: 'user.updated', entityType: 'user', entityId: id, req });
     return user;
   },

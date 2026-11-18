@@ -4,6 +4,7 @@ import { errorMessage } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Card, Spinner, Alert } from '../../components/ui';
+import Icon from '../../components/Icon';
 
 const DEFAULT_HELP = [
   { key: 'tutorial', title: 'Tutorial', enabled: true, url: '', html: '' },
@@ -19,7 +20,7 @@ function normalizeHelp(stored) {
   });
 }
 
-function HelpSettings() {
+export function HelpSettings() {
   const { bootstrap, reloadBootstrap } = useAuth();
   const toast = useToast();
   const [sections, setSections] = useState(() => normalizeHelp(bootstrap?.settings?.help?.sections));
@@ -45,8 +46,7 @@ function HelpSettings() {
 
   return (
     <Card>
-      <h3 className="font-semibold text-slate-700 dark:text-slate-200">Help Centre</h3>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="text-sm text-slate-500">
         Configure the three Help sections shown when users click the Help icon in the header. Provide an external URL to
         embed a hosted page, or write HTML content directly. Disabled sections are hidden from the Help window.
       </p>
@@ -54,7 +54,7 @@ function HelpSettings() {
 
       <div className="mt-4 space-y-4">
         {sections.map((s) => (
-          <div key={s.key} className="rounded-lg border border-cream-300 p-3 dark:border-slate-700">
+          <div key={s.key} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
             <div className="mb-2 flex flex-wrap items-center gap-3">
               <input
                 className="input flex-1 min-w-[160px] font-medium"
@@ -90,6 +90,30 @@ function HelpSettings() {
           {saving ? <Spinner className="h-4 w-4" /> : 'Save Help Content'}
         </button>
       </div>
+    </Card>
+  );
+}
+
+export function BackupCard() {
+  const [state, setState] = useState({ loading: false, error: '' });
+  const onBackup = async () => {
+    setState({ loading: true, error: '' });
+    try {
+      await downloadBackup();
+      setState({ loading: false, error: '' });
+    } catch (err) {
+      setState({ loading: false, error: errorMessage(err, 'Backup failed') });
+    }
+  };
+  return (
+    <Card className="max-w-2xl">
+      {state.error && <Alert>{state.error}</Alert>}
+      <h3 className="font-semibold text-slate-800 dark:text-slate-100">Database backup</h3>
+      <p className="mt-1 text-sm text-slate-500">Download a complete SQL dump of this company's database. Keep it somewhere safe.</p>
+      <button className="btn-primary mt-4" onClick={onBackup} disabled={state.loading}>
+        {state.loading ? <Spinner className="h-4 w-4" /> : <><Icon name="download" className="h-4 w-4" /> Download backup</>}
+      </button>
+      <p className="mt-3 text-xs text-slate-400">Requires <code>mysqldump</code> on the server.</p>
     </Card>
   );
 }

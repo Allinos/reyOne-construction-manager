@@ -6,6 +6,7 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
 import { Spinner } from '../../components/ui';
 import Icon from '../../components/Icon';
+import Select from '../../components/Select';
 
 const readAsDataURL = (file) =>
   new Promise((resolve, reject) => {
@@ -94,10 +95,10 @@ export default function PhotoTab({ projectId, canEdit }) {
               hidden
               onChange={onFiles}
             />
-            <select className="input w-auto" value={uploadCat} onChange={(e) => setUploadCat(e.target.value)} title="Category for new uploads">
+            <Select className="input w-auto" value={uploadCat} onChange={(e) => setUploadCat(e.target.value)} title="Category for new uploads">
               <option value="">Uncategorised</option>
               {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-            </select>
+            </Select>
             <button className="btn-secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>
               {uploading ? <Spinner className="h-4 w-4" /> : '+ Upload Photos & Docs'}
             </button>
@@ -105,10 +106,10 @@ export default function PhotoTab({ projectId, canEdit }) {
         )}
         <div className="ml-auto flex items-center gap-2">
           <label className="text-xs text-slate-500">Filter</label>
-          <select className="input w-auto" value={filterCat} onChange={(e) => setFilterCat(e.target.value)}>
+          <Select className="input w-auto" value={filterCat} onChange={(e) => setFilterCat(e.target.value)}>
             <option value="">All categories</option>
             {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -151,7 +152,7 @@ export default function PhotoTab({ projectId, canEdit }) {
                 <div className="flex items-center gap-1 px-2 py-1">
                   {p.name && <span className="min-w-0 flex-1 truncate text-xs text-slate-500">{p.name}</span>}
                   {canEdit && (
-                    <select
+                    <Select
                       className="max-w-[92px] shrink-0 rounded border border-cream-300 bg-transparent px-1 py-0.5 text-[10px] text-slate-500 outline-none dark:border-slate-600"
                       value={p.category || ''}
                       onChange={(e) => changeCategory(p, e.target.value)}
@@ -159,7 +160,7 @@ export default function PhotoTab({ projectId, canEdit }) {
                     >
                       <option value="">Uncat.</option>
                       {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                    </select>
+                    </Select>
                   )}
                 </div>
               </div>

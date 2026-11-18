@@ -59,3 +59,13 @@ export function formatDateTime(value) {
   const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   return `${formatDate(value)} ${time}`;
 }
+
+// Local calendar date "YYYY-MM-DD" / month "YYYY-MM" (not UTC — avoids the
+// previous day showing before 05:30 IST).
+export function localDate(d = new Date()) {
+  const x = new Date(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+}
+export function localMonth(d = new Date()) {
+  return localDate(d).slice(0, 7);
+}

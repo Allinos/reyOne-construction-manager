@@ -9,6 +9,8 @@ import '../core/session.dart';
 import '../core/widgets.dart';
 
 const _severityColor = {'low': Colors.blueGrey, 'medium': Colors.orange, 'high': Colors.deepOrange, 'critical': Colors.red};
+const _statusColor = {'assigned': Colors.blueGrey, 'in_progress': Colors.blue, 'completed': Colors.green, 'closed': Colors.brown};
+const _statusLabel = {'assigned': 'Assigned', 'in_progress': 'In progress', 'completed': 'Completed', 'closed': 'Closed'};
 
 class InspectionsScreen extends StatefulWidget {
   const InspectionsScreen({super.key});
@@ -18,6 +20,7 @@ class InspectionsScreen extends StatefulWidget {
 
 class _InspectionsScreenState extends State<InspectionsScreen> {
   final _key = GlobalKey<AsyncViewState<List<dynamic>>>();
+  bool _mine = !Session.I.can('inspections.read');
 
   Future<void> _create() async {
     final project = await pickProject(context);
@@ -55,7 +58,7 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
     );
     if (ok != true || title.text.trim().isEmpty || !mounted) return;
     try {
-      final row = await Api.I.post('/inspections', {'projectId': project['id'], 'title': title.text.trim(), 'templateKey': ?tpl});
+      final row = await Api.I.post('/inspections', {'projectId': project['id'], 'title': title.text.trim(), 'templateKey': ?tpl, 'date': DateTime.now().toIso8601String().substring(0, 10)});
       if (!mounted) return;
       await Navigator.push(context, MaterialPageRoute(builder: (_) => InspectionDetailScreen(id: row['id'] as int)));
       _key.currentState?.reload();
@@ -71,23 +74,35 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
       floatingActionButton: Session.I.can('inspections.manage') ? FloatingActionButton.extended(onPressed: _create, icon: const Icon(Icons.add), label: const Text('Inspect')) : null,
       body: AsyncView<List<dynamic>>(
         key: _key,
-        load: () async => await Api.I.get('/inspections') as List,
-        builder: (context, list, reload) => list.isEmpty
-            ? const EmptyView('No inspections yet', icon: Icons.fact_check_outlined)
-            : ListView.separated(
+        load: () async => await Api.I.get('/inspections', query: {if (_mine) 'mine': 'true'}) as List,
+        builder: (context, list, reload) => ListView.separated(
                 padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),
-                itemCount: list.length,
+                itemCount: list.length + 1,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
-                  final r = list[i] as Map<String, dynamic>;
+                  if (i == 0) {
+                    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      if (Session.I.can('inspections.read'))
+                        SegmentedButton<bool>(
+                          segments: const [ButtonSegment(value: true, label: Text('Assigned to me')), ButtonSegment(value: false, label: Text('All'))],
+                          selected: {_mine},
+                          onSelectionChanged: (s) {
+                            setState(() => _mine = s.first);
+                            _key.currentState?.reload();
+                          },
+                        ),
+                      if (list.isEmpty) const Padding(padding: EdgeInsets.only(top: 40), child: EmptyView('No inspections here', icon: Icons.fact_check_outlined)),
+                    ]);
+                  }
+                  final r = list[i - 1] as Map<String, dynamic>;
                   final pct = r['score']?['pct'];
                   return Card(
                     child: ListTile(
                       title: Text('${r['title']}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text('${r['projectName']} · ${fmtDate(r['date'])}${(r['openIssues'] ?? 0) > 0 ? '\n${r['openIssues']} open issue(s)' : ''}'),
+                      subtitle: Text('${r['projectName']} · ${r['answered'] ?? 0}/${r['checklistCount'] ?? 0} checked${r['dueDate'] != null ? ' · due ${fmtDate(r['dueDate'])}' : ''}${r['overdue'] == true ? ' · OVERDUE' : ''}${(r['openIssues'] ?? 0) > 0 ? '\n${r['openIssues']} open issue(s)' : ''}'),
                       isThreeLine: (r['openIssues'] ?? 0) > 0,
                       trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-                        Chip2(label('${r['status']}'), color: r['status'] == 'open' ? Colors.blue : Colors.green),
+                        Chip2(_statusLabel['${r['status']}'] ?? label('${r['status']}'), color: _statusColor['${r['status']}'] ?? Colors.grey),
                         if (pct != null) Text('$pct%', style: TextStyle(fontWeight: FontWeight.w700, color: pct >= 85 ? Colors.green : pct >= 60 ? Colors.orange : Colors.red)),
                       ]),
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InspectionDetailScreen(id: r['id'] as int))).then((_) => reload()),
@@ -115,7 +130,10 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
   bool _dirty = false;
   String? _error;
 
-  bool get _editable => Session.I.can('inspections.manage') && _d?['status'] == 'open';
+  bool get _isInspector => _d?['isInspector'] == true;
+  bool get _canManage => Session.I.can('inspections.manage');
+  bool get _editable => (_canManage || _isInspector) && (_d?['status'] == 'assigned' || _d?['status'] == 'in_progress');
+  final _notes = TextEditingController();
 
   @override
   void initState() {
@@ -132,6 +150,7 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
       setState(() {
         _d = d;
         _checklist = (d['checklist'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        _notes.text = '${d['remarks'] ?? ''}';
         _photos = photos;
         _dirty = false;
         _error = null;
@@ -142,7 +161,21 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
   }
 
   Future<void> _save() async {
-    if (await guard(context, () => Api.I.patch('/inspections/${widget.id}', {'checklist': _checklist}), success: 'Saved')) _load();
+    if (await guard(context, () => Api.I.patch('/inspections/${widget.id}', {'checklist': _checklist, 'remarks': _notes.text.trim().isEmpty ? null : _notes.text.trim()}), success: 'Progress saved')) _load();
+  }
+
+  Future<void> _complete() async {
+    final left = _checklist.where((c) => '${c['result'] ?? ''}'.isEmpty).length;
+    if (left > 0) {
+      toast(context, 'Mark every checklist item first ($left left)', error: true);
+      return;
+    }
+    if (await guard(context, () async {
+      await Api.I.patch('/inspections/${widget.id}', {'checklist': _checklist, 'remarks': _notes.text.trim().isEmpty ? null : _notes.text.trim()});
+      await Api.I.patch('/inspections/${widget.id}', {'status': 'completed'});
+    }, success: 'Inspection submitted')) {
+      _load();
+    }
   }
 
   Future<void> _addPhoto(bool camera) async {
@@ -210,7 +243,7 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
   }
 
   Future<void> _close() async {
-    if (_dirty) await Api.I.patch('/inspections/${widget.id}', {'checklist': _checklist});
+    if (_dirty) await Api.I.patch('/inspections/${widget.id}', {'checklist': _checklist, 'remarks': _notes.text.trim().isEmpty ? null : _notes.text.trim()});
     if (!mounted) return;
     if (await guard(context, () => Api.I.patch('/inspections/${widget.id}', {'status': 'closed'}), success: 'Inspection closed')) _load();
   }
@@ -223,14 +256,40 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
     final issues = (d['issues'] as List).cast<Map<String, dynamic>>();
     return Scaffold(
       appBar: AppBar(title: Text('${d['title']}'), actions: [
-        if (_editable) TextButton(onPressed: _close, child: const Text('Close')),
+        if (_canManage && d['status'] == 'completed') TextButton(onPressed: _close, child: const Text('Close')),
       ]),
-      floatingActionButton: _dirty ? FloatingActionButton.extended(onPressed: _save, icon: const Icon(Icons.save), label: const Text('Save')) : null,
+      bottomNavigationBar: _editable
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+                child: Row(children: [
+                  Expanded(child: OutlinedButton(onPressed: _dirty ? _save : null, child: const Text('Save progress'))),
+                  const SizedBox(width: 10),
+                  Expanded(child: FilledButton.icon(onPressed: _complete, icon: const Icon(Icons.check), label: const Text('Mark completed'))),
+                ]),
+              ),
+            )
+          : null,
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(12, 12, 12, 90), children: [
-          Text('${d['projectName']} · ${fmtDate(d['date'])}', style: const TextStyle(color: Colors.grey)),
-          SectionTitle('Checklist', trailing: Chip2(label('${d['status']}'), color: d['status'] == 'open' ? Colors.blue : Colors.green)),
+          Text('${d['projectName']} · ${fmtDate(d['date'])}${d['inspectorName'] != null ? ' · Inspector: ${d['inspectorName']}' : ''}${d['dueDate'] != null ? ' · due ${fmtDate(d['dueDate'])}' : ''}', style: const TextStyle(color: Colors.grey)),
+          if ('${d['instructions'] ?? ''}'.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Card(
+              color: Colors.blue.withValues(alpha: 0.08),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('WHAT TO INSPECT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.blue)),
+                  const SizedBox(height: 4),
+                  Text('${d['instructions']}'),
+                ]),
+              ),
+            ),
+          ],
+          if (d['completedAt'] != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Completed ${fmtDate(d['completedAt'])}${d['completedByName'] != null ? ' by ${d['completedByName']}' : ''}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600))),
+          SectionTitle('Checklist · ${_checklist.where((c) => '${c['result'] ?? ''}'.isNotEmpty).length}/${_checklist.length}', trailing: Chip2(_statusLabel['${d['status']}'] ?? label('${d['status']}'), color: _statusColor['${d['status']}'] ?? Colors.grey)),
           Card(
             child: Column(children: [
               for (var i = 0; i < _checklist.length; i++)
@@ -260,7 +319,15 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
               if (_checklist.isEmpty) const ListTile(title: Text('No checklist items', style: TextStyle(color: Colors.grey))),
             ]),
           ),
-          SectionTitle('Photos (${_photos.length})', trailing: Session.I.can('inspections.manage')
+          SectionTitle('Notes'),
+          TextField(
+            controller: _notes,
+            enabled: _editable,
+            maxLines: 3,
+            decoration: const InputDecoration(hintText: 'Observations, measurements, people present…'),
+            onChanged: (_) => setState(() => _dirty = true),
+          ),
+          SectionTitle('Photos (${_photos.length})', trailing: (_canManage || _isInspector) && d['status'] != 'closed'
               ? Row(mainAxisSize: MainAxisSize.min, children: [
                   IconButton(tooltip: 'Camera', icon: const Icon(Icons.photo_camera), onPressed: () => _addPhoto(true)),
                   IconButton(tooltip: 'Gallery', icon: const Icon(Icons.photo_library_outlined), onPressed: () => _addPhoto(false)),
@@ -278,11 +345,27 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
                 itemBuilder: (_, i) {
                   final data = '${_photos[i]['data']}';
                   final b64 = data.contains(',') ? data.split(',').last : data;
-                  return ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.memory(base64Decode(b64), width: 96, height: 96, fit: BoxFit.cover));
+                  final taken = _photos[i]['takenAt'];
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Stack(children: [
+                      Image.memory(base64Decode(b64), width: 96, height: 96, fit: BoxFit.cover),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          color: Colors.black54,
+                          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                          child: Text(taken != null ? '📷 ${fmtDate(taken)}' : '↑ ${fmtDate(_photos[i]['createdAt'])}', style: const TextStyle(color: Colors.white, fontSize: 9), overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
+                    ]),
+                  );
                 },
               ),
             ),
-          SectionTitle('Issues (${issues.length})', trailing: Session.I.can('inspections.manage') ? TextButton.icon(onPressed: _addIssue, icon: const Icon(Icons.add), label: const Text('Issue')) : null),
+          SectionTitle('Issues (${issues.length})', trailing: (_canManage || _isInspector) && d['status'] != 'closed' ? TextButton.icon(onPressed: _addIssue, icon: const Icon(Icons.add), label: const Text('Issue')) : null),
           for (final is_ in issues)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),

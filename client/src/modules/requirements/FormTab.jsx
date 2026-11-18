@@ -7,6 +7,7 @@ import { Spinner } from '../../components/ui';
 import { useLocalStorage } from './useLocalStorage';
 import CardGrid from './CardGrid';
 import ItemModal from './ItemModal';
+import Select from '../../components/Select';
 
 const FIELD_TYPES = ['Text', 'Number', 'Dropdown', 'Radio', 'Checkbox', 'Date', 'TextArea'];
 const uid = () => `${Date.now()}${Math.floor(Math.random() * 1000)}`;
@@ -27,10 +28,10 @@ function FieldInput({ field, value, onChange, disabled }) {
       return <input {...common} type="date" />;
     case 'Dropdown':
       return (
-        <select {...common}>
+        <Select {...common}>
           <option value="">{field.placeholder || 'Select…'}</option>
           {opts.map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
+        </Select>
       );
     case 'Radio':
       return (
@@ -136,9 +137,9 @@ function FormEditor({ item, canEdit, onClose, onSaved }) {
             {fields.map((f) => (
               <div key={f.id} className="grid grid-cols-1 gap-2 rounded-lg border border-cream-300 p-2 dark:border-slate-600 sm:grid-cols-2 lg:grid-cols-3">
                 <input className="input" placeholder="Field name" value={f.name} onChange={(e) => setField(f.id, 'name', e.target.value)} />
-                <select className="input" value={f.type} onChange={(e) => setField(f.id, 'type', e.target.value)}>
+                <Select className="input" value={f.type} onChange={(e) => setField(f.id, 'type', e.target.value)}>
                   {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
+                </Select>
                 <input className="input" placeholder="Placeholder" value={f.placeholder} onChange={(e) => setField(f.id, 'placeholder', e.target.value)} />
                 {['Dropdown', 'Radio', 'Checkbox'].includes(f.type) && (
                   <input className="input" placeholder="Options (comma separated)" value={f.options} onChange={(e) => setField(f.id, 'options', e.target.value)} />

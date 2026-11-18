@@ -3,6 +3,7 @@ import Modal from '../../components/Modal';
 import { Spinner, Alert } from '../../components/ui';
 import { errorMessage } from '../../lib/api';
 import { getFieldDefs, createFieldDef, updateFieldDef, deleteFieldDef } from './api';
+import Select from '../../components/Select';
 
 const FIELD_TYPES = ['text', 'number', 'date', 'select', 'textarea', 'checkbox'];
 const slugify = (s) =>
@@ -139,7 +140,7 @@ export default function FieldConfigModal({ open, onClose, onChanged }) {
             </div>
             <div>
               <label className="label">Type</label>
-              <select
+              <Select
                 className="input w-auto"
                 value={draft.fieldType}
                 onChange={(e) => setDraft((d) => ({ ...d, fieldType: e.target.value }))}
@@ -149,7 +150,7 @@ export default function FieldConfigModal({ open, onClose, onChanged }) {
                     {t}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <button className="btn-primary" onClick={add}>
               Add Field

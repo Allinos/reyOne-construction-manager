@@ -7,7 +7,7 @@ export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-cream dark:bg-slate-900">
       {/* Sidebar — static on md+, drawer on mobile */}
       <div className="hidden md:block">
         <Sidebar />
@@ -23,8 +23,8 @@ export default function AppLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <TopNav onMenu={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-5">
-          <div className="mx-auto max-w-6xl">
+        <main className="flex-1 overflow-y-auto bg-cream p-4 md:p-6 dark:bg-slate-900">
+          <div className="mx-auto max-w-7xl">
             <Outlet />
           </div>
         </main>

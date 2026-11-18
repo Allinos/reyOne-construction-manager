@@ -3,6 +3,7 @@
 const { z } = require('zod');
 
 const statusEnum = z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']);
+const staffTypeEnum = z.enum(['EMPLOYEE', 'APP_USER']);
 
 const createUserSchema = z.object({
   name: z.string().min(1).max(150),
@@ -11,6 +12,8 @@ const createUserSchema = z.object({
   phone: z.string().max(30).optional(),
   designation: z.string().max(100).optional(),
   salary: z.coerce.number().nonnegative().optional(),
+  staffType: staffTypeEnum.optional(),
+  joiningDate: z.coerce.date().nullable().optional(),
   roleId: z.coerce.number().int().positive(),
   status: statusEnum.optional(),
 });
@@ -22,6 +25,8 @@ const updateUserSchema = z
     phone: z.string().max(30).nullable().optional(),
     designation: z.string().max(100).nullable().optional(),
     salary: z.coerce.number().nonnegative().nullable().optional(),
+    staffType: staffTypeEnum.optional(),
+    joiningDate: z.coerce.date().nullable().optional(),
     roleId: z.coerce.number().int().positive().optional(),
     status: statusEnum.optional(),
   })
@@ -37,6 +42,7 @@ const listUsersQuery = z.object({
   search: z.string().trim().optional(),
   roleId: z.coerce.number().int().positive().optional(),
   status: statusEnum.optional(),
+  staffType: staffTypeEnum.optional(),
 });
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });

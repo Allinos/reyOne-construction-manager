@@ -28,7 +28,7 @@ export default function CollectionsPage() {
       )}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {[['project', 'Project-wise'], ['client', 'Client-wise']].map(([k, l]) => (
-          <button key={k} onClick={() => setGroupBy(k)} className={`rounded-full px-3 py-1.5 text-sm font-medium ${groupBy === k ? 'bg-brand-500 text-white' : 'bg-cream-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{l}</button>
+          <button key={k} onClick={() => setGroupBy(k)} className={`rounded-full px-3 py-1.5 text-sm font-medium ${groupBy === k ? 'bg-brand-500 text-brand-900' : 'bg-cream-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{l}</button>
         ))}
         <label className="ml-auto flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><input type="checkbox" checked={onlyDue} onChange={(e) => setOnlyDue(e.target.checked)} /> Only with outstanding</label>
       </div>

@@ -37,6 +37,7 @@ const DEFAULT_SETTINGS = [
     value: ['Planning', 'Foundation', 'Structure', 'Electrical', 'Finishing', 'Interior'],
   },
   { group: 'projects', key: 'reference_prefix', value: 'PRJ-' },
+  { group: 'projects', key: 'detail_sections', value: { approvals: true, timeline: true } },
   // Master task list — admins manage these in Settings; projects pick from them.
   { group: 'projects', key: 'task_templates', value: ['Planning', 'Structure', 'Electrical', 'Interior 3D', 'Exterior 3D', 'Finishing'] },
 
@@ -229,6 +230,12 @@ async function seedSettings() {
 async function seedAdmin() {
   const owner = await prisma.role.findUnique({ where: { key: 'owner' } });
   const existing = await prisma.user.findFirst({ where: { email: env.seed.adminEmail } });
+  // One-time: owners are app users (not on attendance/payroll) unless changed.
+  const flag = await prisma.setting.findUnique({ where: { group_key: { group: 'system', key: 'staff_type_migrated' } } }).catch(() => null);
+  if (!flag) {
+    await prisma.user.updateMany({ where: { roleId: owner.id }, data: { staffType: 'APP_USER' } });
+    await prisma.setting.create({ data: { group: 'system', key: 'staff_type_migrated', value: true } }).catch(() => {});
+  }
   if (existing) {
     console.log('  ✓ admin already exists');
     return;
@@ -239,6 +246,7 @@ async function seedAdmin() {
       email: env.seed.adminEmail,
       passwordHash: await hashPassword(env.seed.adminPassword),
       designation: 'Owner',
+      staffType: 'APP_USER',
       status: 'ACTIVE',
       roleId: owner.id,
     },

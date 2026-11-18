@@ -23,6 +23,8 @@ const TYPE_DOT = {
   'query.status': 'bg-slate-500',
   'inspection.issue_assigned': 'bg-red-500',
   'inspection.issue_resolved': 'bg-green-500',
+  'inspection.assigned': 'bg-blue-500',
+  'inspection.completed': 'bg-emerald-500',
 };
 
 // Where a notification should take the user when tapped.

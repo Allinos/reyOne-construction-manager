@@ -37,8 +37,8 @@ export const MODULE_DEFS = [
   { key: 'payroll', section: 'finance', label: 'Salary & Payroll', path: '/payroll', icon: 'payroll', permission: 'payroll.read', element: <PayrollPage /> },
   { key: 'workforce', section: 'finance', label: 'Workforce', path: '/workforce', icon: 'workforce', permission: 'workforce.read', element: <WorkforcePage /> },
   { key: 'custom_module', section: 'finance', label: 'Custom Module', path: '/custom-module', icon: 'modules', permission: 'custom_module.read', element: <CustomModulePage /> },
-  { key: 'users', section: 'profile', label: 'User Manager', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
-  { key: 'settings', section: 'profile', label: 'Settings', path: '/settings', icon: 'settings', permission: 'settings.read', element: <SettingsModule /> },
+  { key: 'users', section: 'bottom', label: 'User Management', path: '/users', icon: 'users', permission: 'users.read', element: <UsersPage /> },
+  { key: 'settings', section: 'bottom', label: 'Settings', path: '/settings', icon: 'settings', permission: 'settings.read', element: <SettingsModule /> },
 
   // Admin screens — routed but hidden from the sidebar (reachable via Settings).
   { key: 'roles', section: null, hidden: true, label: 'Roles', path: '/roles', icon: 'roles', permission: 'roles.read', element: <RolesPage /> },
@@ -47,15 +47,13 @@ export const MODULE_DEFS = [
 ];
 
 // Nav-only links (not routed modules of their own).
-const EXTRA_NAV = [
-  { key: 'add-project', section: 'main', label: 'Add Project', path: '/projects/new', icon: 'add', permission: 'projects.create', moduleKey: 'projects' },
-];
+const EXTRA_NAV = [];
 
 export const SECTIONS = [
-  { key: 'main', label: 'Dashboard' },
+  { key: 'main', label: 'Overview' },
   { key: 'operations', label: 'Site Operations' },
   { key: 'finance', label: 'Finance' },
-  { key: 'profile', label: 'Profile' },
+  { key: 'bottom', label: null },
 ];
 
 // Builds the grouped, filtered nav for the sidebar. `labels` optionally overrides

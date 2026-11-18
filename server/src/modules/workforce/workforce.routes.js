@@ -10,6 +10,8 @@ const { createWorkforceSchema, updateWorkforceSchema, listQuery, idParam } = req
 function registerRoutes(router) {
   router.use(authenticate);
   router.get('/', authorize('workforce.read'), validate({ query: listQuery }), asyncHandler(controller.list));
+  router.get('/stats', authorize('workforce.read'), asyncHandler(controller.stats));
+  router.get('/:id/overview', authorize('workforce.read'), validate({ params: idParam }), asyncHandler(controller.overview));
   router.get('/:id', authorize('workforce.read'), validate({ params: idParam }), asyncHandler(controller.get));
   router.post('/', authorize('workforce.create'), validate({ body: createWorkforceSchema }), asyncHandler(controller.create));
   router.patch('/:id', authorize('workforce.update'), validate({ params: idParam, body: updateWorkforceSchema }), asyncHandler(controller.update));

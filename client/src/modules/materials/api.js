@@ -19,3 +19,4 @@ export const decideRequest = (id, b) => unwrap(api.patch(`/materials/requests/${
 export const fulfillRequest = (id, b) => unwrap(api.post(`/materials/requests/${id}/fulfill`, b));
 export const listProjectsLite = () => api.get('/projects', { params: { limit: 100 } }).then((r) => r.data.data).catch(() => []);
 export const listVendorsLite = () => api.get('/vendors', { params: { limit: 100 } }).then((r) => r.data.data).catch(() => []);
+export const getLocations = (id) => unwrap(api.get(`/materials/items/${id}/locations`));

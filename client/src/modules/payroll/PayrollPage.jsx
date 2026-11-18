@@ -3,17 +3,18 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
-import { formatMoney, formatDate } from '../../lib/format';
+import { formatMoney, formatDate, localDate, localMonth } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Alert, Pagination } from '../../components/ui';
 import Modal from '../../components/Modal';
-import { Tabs } from '../attendance/AttendancePage';
+import { Tabs } from '../../components/ui';
 import {
   getProfiles, saveProfile, getPayrollSummary, getLedger, listPayments, createPayment,
   deletePayment, listAdvances, createAdvance, deleteAdvance,
 } from './api';
+import Select from '../../components/Select';
 
-const thisMonth = () => new Date().toISOString().slice(0, 7);
-const today = () => new Date().toISOString().slice(0, 10);
+const thisMonth = () => localMonth();
+const today = () => localDate();
 const monthLabel = (m) => {
   if (!m) return '';
   const [y, mo] = m.split('-').map(Number);
@@ -124,7 +125,7 @@ function PayModal({ target, month, onClose, onDone }) {
         <div><label className="label">Other deductions</label><input type="number" min="0" className="input" value={f.otherDeduction} onChange={(e) => set('otherDeduction', e.target.value)} /></div>
         <div>
           <label className="label">Method</label>
-          <select className="input" value={f.method} onChange={(e) => set('method', e.target.value)}>{methods.map((m) => <option key={m}>{m}</option>)}</select>
+          <Select className="input" value={f.method} onChange={(e) => set('method', e.target.value)}>{methods.map((m) => <option key={m}>{m}</option>)}</Select>
         </div>
         <div className="flex items-end"><label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><input type="checkbox" checked={f.addToExpenses} onChange={(e) => set('addToExpenses', e.target.checked)} /> Record in company expenses</label></div>
         <div className="col-span-2"><label className="label">Notes</label><input className="input" value={f.notes} onChange={(e) => set('notes', e.target.value)} /></div>
@@ -165,7 +166,7 @@ function AdvanceModal({ target, onClose, onDone }) {
       <div className="grid grid-cols-2 gap-3">
         <div><label className="label">Amount</label><input type="number" min="0" className="input" autoFocus value={f.amount} onChange={(e) => set('amount', e.target.value)} /></div>
         <div><label className="label">Date</label><input type="date" className="input" value={f.date} onChange={(e) => set('date', e.target.value)} /></div>
-        <div><label className="label">Method</label><select className="input" value={f.method} onChange={(e) => set('method', e.target.value)}>{methods.map((m) => <option key={m}>{m}</option>)}</select></div>
+        <div><label className="label">Method</label><Select className="input" value={f.method} onChange={(e) => set('method', e.target.value)}>{methods.map((m) => <option key={m}>{m}</option>)}</Select></div>
         <div className="flex items-end"><label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><input type="checkbox" checked={f.addToExpenses} onChange={(e) => set('addToExpenses', e.target.checked)} /> Record in company expenses</label></div>
         <div className="col-span-2"><label className="label">Notes</label><input className="input" value={f.notes} onChange={(e) => set('notes', e.target.value)} /></div>
       </div>
@@ -266,9 +267,9 @@ function MonthlyPayroll() {
     <>
       <div className="mb-4 flex flex-wrap gap-3">
         <input type="month" className="input w-auto" value={month} onChange={(e) => setMonth(e.target.value)} />
-        <select className="input w-auto" value={type} onChange={(e) => setType(e.target.value)}>
+        <Select className="input w-auto" value={type} onChange={(e) => setType(e.target.value)}>
           <option value="">Everyone</option><option value="USER">Employees</option><option value="WORKFORCE">Workforce / Labour</option>
-        </select>
+        </Select>
         <input className="input min-w-[160px] flex-1" placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
       {error && <Alert>{error}</Alert>}
@@ -316,7 +317,7 @@ function MonthlyPayroll() {
                     <td className={`px-3 py-2.5 text-right ${r.advanceOutstanding ? 'text-amber-600' : 'text-slate-400'}`}>{money(r.advanceOutstanding)}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex justify-end gap-1.5">
-                        {canManage && <button className="pill bg-brand-500 text-white hover:bg-brand-600" onClick={() => setPay(r)}>Pay</button>}
+                        {canManage && <button className="pill bg-brand-500 text-brand-900 hover:bg-brand-400" onClick={() => setPay(r)}>Pay</button>}
                         {canManage && <button className="pill bg-amber-50 text-amber-700 hover:bg-amber-100" onClick={() => setAdv(r)}>Advance</button>}
                         <button className="pill bg-cream-200 text-slate-600 hover:bg-cream-300" onClick={() => setLedger(r)}>History</button>
                       </div>
@@ -365,9 +366,9 @@ function SalarySetup() {
   return (
     <>
       <div className="mb-4 flex flex-wrap gap-3">
-        <select className="input w-auto" value={type} onChange={(e) => setType(e.target.value)}>
+        <Select className="input w-auto" value={type} onChange={(e) => setType(e.target.value)}>
           <option value="">Everyone</option><option value="USER">Employees</option><option value="WORKFORCE">Workforce / Labour</option>
-        </select>
+        </Select>
         <input className="input min-w-[160px] flex-1" placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
       <Card className="!p-0 overflow-hidden">
@@ -402,7 +403,7 @@ function SalarySetup() {
         <Modal open onClose={() => setEdit(null)} title={`Salary · ${edit.name}`}
           footer={<><button className="btn-secondary" onClick={() => setEdit(null)}>Cancel</button><button className="btn-primary" onClick={save}>Save</button></>}>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="label">Pay type</label><select className="input" value={edit.payType} onChange={(e) => setEdit({ ...edit, payType: e.target.value })}><option value="monthly">Monthly salary</option><option value="daily">Daily wage</option></select></div>
+            <div><label className="label">Pay type</label><Select className="input" value={edit.payType} onChange={(e) => setEdit({ ...edit, payType: e.target.value })}><option value="monthly">Monthly salary</option><option value="daily">Daily wage</option></Select></div>
             <div><label className="label">{edit.payType === 'daily' ? 'Wage per day' : 'Monthly salary'}</label><input type="number" min="0" className="input" value={edit.rate} onChange={(e) => setEdit({ ...edit, rate: e.target.value })} /></div>
             <div><label className="label">Effective from</label><input type="date" className="input" value={edit.effectiveFrom} onChange={(e) => setEdit({ ...edit, effectiveFrom: e.target.value })} /></div>
             <div className="flex items-end"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} /> Active</label></div>

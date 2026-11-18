@@ -5,9 +5,10 @@ import { generateDocumentPdf } from './pdf';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
-import { formatMoney, toAmount } from '../../lib/format';
+import { formatMoney, toAmount, localDate } from '../../lib/format';
 import Modal from '../../components/Modal';
 import { Spinner, Alert } from '../../components/ui';
+import Select from '../../components/Select';
 
 const STATUS_OPTIONS = {
   QUOTATION: ['draft', 'sent', 'accepted', 'rejected'],
@@ -15,7 +16,7 @@ const STATUS_OPTIONS = {
 };
 
 const emptyItem = () => ({ description: '', hsnCode: '', quantity: 1, unitPrice: '', gstRate: 18 });
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localDate();
 
 export default function DocumentFormModal({ open, onClose, type, docId, config, onSaved }) {
   const { bootstrap } = useAuth();
@@ -207,7 +208,7 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
             <label className="label">Template</label>
             <div className="flex overflow-hidden rounded-lg border border-cream-300 text-sm dark:border-slate-700">
               {[{ v: 'standard', l: 'Standard' }, { v: 'gst', l: 'GST (India)' }].map((t) => (
-                <button key={t.v} type="button" className={`px-4 py-1.5 ${form.template === t.v ? 'bg-brand-500 text-white' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`} onClick={() => set('template', t.v)}>
+                <button key={t.v} type="button" className={`px-4 py-1.5 ${form.template === t.v ? 'bg-brand-500 text-brand-900' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`} onClick={() => set('template', t.v)}>
                   {t.l}
                 </button>
               ))}
@@ -237,19 +238,19 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
             {projects.length > 0 && (
               <div>
                 <label className="label">Existing Project (autofill)</label>
-                <select className="input" value={form.projectId} onChange={(e) => pickProject(e.target.value)}>
+                <Select className="input" value={form.projectId} onChange={(e) => pickProject(e.target.value)}>
                   <option value="">None</option>
                   {projects.map((p) => <option key={p.id} value={p.id}>{p.referenceNumber} — {p.name}</option>)}
-                </select>
+                </Select>
               </div>
             )}
             {clients.length > 0 && (
               <div>
                 <label className="label">Existing Client (autofill)</label>
-                <select className="input" value="" onChange={(e) => pickClient(e.target.value)}>
+                <Select className="input" value="" onChange={(e) => pickClient(e.target.value)}>
                   <option value="">Select…</option>
                   {clients.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-                </select>
+                </Select>
               </div>
             )}
           </div>
@@ -275,9 +276,9 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
                   <input type="number" min="0" className="input w-16" placeholder="e.g., 100" value={it.quantity} onChange={(e) => setItem(i, 'quantity', e.target.value)} />
                   <input type="number" min="0" step="0.01" className="input w-24" placeholder="e.g., 350" value={it.unitPrice} onChange={(e) => setItem(i, 'unitPrice', e.target.value)} />
                   {isGst && (
-                    <select className="input w-20" value={it.gstRate} onChange={(e) => setItem(i, 'gstRate', e.target.value)}>
+                    <Select className="input w-20" value={it.gstRate} onChange={(e) => setItem(i, 'gstRate', e.target.value)}>
                       {gstRates.map((r) => <option key={r} value={r}>{r}%</option>)}
-                    </select>
+                    </Select>
                   )}
                   <span className="w-24 text-right text-sm text-slate-600 dark:text-slate-300">
                     {formatMoney(isGst
@@ -299,9 +300,9 @@ export default function DocumentFormModal({ open, onClose, type, docId, config, 
             )}
             <div>
               <label className="label">Status</label>
-              <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)}>
+              <Select className="input" value={form.status} onChange={(e) => set('status', e.target.value)}>
                 {STATUS_OPTIONS[type].map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
+              </Select>
             </div>
             <div className="flex items-end justify-end sm:col-span-1">
               <div className="text-right">

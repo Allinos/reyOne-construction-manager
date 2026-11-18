@@ -63,6 +63,11 @@ const attendanceService = {
     if (payload.projectId) await assertProjectAccess(actor, payload.projectId);
     let saved = 0;
     let cleared = 0;
+    // Labour without an explicit site is booked to their assigned site.
+    const wfIds = payload.entries.filter((e) => e.personType === 'WORKFORCE').map((e) => e.personId);
+    const wfSites = new Map(
+      wfIds.length ? (await prisma.workforce.findMany({ where: { id: { in: wfIds } }, select: { id: true, siteProjectId: true } })).map((w) => [w.id, w.siteProjectId]) : [],
+    );
     await prisma.$transaction(async (tx) => {
       for (const e of payload.entries) {
         const where = { personType_personId_date: { personType: e.personType, personId: e.personId, date } };
@@ -73,7 +78,7 @@ const attendanceService = {
         }
         const data = {
           status: e.status,
-          projectId: e.projectId ?? payload.projectId ?? null,
+          projectId: e.projectId ?? payload.projectId ?? (e.personType === 'WORKFORCE' ? wfSites.get(e.personId) : null) ?? null,
           checkIn: e.checkIn || null,
           checkOut: e.checkOut || null,
           notes: e.notes || null,

@@ -94,14 +94,15 @@ export default function RequirementsButton({
   initialTab,
   label = 'Requirements & Details',
   icon = 'modules',
-  className = 'btn-secondary',
+  className,
+  compact = false,
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button className={className} onClick={() => setOpen(true)}>
-        <span className="mr-1.5 inline-flex align-middle"><Icon name={icon} className="h-4 w-4" /></span>
-        {label}
+      <button className={className || (compact ? 'btn-secondary btn-sm' : 'btn-secondary')} onClick={() => setOpen(true)}>
+        <Icon name={icon} className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+        {compact && label === 'Requirements & Details' ? 'Requirements' : label}
       </button>
       {open && <Workspace projectId={projectId} initialTab={initialTab} onClose={() => setOpen(false)} />}
     </>

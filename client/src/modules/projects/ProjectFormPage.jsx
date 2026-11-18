@@ -9,6 +9,7 @@ import { toAmount, amountPreview } from '../../lib/format';
 import { PageHeader, Card, Spinner, Alert } from '../../components/ui';
 import Icon from '../../components/Icon';
 import SearchSelect from '../../components/SearchSelect';
+import Select from '../../components/Select';
 
 function Field({ label, required, children }) {
   return (
@@ -179,14 +180,14 @@ export default function ProjectFormPage() {
               <div className="flex overflow-hidden rounded-lg border border-cream-300 text-sm">
                 <button
                   type="button"
-                  className={`px-3 py-1.5 ${clientMode === 'new' ? 'bg-brand-500 text-white' : 'bg-white text-slate-600'}`}
+                  className={`px-3 py-1.5 ${clientMode === 'new' ? 'bg-brand-500 text-brand-900' : 'bg-white text-slate-600'}`}
                   onClick={() => switchClientMode('new')}
                 >
                   New Client
                 </button>
                 <button
                   type="button"
-                  className={`px-3 py-1.5 ${clientMode === 'existing' ? 'bg-brand-500 text-white' : 'bg-white text-slate-600'}`}
+                  className={`px-3 py-1.5 ${clientMode === 'existing' ? 'bg-brand-500 text-brand-900' : 'bg-white text-slate-600'}`}
                   onClick={() => switchClientMode('existing')}
                 >
                   Existing Client
@@ -247,19 +248,19 @@ export default function ProjectFormPage() {
               <input className="input" placeholder="e.g., 3BHK Villa Construction" value={form.name} onChange={(e) => set('name', e.target.value)} required />
             </Field>
             <Field label="Category">
-              <select className="input" value={form.category} onChange={(e) => set('category', e.target.value)}>
+              <Select className="input" value={form.category} onChange={(e) => set('category', e.target.value)}>
                 <option value="">Select…</option>
                 {categories.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="Status">
-              <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)}>
+              <Select className="input" value={form.status} onChange={(e) => set('status', e.target.value)}>
                 {statuses.map((s) => (
                   <option key={s.key} value={s.key}>{s.label}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="Agreement / Working Date">
               <input type="date" className="input" value={form.agreementDate} onChange={(e) => set('agreementDate', e.target.value)} />
@@ -287,12 +288,12 @@ export default function ProjectFormPage() {
                   {d.fieldType === 'textarea' ? (
                     <textarea className="input" value={customFields[d.key] || ''} onChange={(e) => setCustom(d.key, e.target.value)} required={d.required} />
                   ) : d.fieldType === 'select' ? (
-                    <select className="input" value={customFields[d.key] || ''} onChange={(e) => setCustom(d.key, e.target.value)} required={d.required}>
+                    <Select className="input" value={customFields[d.key] || ''} onChange={(e) => setCustom(d.key, e.target.value)} required={d.required}>
                       <option value="">Select…</option>
                       {(d.options || []).map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
-                    </select>
+                    </Select>
                   ) : d.fieldType === 'checkbox' ? (
                     <input type="checkbox" checked={Boolean(customFields[d.key])} onChange={(e) => setCustom(d.key, e.target.checked)} />
                   ) : (

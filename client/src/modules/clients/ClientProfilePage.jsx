@@ -81,7 +81,7 @@ export default function ClientProfilePage() {
         subtitle="Client profile"
         actions={
           <div className="flex gap-2">
-            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-white hover:bg-brand-600" onClick={() => navigate('/clients')} aria-label="Back">
+            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-brand-900 hover:bg-brand-400" onClick={() => navigate('/clients')} aria-label="Back">
               <Icon name="arrowLeft" className="h-4 w-4" />
             </button>
             {can('clients.update') && (

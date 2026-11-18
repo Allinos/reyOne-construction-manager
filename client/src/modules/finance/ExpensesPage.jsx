@@ -152,7 +152,7 @@ export default function ExpensesPage() {
         </h3>
         <div className="flex overflow-hidden rounded-lg border border-cream-300 text-sm dark:border-slate-700">
           {[{ v: '', l: 'All' }, { v: 'PROJECT', l: 'Project Expenses' }, { v: 'COMPANY', l: 'Company Expenses' }].map((t) => (
-            <button key={t.v} className={`px-3 py-1.5 ${scopeFilter === t.v ? 'bg-brand-500 text-white' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`} onClick={() => { setScopeFilter(t.v); setPage(1); }}>
+            <button key={t.v} className={`px-3 py-1.5 ${scopeFilter === t.v ? 'bg-brand-500 text-brand-900' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`} onClick={() => { setScopeFilter(t.v); setPage(1); }}>
               {t.l}
             </button>
           ))}

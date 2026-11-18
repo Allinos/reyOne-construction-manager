@@ -8,5 +8,5 @@ export const STATUS_META = {
 };
 
 export const statusBadgeClass = (key) => STATUS_META[key]?.badge || 'bg-cream-200 text-slate-600';
-export const statusColor = (key) => STATUS_META[key]?.color || '#F97316';
+export const statusColor = (key) => STATUS_META[key]?.color || '#64748b';
 export const statusSelectClass = (key) => STATUS_META[key]?.select || '';

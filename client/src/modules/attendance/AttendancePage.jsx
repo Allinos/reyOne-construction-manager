@@ -2,11 +2,18 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
-import { PageHeader, Card, Spinner, EmptyState, Alert } from '../../components/ui';
+import { Tabs, PageHeader, Card, Spinner, EmptyState, Alert } from '../../components/ui';
 import { getDay, saveDay, getSummary, listProjectsLite } from './api';
+import Select from '../../components/Select';
+import { localDate, localMonth } from '../../lib/format';
 
-const today = () => new Date().toISOString().slice(0, 10);
-const thisMonth = () => new Date().toISOString().slice(0, 7);
+const today = () => localDate();
+const shiftDay = (iso, n) => {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + n);
+  return localDate(d);
+};
+const thisMonth = () => localMonth();
 
 export const STATUS_OPTS = [
   { key: 'present', short: 'P', label: 'Present', cls: 'bg-green-600 text-white', idle: 'text-green-700' },
@@ -15,24 +22,7 @@ export const STATUS_OPTS = [
   { key: 'leave', short: 'L', label: 'Leave', cls: 'bg-sky-600 text-white', idle: 'text-sky-700' },
 ];
 
-function Tabs({ tabs, value, onChange }) {
-  return (
-    <div className="mb-4 flex gap-1 overflow-x-auto border-b border-cream-300 dark:border-slate-700">
-      {tabs.map((t) => (
-        <button
-          key={t.key}
-          onClick={() => onChange(t.key)}
-          className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${
-            value === t.key ? 'border-brand-500 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-export { Tabs };
+export { Tabs } from '../../components/ui';
 
 function DailySheet() {
   const { can } = useAuth();
@@ -70,10 +60,18 @@ function DailySheet() {
       .filter((r) => !q || r.name.toLowerCase().includes(q) || (r.detail || '').toLowerCase().includes(q));
   }, [data, edits, search]);
 
-  const patch = (key, p) => setEdits((e) => ({ ...e, [key]: { ...(e[key] || {}), ...p } }));
+  const patch = (key, p) => setEdits((e) => {
+    const base = data?.rows.find((r) => r.key === key);
+    const next = { ...(e[key] || {}), ...p };
+    // Entering a check-in/out time for someone not yet marked means they came in.
+    const status = next.status ?? base?.status;
+    if (!status && (p.checkIn || p.checkOut)) next.status = 'present';
+    return { ...e, [key]: next };
+  });
+  // Bulk-mark only the people still unmarked (doesn't overwrite marked ones).
   const markAll = (status) => {
     const next = { ...edits };
-    for (const r of rows) next[r.key] = { ...(next[r.key] || {}), status };
+    for (const r of rows) if (!r.status) next[r.key] = { ...(next[r.key] || {}), status };
     setEdits(next);
   };
 
@@ -114,26 +112,30 @@ function DailySheet() {
 
   return (
     <>
-      <Card className="mb-4">
+      <Card className="mb-4 !p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="label">Date</label>
-            <input type="date" className="input w-auto" value={date} max={today()} onChange={(e) => setDate(e.target.value)} />
+            <div className="flex items-center gap-1">
+              <button type="button" className="btn-secondary px-2" onClick={() => setDate(shiftDay(date, -1))} aria-label="Previous day">‹</button>
+              <input type="date" className="input w-auto" value={date} max={today()} onChange={(e) => e.target.value && setDate(e.target.value)} />
+              <button type="button" className="btn-secondary px-2" onClick={() => setDate(shiftDay(date, 1))} disabled={date >= today()} aria-label="Next day">›</button>
+            </div>
           </div>
           <div>
             <label className="label">People</label>
-            <select className="input w-auto" value={type} onChange={(e) => setType(e.target.value)}>
+            <Select className="input w-auto" value={type} onChange={(e) => setType(e.target.value)}>
               <option value="">All</option>
               <option value="USER">Employees</option>
               <option value="WORKFORCE">Workforce / Labour</option>
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="label">Site / Project (for marking)</label>
-            <select className="input w-auto max-w-[14rem]" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            <label className="label">Site (saved with marks)</label>
+            <Select className="input w-auto max-w-[14rem]" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
               <option value="">— None —</option>
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            </Select>
           </div>
           <input className="input min-w-[160px] flex-1" placeholder="Search name…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
@@ -141,10 +143,10 @@ function DailySheet() {
           {STATUS_OPTS.map((s) => (
             <span key={s.key} className={`rounded-full px-2 py-0.5 font-medium ${s.cls}`}>{s.label}: {counts[s.key]}</span>
           ))}
-          <span className="rounded-full bg-cream-200 px-2 py-0.5 font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">Unmarked: {counts.unmarked}</span>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">Unmarked: {counts.unmarked}</span>
           {canMark && (
             <span className="ml-auto flex gap-2">
-              <button className="btn-secondary py-1 text-xs" onClick={() => markAll('present')}>Mark all present</button>
+              <button className="btn-secondary btn-sm" onClick={() => markAll('present')} title="Marks everyone not yet marked">Mark unmarked present</button>
             </span>
           )}
         </div>
@@ -160,7 +162,7 @@ function DailySheet() {
         ) : (
           <ul className="divide-y divide-cream-200 dark:divide-slate-700">
             {rows.map((r) => (
-              <li key={r.key} className={`flex flex-wrap items-center gap-3 px-4 py-2.5 ${edits[r.key] ? 'bg-brand-50/60 dark:bg-slate-800' : ''}`}>
+              <li key={r.key} className={`flex flex-wrap items-center gap-3 px-4 py-2 ${edits[r.key] ? 'bg-amber-50/70 dark:bg-slate-800' : ''}`}>
                 <div className="min-w-[10rem] flex-1">
                   <p className="font-medium text-slate-800 dark:text-slate-100">{r.name}</p>
                   <p className="text-xs text-slate-400">{r.group}{r.detail ? ` · ${r.detail}` : ''}{r.projectName ? ` · ${r.projectName}` : ''}</p>
@@ -173,16 +175,18 @@ function DailySheet() {
                       title={s.label}
                       onClick={() => patch(r.key, { status: r.status === s.key ? '' : s.key })}
                       className={`h-9 w-9 rounded-lg border text-sm font-bold transition ${
-                        r.status === s.key ? `${s.cls} border-transparent` : `border-cream-300 bg-white ${s.idle} dark:border-slate-600 dark:bg-slate-800`
+                        r.status === s.key ? `${s.cls} border-transparent` : `border-slate-200 bg-white ${s.idle} hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800`
                       }`}
                     >
                       {s.short}
                     </button>
                   ))}
                 </div>
-                <div className="hidden gap-1 sm:flex">
-                  <input type="time" className="input w-[6.5rem] py-1 text-xs" value={r.checkIn || ''} disabled={!canMark} onChange={(e) => patch(r.key, { checkIn: e.target.value })} title="In" />
-                  <input type="time" className="input w-[6.5rem] py-1 text-xs" value={r.checkOut || ''} disabled={!canMark} onChange={(e) => patch(r.key, { checkOut: e.target.value })} title="Out" />
+                <div className="hidden items-center gap-1 sm:flex">
+                  <input type="time" className="input w-[7.5rem] py-1 text-xs" value={r.checkIn || ''} disabled={!canMark} onChange={(e) => patch(r.key, { checkIn: e.target.value })} title="In" aria-label="Check-in time" />
+                  <span className="text-xs text-slate-400">–</span>
+                  <input type="time" className="input w-[7.5rem] py-1 text-xs" value={r.checkOut || ''} disabled={!canMark} onChange={(e) => patch(r.key, { checkOut: e.target.value })} title="Out" aria-label="Check-out time" />
+                  <input className="input w-40 py-1 text-xs" placeholder="Note" value={r.notes || ''} disabled={!canMark} onChange={(e) => patch(r.key, { notes: e.target.value })} aria-label="Note" />
                 </div>
               </li>
             ))}
@@ -193,7 +197,7 @@ function DailySheet() {
       {canMark && dirtyCount > 0 && (
         <div className="sticky bottom-4 mt-4 flex justify-end">
           <div className="flex items-center gap-3 rounded-xl border border-cream-300 bg-white px-4 py-2 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-            <span className="text-sm text-slate-600 dark:text-slate-300">{dirtyCount} change(s)</span>
+            <span className="text-sm text-slate-600 dark:text-slate-300">{dirtyCount} unsaved change{dirtyCount > 1 ? 's' : ''}</span>
             <button className="btn-secondary" onClick={() => setEdits({})} disabled={saving}>Discard</button>
             <button className="btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Attendance'}</button>
           </div>
@@ -219,11 +223,11 @@ function MonthlySummary() {
       <Card className="mb-4">
         <div className="flex flex-wrap gap-3">
           <input type="month" className="input w-auto" value={month} onChange={(e) => setMonth(e.target.value)} />
-          <select className="input w-auto" value={type} onChange={(e) => setType(e.target.value)}>
+          <Select className="input w-auto" value={type} onChange={(e) => setType(e.target.value)}>
             <option value="">All</option>
             <option value="USER">Employees</option>
             <option value="WORKFORCE">Workforce / Labour</option>
-          </select>
+          </Select>
         </div>
       </Card>
       {error && <Alert>{error}</Alert>}

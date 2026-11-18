@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
+
+// Stack of open modals so Escape only closes the top-most one.
+const stack = [];
 
 export default function Modal({
   open,
@@ -13,11 +16,23 @@ export default function Modal({
 }) {
   const [full, setFull] = useState(false);
 
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose?.();
-    if (open) document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+    if (!open) return undefined;
+    const token = {};
+    stack.push(token);
+    const onKey = (e) => {
+      if (e.key === 'Escape' && stack[stack.length - 1] === token) closeRef.current?.();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      const i = stack.indexOf(token);
+      if (i >= 0) stack.splice(i, 1);
+    };
+  }, [open]);
 
   // Reset fullscreen whenever the modal is closed.
   useEffect(() => {
@@ -28,9 +43,9 @@ export default function Modal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={dismissOnBackdrop ? onClose : undefined} />
+      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-[1px]" onClick={dismissOnBackdrop ? onClose : undefined} />
       <div
-        className={`relative bg-white shadow-xl dark:bg-slate-900 ${
+        className={`relative bg-white shadow-2xl dark:bg-slate-800 ${
           full
             ? 'fixed inset-0 z-50 flex flex-col rounded-none'
             : `mt-10 w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} rounded-xl`

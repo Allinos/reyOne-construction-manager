@@ -5,7 +5,7 @@ import { useToast } from '../../context/ToastContext';
 import { updateSetting } from './api';
 
 // Editor for a setting whose value is a list of strings (categories, phases…).
-export function StringListEditor({ title, group, settingKey, initial }) {
+export function StringListEditor({ title, group, settingKey, initial, description }) {
   const toast = useToast();
   const [items, setItems] = useState(initial || []);
   const [draft, setDraft] = useState('');
@@ -31,11 +31,12 @@ export function StringListEditor({ title, group, settingKey, initial }) {
 
   return (
     <Card>
-      <h3 className="mb-3 font-semibold text-slate-700">{title}</h3>
+      <h3 className="font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
+      {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
       {state.error && <Alert>{state.error}</Alert>}
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-3 mt-3 flex flex-wrap gap-2">
         {items.map((it, i) => (
-          <span key={i} className="badge bg-cream-200 text-slate-600">
+          <span key={i} className="badge bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
             {it}
             <button className="ml-1 text-slate-400 hover:text-red-500" onClick={() => remove(i)}>&times;</button>
           </span>
@@ -78,7 +79,7 @@ export function TextSettingEditor({ title, group, settingKey, initial, hint, pla
 
   return (
     <Card>
-      <h3 className="mb-1 font-semibold text-slate-700">{title}</h3>
+      <h3 className="mb-1 font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
       {hint && <p className="mb-3 text-xs text-slate-400">{hint}</p>}
       {state.error && <Alert>{state.error}</Alert>}
       <div className="flex gap-2">
@@ -92,13 +93,13 @@ export function TextSettingEditor({ title, group, settingKey, initial, hint, pla
 }
 
 // Editor for a list of objects with a fixed set of text columns.
-export function ObjectListEditor({ title, group, settingKey, initial, columns }) {
+export function ObjectListEditor({ title, group, settingKey, initial, columns, description }) {
   const toast = useToast();
   const [rows, setRows] = useState(initial || []);
   const [state, setState] = useState({ saving: false, error: '', saved: false });
 
   const setCell = (i, key, value) => setRows(rows.map((r, idx) => (idx === i ? { ...r, [key]: value } : r)));
-  const addRow = () => setRows([...rows, Object.fromEntries(columns.map((c) => [c.key, c.type === 'color' ? '#f97316' : '']))]);
+  const addRow = () => setRows([...rows, Object.fromEntries(columns.map((c) => [c.key, c.type === 'color' ? '#cc6e02' : '']))]);
   const removeRow = (i) => setRows(rows.filter((_, idx) => idx !== i));
 
   const save = async () => {
@@ -114,9 +115,12 @@ export function ObjectListEditor({ title, group, settingKey, initial, columns })
 
   return (
     <Card>
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-semibold text-slate-700">{title}</h3>
-        <button className="btn-ghost text-brand-600" onClick={addRow} type="button">+ Add row</button>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div>
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
+          {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
+        </div>
+        <button className="btn-secondary btn-sm" onClick={addRow} type="button">+ Add row</button>
       </div>
       {state.error && <Alert>{state.error}</Alert>}
       <div className="space-y-2">
@@ -127,9 +131,9 @@ export function ObjectListEditor({ title, group, settingKey, initial, columns })
                 <input
                   key={c.key}
                   type="color"
-                  className="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-cream-300 bg-white p-1 dark:border-slate-600"
+                  className="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-600"
                   title={c.label}
-                  value={row[c.key] || '#f97316'}
+                  value={row[c.key] || '#cc6e02'}
                   onChange={(e) => setCell(i, c.key, e.target.value)}
                 />
               ) : (
@@ -142,7 +146,7 @@ export function ObjectListEditor({ title, group, settingKey, initial, columns })
                 />
               ),
             )}
-            <button className="btn-ghost text-red-500" onClick={() => removeRow(i)} type="button">Remove</button>
+            <button className="btn-ghost px-2 text-red-600 hover:bg-red-50" onClick={() => removeRow(i)} type="button" aria-label="Remove row">×</button>
           </div>
         ))}
         {rows.length === 0 && <p className="text-sm text-slate-400">No rows.</p>}
@@ -151,6 +155,114 @@ export function ObjectListEditor({ title, group, settingKey, initial, columns })
         <button className="btn-primary" onClick={save} disabled={state.saving}>
           {state.saving ? <Spinner className="h-4 w-4" /> : state.saved ? 'Saved' : 'Save'}
         </button>
+      </div>
+    </Card>
+  );
+}
+
+// On/off switches stored together as one object setting, e.g.
+// projects.detail_sections = { approvals: true, timeline: false }.
+export function ToggleGroupEditor({ title, description, group, settingKey, initial, options }) {
+  const toast = useToast();
+  const [value, setValue] = useState({ ...(initial || {}) });
+  const [saving, setSaving] = useState(false);
+  const isOn = (k) => value[k] !== false;
+  const flip = async (k) => {
+    const next = { ...value, [k]: !isOn(k) };
+    setValue(next);
+    setSaving(true);
+    try {
+      await updateSetting(group, settingKey, next);
+      toast.success('Saved');
+    } catch (err) {
+      toast.error(errorMessage(err));
+      setValue(value);
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Card>
+      <h3 className="font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
+      {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
+      <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-700">
+        {options.map((o) => (
+          <li key={o.key} className="flex items-center justify-between gap-4 py-2.5">
+            <div>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{o.label}</p>
+              {o.hint && <p className="text-xs text-slate-500">{o.hint}</p>}
+            </div>
+            <Switch checked={isOn(o.key)} disabled={saving} onChange={() => flip(o.key)} />
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+export function Switch({ checked, disabled, onChange, label }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? 'bg-brand-500' : 'bg-slate-300 dark:bg-slate-600'} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
+    >
+      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${checked ? 'left-[22px]' : 'left-0.5'}`} />
+    </button>
+  );
+}
+
+// Inspection checklist templates: [{ key, name, items: [string] }].
+export function ChecklistTemplatesEditor({ initial }) {
+  const toast = useToast();
+  const [rows, setRows] = useState(() => (initial || []).map((t) => ({ ...t, text: (t.items || []).join('\n') })));
+  const [saving, setSaving] = useState(false);
+  const set = (i, patch) => setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const save = async () => {
+    setSaving(true);
+    try {
+      const value = rows
+        .filter((r) => r.name.trim())
+        .map((r, i) => ({
+          key: r.key || `${r.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 40)}_${i}`,
+          name: r.name.trim(),
+          items: r.text.split('\n').map((x) => x.trim()).filter(Boolean),
+        }));
+      await updateSetting('inspections', 'checklists', value);
+      toast.success('Checklist templates saved');
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Card>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div>
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Inspection checklist templates</h3>
+          <p className="mt-0.5 text-xs text-slate-500">One checklist item per line. Inspectors pick a template when an inspection is assigned.</p>
+        </div>
+        <button type="button" className="btn-secondary btn-sm" onClick={() => setRows((r) => [...r, { key: '', name: '', text: '' }])}>+ Template</button>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {rows.map((r, i) => (
+          <div key={i} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+            <div className="mb-2 flex gap-2">
+              <input className="input" placeholder="Template name" value={r.name} onChange={(e) => set(i, { name: e.target.value })} />
+              <button type="button" className="btn-ghost px-2 text-red-600 hover:bg-red-50" onClick={() => setRows((x) => x.filter((_, j) => j !== i))} aria-label="Remove template">×</button>
+            </div>
+            <textarea className="input text-xs" rows={6} placeholder={'Barricading in place\nPPE worn by all workers'} value={r.text} onChange={(e) => set(i, { text: e.target.value })} />
+            <p className="mt-1 text-[11px] text-slate-400">{r.text.split('\n').filter((x) => x.trim()).length} items</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex justify-end">
+        <button className="btn-primary" onClick={save} disabled={saving}>{saving ? <Spinner className="h-4 w-4" /> : 'Save templates'}</button>
       </div>
     </Card>
   );

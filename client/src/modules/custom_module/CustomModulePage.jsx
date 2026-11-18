@@ -7,6 +7,7 @@ import { errorMessage } from '../../lib/api';
 import { formatDate } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
 import Modal from '../../components/Modal';
+import Select from '../../components/Select';
 
 const FIELD_TYPES = [
   { v: 'text', l: 'Text' },
@@ -32,10 +33,10 @@ function FieldInput({ field, value, onChange }) {
       return <input type="checkbox" className="h-5 w-5" checked={!!value} onChange={(e) => onChange(e.target.checked)} />;
     case 'dropdown':
       return (
-        <select className="input" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+        <Select className="input" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
           <option value="">Select…</option>
           {(field.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
+        </Select>
       );
     default:
       return <input type="text" className="input" value={value ?? ''} onChange={(e) => onChange(e.target.value)} />;
@@ -163,7 +164,7 @@ export default function CustomModulePage() {
         subtitle="Build your own form, capture data and analyse it"
         actions={
           <div className="flex flex-wrap gap-2">
-            {can('custom_module.configure') && <button className="btn-secondary" onClick={openConfig}>Configuration</button>}
+            {can('custom_module.configure') && <button className="btn-secondary" onClick={openConfig}>Configure</button>}
             {can('custom_module.create') && <button className="btn-primary" onClick={openNew} disabled={fields.length === 0}>+ Add</button>}
           </div>
         }
@@ -175,27 +176,20 @@ export default function CustomModulePage() {
         </Card>
       )}
 
-      {/* Analytics for number fields */}
+      {/* Analytics for number fields — one compact strip */}
       {analytics?.metrics?.length > 0 && (
-        <div className="mb-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-700 dark:text-slate-200">Analytics</h2>
-            <span className="text-xs text-slate-400">{analytics.totalRecords} record(s)</span>
+        <div className="card mb-4 flex flex-wrap divide-x divide-slate-100 overflow-hidden dark:divide-slate-700">
+          <div className="px-4 py-2.5">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Records</p>
+            <p className="text-base font-semibold tabular-nums">{analytics.totalRecords}</p>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {analytics.metrics.map((m) => (
-              <Card key={m.id}>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{m.label}</p>
-                <p className="mt-1 text-2xl font-semibold text-brand-600">{m.sum.toLocaleString()}</p>
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-                  <span>Total: <b className="text-slate-600 dark:text-slate-300">{m.sum.toLocaleString()}</b></span>
-                  <span>Avg: <b className="text-slate-600 dark:text-slate-300">{m.avg.toLocaleString(undefined, { maximumFractionDigits: 2 })}</b></span>
-                  <span>Min: <b className="text-slate-600 dark:text-slate-300">{m.min.toLocaleString()}</b></span>
-                  <span>Max: <b className="text-slate-600 dark:text-slate-300">{m.max.toLocaleString()}</b></span>
-                </div>
-              </Card>
-            ))}
-          </div>
+          {analytics.metrics.map((m) => (
+            <div key={m.id} className="min-w-[9rem] flex-1 px-4 py-2.5" title={`Avg ${m.avg.toLocaleString(undefined, { maximumFractionDigits: 2 })} · Min ${m.min.toLocaleString()} · Max ${m.max.toLocaleString()}`}>
+              <p className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-500">{m.label} · total</p>
+              <p className="text-base font-semibold tabular-nums text-slate-900 dark:text-white">{m.sum.toLocaleString()}</p>
+              <p className="truncate text-[11px] text-slate-400">avg {m.avg.toLocaleString(undefined, { maximumFractionDigits: 2 })} · min {m.min.toLocaleString()} · max {m.max.toLocaleString()}</p>
+            </div>
+          ))}
         </div>
       )}
 
@@ -209,7 +203,7 @@ export default function CustomModulePage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-cream-100 text-left text-slate-500">
+                <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900/40">
                   <tr>
                     {listColumns.map((f) => <th key={f.id} className="px-4 py-3 font-medium">{f.label}</th>)}
                     <th className="px-4 py-3" />
@@ -263,9 +257,9 @@ export default function CustomModulePage() {
                   </div>
                   <div>
                     <label className="label">Type</label>
-                    <select className="input" value={f.type} onChange={(e) => cfgSetField(f.id, 'type', e.target.value)}>
+                    <Select className="input" value={f.type} onChange={(e) => cfgSetField(f.id, 'type', e.target.value)}>
                       {FIELD_TYPES.map((t) => <option key={t.v} value={t.v}>{t.l}</option>)}
-                    </select>
+                    </Select>
                   </div>
                   {f.type === 'dropdown' && (
                     <div className="sm:col-span-2">

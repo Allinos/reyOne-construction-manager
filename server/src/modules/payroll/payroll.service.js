@@ -135,6 +135,11 @@ async function computeLedgers(refs, upToMonth) {
 }
 
 const payrollService = {
+  // Ledgers for many people at once (used by Workforce lists).
+  ledgers(refs) {
+    return computeLedgers(refs, currentMonth());
+  },
+
   // People + their salary profile (for the Salary Setup tab).
   async profiles(query) {
     const people = await listPeople({ type: query.type });
@@ -157,6 +162,13 @@ const payrollService = {
       update: data,
       create: { personType: payload.personType, personId: payload.personId, ...data },
     });
+    // Mirror a monthly salary back onto the user record (shown in User Management).
+    if (payload.personType === 'USER') {
+      await prisma.user.update({
+        where: { id: payload.personId },
+        data: { salary: payload.payType === 'monthly' && data.active ? data.rate : null },
+      }).catch(() => {});
+    }
     activity.record({ userId: actor.id, action: 'payroll.profile_saved', entityType: 'salary_profile', entityId: row.id, req });
     return row;
   },

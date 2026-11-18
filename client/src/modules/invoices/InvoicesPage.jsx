@@ -103,7 +103,7 @@ export default function InvoicesPage() {
         {TABS.map((t) => (
           <button
             key={t.key}
-            className={`px-5 py-2 text-sm font-medium ${type === t.key ? 'bg-brand-500 text-white' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
+            className={`px-5 py-2 text-sm font-medium ${type === t.key ? 'bg-brand-500 text-brand-900' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
             onClick={() => { setType(t.key); setPage(1); }}
           >
             {t.label}

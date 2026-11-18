@@ -169,7 +169,7 @@ export default function ProjectFinancePage() {
           {['project', 'client'].map((v) => (
             <button
               key={v}
-              className={`flex-1 px-3 py-1.5 ${view === v ? 'bg-brand-500 text-white' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
+              className={`flex-1 px-3 py-1.5 ${view === v ? 'bg-brand-500 text-brand-900' : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
               onClick={() => setView(v)}
             >
               {v === 'project' ? 'Project-wise' : 'Client-wise'}

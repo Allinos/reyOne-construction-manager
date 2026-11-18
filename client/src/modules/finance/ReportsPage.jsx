@@ -4,6 +4,7 @@ import { formatMoney } from '../../lib/format';
 import { Card, Spinner, EmptyState } from '../../components/ui';
 import { BarChart, HBars } from '../../components/charts';
 import { getExpenseReport } from './accountsApi';
+import Select from '../../components/Select';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -22,8 +23,8 @@ export default function ReportsPage() {
   return (
     <>
       <div className="mb-4 flex flex-wrap gap-3">
-        <select className="input w-auto" value={year} onChange={(e) => setYear(Number(e.target.value))}>{Array.from({ length: 6 }, (_, i) => thisYear - i).map((y) => <option key={y}>{y}</option>)}</select>
-        <select className="input w-auto" value={scope} onChange={(e) => setScope(e.target.value)}><option value="">All expenses</option><option value="PROJECT">Project expenses</option><option value="COMPANY">Company expenses</option></select>
+        <Select className="input w-auto" value={year} onChange={(e) => setYear(Number(e.target.value))}>{Array.from({ length: 6 }, (_, i) => thisYear - i).map((y) => <option key={y}>{y}</option>)}</Select>
+        <Select className="input w-auto" value={scope} onChange={(e) => setScope(e.target.value)}><option value="">All expenses</option><option value="PROJECT">Project expenses</option><option value="COMPANY">Company expenses</option></Select>
         <button className="btn-secondary ml-auto" onClick={() => window.print()}>Print</button>
       </div>
       {!data ? <div className="flex justify-center p-10"><Spinner /></div> : (
@@ -35,7 +36,7 @@ export default function ReportsPage() {
           </div>
           <Card className="mb-4">
             <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">Monthly expenses · {year}</h3>
-            <BarChart labels={MONTHS.map((m, i) => `${year}-${String(i + 1).padStart(2, '0')}`)} series={[{ name: 'Expenses', color: '#F97316', values: data.months }]} formatValue={money} />
+            <BarChart labels={MONTHS.map((m, i) => `${year}-${String(i + 1).padStart(2, '0')}`)} series={[{ name: 'Expenses', color: '#CC6E02', values: data.months }]} formatValue={money} />
           </Card>
           {data.categories.length === 0 ? <Card><EmptyState title="No expenses this year" /></Card> : (
             <Card className="mb-4 !p-0 overflow-hidden">

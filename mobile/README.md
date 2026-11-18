@@ -34,9 +34,19 @@ flutter build apk --release      # Android
 flutter build ipa --release      # iOS (on macOS)
 ```
 
-On first launch the user enters the company server address
-(e.g. `erp.yourcompany.com`). Use **HTTPS** — Android and iOS block plain HTTP
-by default.
+## Connecting to a company
+
+One app serves every company, each on its own domain. On first launch the user
+connects to their company in one of three ways:
+
+1. **Scan QR code** — shown on the web app under *Settings → Mobile app*.
+2. **Enter code** — the `RY1-…` connection code from the same page
+   (base64url JSON `{ "u": serverUrl, "n": companyName }`).
+3. Type the server address (e.g. `erp.yourcompany.com`).
+
+The app calls `GET /api/v1/public/instance` to confirm it is a reyOne server
+and that the Mobile App module is on, then shows the company name before
+sign-in. Use **HTTPS** — Android and iOS block plain HTTP by default.
 
 ## Push notifications (optional)
 

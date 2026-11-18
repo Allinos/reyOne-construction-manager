@@ -18,6 +18,7 @@ function registerRoutes(router) {
   router.get('/analytics', read, h(async (req, res) => ok(res, await service.analytics(req.user))));
 
   router.get('/items', read, validate({ query: v.itemsQuery }), h(async (req, res) => ok(res, await service.listItems(req.query))));
+  router.get('/items/:id/locations', read, validate({ params: v.idParam }), h(async (req, res) => ok(res, await service.locations(req.params.id, req.user))));
   router.post('/items', manage, validate({ body: v.itemSchema }), h(async (req, res) => created(res, await service.createItem(req.body, req.user, req))));
   router.patch('/items/:id', manage, validate({ params: v.idParam, body: v.itemUpdateSchema }), h(async (req, res) => ok(res, await service.updateItem(req.params.id, req.body, req.user, req))));
   router.delete('/items/:id', manage, validate({ params: v.idParam }), h(async (req, res) => ok(res, await service.removeItem(req.params.id, req.user, req))));

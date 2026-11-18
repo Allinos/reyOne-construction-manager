@@ -53,7 +53,7 @@ export function ProjectAnalytics({ open }) {
 
       <Card className="mt-3">
         <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">Completion Distribution</h3>
-        <HBars items={data.progressBuckets || []} color="#F97316" />
+        <HBars items={data.progressBuckets || []} color="#CC6E02" />
       </Card>
 
       {data.upcoming?.length > 0 && (

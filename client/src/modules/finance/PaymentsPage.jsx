@@ -11,6 +11,7 @@ import Modal from '../../components/Modal';
 import SearchSelect from '../../components/SearchSelect';
 import { getReceipt } from './accountsApi';
 import { printHtml } from '../documents/print';
+import Select from '../../components/Select';
 
 async function printReceipt(paymentId) {
   try {
@@ -261,17 +262,17 @@ export default function PaymentsPage({ search = '' }) {
               </div>
               <div>
                 <label className="label">Method</label>
-                <select className="input" value={modal.form.method} onChange={(e) => setField('method', e.target.value)} required>
+                <Select className="input" value={modal.form.method} onChange={(e) => setField('method', e.target.value)} required>
                   <option value="">Select…</option>
                   {methods.map((m) => <option key={m} value={m}>{m}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="label">Account</label>
-                <select className="input" value={modal.form.account} onChange={(e) => setField('account', e.target.value)} required>
+                <Select className="input" value={modal.form.account} onChange={(e) => setField('account', e.target.value)} required>
                   <option value="">Select…</option>
                   {accounts.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
             <div>

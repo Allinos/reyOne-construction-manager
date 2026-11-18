@@ -90,6 +90,19 @@ const materialsService = {
   },
 
   // Stock at one location (store when projectId omitted).
+  // Where one material is held: central store + each site with a balance.
+  async locations(id, actor) {
+    await assertMaterial(id);
+    const sums = await prisma.stockMovement.groupBy({ by: ['projectId'], where: { materialId: id }, _sum: { quantity: true } });
+    const allowed = await accessibleProjectIds(actor);
+    const visible = sums.filter((s) => s.projectId == null || allowed === null || allowed.includes(s.projectId));
+    const names = await projectNames(visible.map((s) => s.projectId));
+    return visible
+      .map((s) => ({ projectId: s.projectId, location: s.projectId ? names.get(s.projectId)?.name || `Project #${s.projectId}` : 'Central Store', quantity: r3(num(s._sum.quantity)) }))
+      .filter((r) => r.projectId == null || r.quantity !== 0)
+      .sort((a, b) => (a.projectId == null ? -1 : b.projectId == null ? 1 : b.quantity - a.quantity));
+  },
+
   async stock(query, actor) {
     const projectId = loc(query.projectId);
     if (projectId) await assertProjectAccess(actor, projectId);

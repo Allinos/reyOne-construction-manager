@@ -18,10 +18,10 @@ const issueStatus = z.enum(['open', 'in_progress', 'resolved', 'verified']);
 const s = {
   idParam: z.object({ id }),
   issueParam: z.object({ issueId: id }),
-  listQuery: z.object({ status: z.enum(['open', 'closed']).optional(), projectId: id.optional() }),
+  listQuery: z.object({ status: z.enum(['pending', 'assigned', 'in_progress', 'completed', 'closed', 'open']).optional(), projectId: id.optional(), mine: z.enum(['true', 'false']).optional() }),
   issuesQuery: z.object({ mine: z.enum(['true', 'false']).optional(), status: z.string().optional() }),
-  create: z.object({ projectId: id, title: z.string().min(1).max(200), date: z.coerce.date().optional(), inspectorId: id.optional(), templateKey: z.string().max(60).optional(), checklist: z.array(checkItem).max(200).optional(), remarks: z.string().max(5000).optional() }),
-  update: z.object({ title: z.string().min(1).max(200).optional(), date: z.coerce.date().optional(), checklist: z.array(checkItem).max(200).optional(), remarks: z.string().max(5000).nullable().optional(), status: z.enum(['open', 'closed']).optional() }).refine((d) => Object.keys(d).length > 0, { message: 'No fields to update' }),
+  create: z.object({ projectId: id, title: z.string().min(1).max(200), date: z.coerce.date().optional(), inspectorId: id.optional(), templateKey: z.string().max(60).optional(), checklist: z.array(checkItem).max(200).optional(), remarks: z.string().max(5000).optional(), instructions: z.string().max(5000).optional(), dueDate: z.coerce.date().optional().nullable() }),
+  update: z.object({ title: z.string().min(1).max(200).optional(), date: z.coerce.date().optional(), checklist: z.array(checkItem).max(200).optional(), remarks: z.string().max(5000).nullable().optional(), instructions: z.string().max(5000).nullable().optional(), dueDate: z.coerce.date().nullable().optional(), inspectorId: id.optional(), status: z.enum(['assigned', 'in_progress', 'completed', 'closed']).optional() }).refine((d) => Object.keys(d).length > 0, { message: 'No fields to update' }),
   issue: z.object({ description: z.string().min(1).max(3000), severity: severity.optional(), assignedToId: id.optional().nullable(), correctiveAction: z.string().max(3000).optional(), dueDate: z.coerce.date().optional().nullable() }),
   issueUpdate: z.object({ description: z.string().min(1).max(3000).optional(), severity: severity.optional(), assignedToId: id.nullable().optional(), correctiveAction: z.string().max(3000).nullable().optional(), dueDate: z.coerce.date().nullable().optional(), status: issueStatus.optional() }).refine((d) => Object.keys(d).length > 0, { message: 'No fields to update' }),
 };
@@ -40,13 +40,14 @@ function registerRoutes(router) {
     return ok(res, await service.issues(req.query, req.user));
   }));
   router.patch('/issues/:issueId', validate({ params: s.issueParam, body: s.issueUpdate }), h(async (req, res) => ok(res, await service.updateIssue(req.params.issueId, req.body, req.user, req))));
-  router.get('/', read, validate({ query: s.listQuery }), h(async (req, res) => ok(res, await service.list(req.query, req.user))));
+  router.get('/', validate({ query: s.listQuery }), h(async (req, res) => ok(res, await service.list(req.query, req.user))));
+  router.get('/stats', h(async (req, res) => ok(res, await service.stats(req.user))));
   router.post('/', manage, validate({ body: s.create }), h(async (req, res) => created(res, await service.create(req.body, req.user, req))));
-  router.get('/:id', read, validate({ params: s.idParam }), h(async (req, res) => ok(res, await service.get(req.params.id, req.user))));
-  router.get('/:id/report', read, validate({ params: s.idParam }), h(async (req, res) => ok(res, await service.report(req.params.id, req.user))));
-  router.patch('/:id', manage, validate({ params: s.idParam, body: s.update }), h(async (req, res) => ok(res, await service.update(req.params.id, req.body, req.user, req))));
+  router.get('/:id', validate({ params: s.idParam }), h(async (req, res) => ok(res, await service.get(req.params.id, req.user))));
+  router.get('/:id/report', validate({ params: s.idParam }), h(async (req, res) => ok(res, await service.report(req.params.id, req.user))));
+  router.patch('/:id', validate({ params: s.idParam, body: s.update }), h(async (req, res) => ok(res, await service.update(req.params.id, req.body, req.user, req))));
   router.delete('/:id', manage, validate({ params: s.idParam }), h(async (req, res) => ok(res, await service.remove(req.params.id, req.user, req))));
-  router.post('/:id/issues', manage, validate({ params: s.idParam, body: s.issue }), h(async (req, res) => created(res, await service.addIssue(req.params.id, req.body, req.user, req))));
+  router.post('/:id/issues', validate({ params: s.idParam, body: s.issue }), h(async (req, res) => created(res, await service.addIssue(req.params.id, req.body, req.user, req))));
 }
 
 module.exports = { registerRoutes };

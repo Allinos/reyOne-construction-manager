@@ -31,6 +31,7 @@ class Api {
   final http.Client _http = http.Client();
 
   String baseUrl = '';
+  String companyName = '';
   String? _access;
   String? _refresh;
   Future<bool>? _refreshing;
@@ -42,6 +43,7 @@ class Api {
 
   Future<void> load() async {
     baseUrl = await _storage.read(key: 'baseUrl') ?? '';
+    companyName = await _storage.read(key: 'companyName') ?? '';
     _access = await _storage.read(key: 'access');
     _refresh = await _storage.read(key: 'refresh');
   }
@@ -55,6 +57,12 @@ class Api {
     }
     baseUrl = u;
     await _storage.write(key: 'baseUrl', value: u);
+  }
+
+  Future<void> setCompany(String url, String name) async {
+    await setBaseUrl(url);
+    companyName = name;
+    await _storage.write(key: 'companyName', value: name);
   }
 
   Future<void> setTokens(String access, String refresh) async {

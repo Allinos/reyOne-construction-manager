@@ -1,5 +1,7 @@
 'use strict';
 
+const prisma = require('../../config/prisma');
+
 const repo = require('./documents.repository');
 const AppError = require('../../core/errors/AppError');
 const activity = require('../../core/services/activityLog');
@@ -41,6 +43,7 @@ const documentsService = {
     if (query.templateKey) where.templateKey = query.templateKey;
     if (query.category) where.category = query.category;
     if (query.projectId) where.projectId = Number(query.projectId);
+    if (query.clientId) where.clientId = Number(query.clientId);
     if (query.search) {
       where.OR = [
         { title: { contains: query.search } },
@@ -48,7 +51,21 @@ const documentsService = {
       ];
     }
     const { rows, total } = await repo.list({ where, skip, take });
-    return { data: rows, meta: buildMeta(page, limit, total) };
+    // Attach linked project / client names for display.
+    const pIds = [...new Set(rows.map((r) => r.projectId).filter(Boolean))];
+    const cIds = [...new Set(rows.map((r) => r.clientId).filter(Boolean))];
+    const [projects, clients] = await Promise.all([
+      pIds.length ? prisma.project.findMany({ where: { id: { in: pIds } }, select: { id: true, name: true, clientName: true } }) : [],
+      cIds.length ? prisma.client.findMany({ where: { id: { in: cIds } }, select: { id: true, name: true } }) : [],
+    ]);
+    const pm = new Map(projects.map((p) => [p.id, p]));
+    const cm = new Map(clients.map((c) => [c.id, c.name]));
+    const data = rows.map((r) => ({
+      ...r,
+      projectName: pm.get(r.projectId)?.name || null,
+      clientName: cm.get(r.clientId) || pm.get(r.projectId)?.clientName || null,
+    }));
+    return { data, meta: buildMeta(page, limit, total) };
   },
 
   async get(id) {

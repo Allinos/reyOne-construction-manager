@@ -5,25 +5,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Brand orange (primary action color)
+        // Brand palette — amber (#F2A900) is the 10% accent for primary actions,
+        // burnt orange (#CC6E02) for links/active text, dark brown (#4A2700)
+        // for the sidebar and headings, light cream (#F8E4A8) for highlights.
         brand: {
-          50: '#FFF7ED',
-          100: '#FFEDD5',
-          200: '#FED7AA',
-          300: '#FDBA74',
-          400: '#FB923C',
-          500: '#F97316',
-          600: '#EA580C',
-          700: '#C2410C',
-          800: '#9A3412',
-          900: '#7C2D12',
+          50: '#FEF9EA',
+          100: '#FCF1CF',
+          200: '#F8E4A8',
+          300: '#F5CF5E',
+          400: '#F4B92A',
+          500: '#F2A900',
+          600: '#CC6E02',
+          700: '#A65A02',
+          800: '#7A4101',
+          900: '#4A2700',
         },
-        // Light cream surfaces
+        // Warm neutral surfaces (70% of the screen).
         cream: {
-          DEFAULT: '#FFF8F0',
-          100: '#FEFAF5',
-          200: '#FDF0E1',
-          300: '#F8E6D2',
+          DEFAULT: '#FBF8F1',
+          100: '#FDFBF6',
+          200: '#F6F0E2',
+          300: '#ECE2CC',
         },
       },
       fontFamily: {

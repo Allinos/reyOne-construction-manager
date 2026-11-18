@@ -11,3 +11,4 @@ export const updateIssue = (issueId, b) => unwrap(api.patch(`/inspections/issues
 export const listIssues = (params) => unwrap(api.get('/inspections/issues', { params }));
 export const getReport = (id) => unwrap(api.get(`/inspections/${id}/report`));
 export const listProjectsLite = () => api.get('/projects', { params: { limit: 100 } }).then((r) => r.data.data).catch(() => []);
+export const getStats = () => unwrap(api.get('/inspections/stats'));

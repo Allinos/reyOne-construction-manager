@@ -15,7 +15,7 @@ async function listPeople({ type } = {}) {
   const [users, workforce] = await Promise.all([
     !type || type === 'USER'
       ? prisma.user.findMany({
-          where: { deletedAt: null, status: 'ACTIVE' },
+          where: { deletedAt: null, status: 'ACTIVE', staffType: 'EMPLOYEE' },
           select: { id: true, name: true, designation: true, phone: true, role: { select: { name: true } } },
           orderBy: { name: 'asc' },
         })

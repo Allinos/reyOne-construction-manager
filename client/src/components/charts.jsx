@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 // Lightweight, dependency-free charts (CSS/flex/SVG based).
 
 // A shared color palette for categorical charts.
-export const CHART_COLORS = ['#F97316', '#3b82f6', '#16a34a', '#f59e0b', '#8b5cf6', '#ef4444', '#0ea5e9', '#94a3b8'];
+export const CHART_COLORS = ['#CC6E02', '#F2A900', '#4A2700', '#3b82f6', '#16a34a', '#8b5cf6', '#ef4444', '#94a3b8'];
 
 // Animated ring chart. Pass thicknessRatio = 0.5 for a full pie, ~0.32 for a donut.
 // (The stroke is centered on radius r = (size - thickness)/2 and extends
@@ -132,7 +132,7 @@ export function BarChart({ labels = [], series = [], height = 180, formatValue =
 }
 
 // Horizontal bars for category breakdowns. items = [{ label, value }]
-export function HBars({ items = [], color = '#F97316', formatValue = (v) => v }) {
+export function HBars({ items = [], color = '#CC6E02', formatValue = (v) => v }) {
   const max = Math.max(1, ...items.map((i) => Number(i.value) || 0));
   if (items.length === 0) return <p className="text-sm text-slate-400">No data.</p>;
   return (

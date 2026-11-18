@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Take site and inspection photos.</string>
+	<string>Take site and inspection photos, and scan your company QR code to connect.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Attach photos to inspections and queries.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

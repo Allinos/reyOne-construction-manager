@@ -25,10 +25,16 @@ const ENTITY_PERMS = {
 };
 const MAX_BYTES = 8 * 1024 * 1024;
 
-function guard(actor, entityType, mode) {
+async function guard(actor, entityType, mode, entityId) {
   const rule = ENTITY_PERMS[entityType];
   if (!rule) throw AppError.badRequest('Unsupported attachment type');
-  if (!hasPerm(actor, rule[mode])) throw AppError.forbidden('You do not have permission to do this');
+  if (hasPerm(actor, rule[mode])) return;
+  // The inspector assigned to an inspection may read/add its photos.
+  if (entityType === 'inspection' && entityId) {
+    const row = await prisma.inspection.findUnique({ where: { id: Number(entityId) }, select: { inspectorId: true } });
+    if (row && row.inspectorId === actor.id) return;
+  }
+  throw AppError.forbidden('You do not have permission to do this');
 }
 
 const entityType = z.enum(Object.keys(ENTITY_PERMS));
@@ -39,16 +45,18 @@ const createSchema = z.object({
   name: z.string().max(255).optional(),
   mimeType: z.string().max(100).optional(),
   data: z.string().min(10).refine((d) => d.startsWith('data:'), 'Expected a data URL'),
+  caption: z.string().max(255).optional(),
+  takenAt: z.coerce.date().optional().nullable(),
 });
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 
-const meta = { id: true, entityType: true, entityId: true, name: true, mimeType: true, size: true, uploadedById: true, createdAt: true };
+const meta = { id: true, entityType: true, entityId: true, name: true, mimeType: true, size: true, caption: true, takenAt: true, uploadedById: true, createdAt: true };
 
 function registerRoutes(router) {
   router.use(authenticate);
 
   router.get('/', validate({ query: listQuery }), asyncHandler(async (req, res) => {
-    guard(req.user, req.query.entityType, 'read');
+    await guard(req.user, req.query.entityType, 'read', req.query.entityId);
     const rows = await prisma.storedFile.findMany({
       where: { entityType: req.query.entityType, entityId: req.query.entityId },
       select: req.query.withData === 'true' ? { ...meta, data: true } : meta,
@@ -60,12 +68,12 @@ function registerRoutes(router) {
   router.get('/:id', validate({ params: idParam }), asyncHandler(async (req, res) => {
     const row = await prisma.storedFile.findUnique({ where: { id: req.params.id } });
     if (!row) throw AppError.notFound('File not found');
-    guard(req.user, row.entityType, 'read');
+    await guard(req.user, row.entityType, 'read', row.entityId);
     return ok(res, row);
   }));
 
   router.post('/', validate({ body: createSchema }), asyncHandler(async (req, res) => {
-    guard(req.user, req.body.entityType, 'write');
+    await guard(req.user, req.body.entityType, 'write', req.body.entityId);
     const size = Math.round((req.body.data.length * 3) / 4);
     if (size > MAX_BYTES) throw AppError.badRequest('File too large (max 8 MB)');
     const row = await prisma.storedFile.create({
@@ -79,7 +87,7 @@ function registerRoutes(router) {
     const row = await prisma.storedFile.findUnique({ where: { id: req.params.id }, select: meta });
     if (!row) throw AppError.notFound('File not found');
     // Uploader may remove their own file; otherwise need write permission.
-    if (row.uploadedById !== req.user.id) guard(req.user, row.entityType, 'write');
+    if (row.uploadedById !== req.user.id) await guard(req.user, row.entityType, 'write', row.entityId);
     await prisma.storedFile.delete({ where: { id: row.id } });
     return ok(res, { success: true });
   }));

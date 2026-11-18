@@ -4,9 +4,11 @@ import { listProjects } from './api';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/api';
 import { formatDate } from '../../lib/format';
-import { PageHeader, Card, Spinner, EmptyState, Pagination, StatusBadge, Alert } from '../../components/ui';
+import { PageHeader, Card, Spinner, EmptyState, Pagination, StatusBadge, Alert, Progress } from '../../components/ui';
 import AnalyticsModal, { AnalyticsButton } from '../../components/AnalyticsModal';
 import { ProjectAnalytics } from './analytics';
+import Select from '../../components/Select';
+import Icon from '../../components/Icon';
 
 export default function ProjectsListPage() {
   const { bootstrap, can } = useAuth();
@@ -47,42 +49,42 @@ export default function ProjectsListPage() {
         subtitle="All projects"
         actions={
           <div className="flex gap-2">
-            <AnalyticsButton onClick={() => setAnalytics(true)} />
             {can('projects.create') && (
               <Link to="/projects/new" className="btn-primary">
-                + Add Project
+                <Icon name="add" className="h-4 w-4" /> Add Project
               </Link>
             )}
+            <AnalyticsButton onClick={() => setAnalytics(true)} />
           </div>
         }
       />
 
-      <Card className="mb-4">
-        <div className="flex flex-wrap gap-3">
+      <div className="mb-3">
+        <div className="flex flex-wrap gap-2">
           <input
             className="input flex-1 min-w-[200px]"
             placeholder="Search reference, client, or name…"
             value={filters.search}
             onChange={(e) => update({ search: e.target.value })}
           />
-          <select className="input w-auto" value={filters.category} onChange={(e) => update({ category: e.target.value })}>
+          <Select className="input w-auto" value={filters.category} onChange={(e) => update({ category: e.target.value })}>
             <option value="">All categories</option>
             {categories.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
-          </select>
-          <select className="input w-auto" value={filters.status} onChange={(e) => update({ status: e.target.value })}>
+          </Select>
+          <Select className="input w-auto" value={filters.status} onChange={(e) => update({ status: e.target.value })}>
             <option value="">All statuses</option>
             {statuses.map((s) => (
               <option key={s.key} value={s.key}>
                 {s.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
-      </Card>
+      </div>
 
       {error && <Alert>{error}</Alert>}
 
@@ -98,15 +100,15 @@ export default function ProjectsListPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-cream-100 text-left text-slate-500">
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900/40">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Reference</th>
-                  <th className="px-4 py-3 font-medium">Client</th>
-                  <th className="px-4 py-3 font-medium">Project</th>
-                  <th className="px-4 py-3 font-medium">Category</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Progress</th>
-                  <th className="px-4 py-3 font-medium">Agreement</th>
+                  <th className="px-4 py-2.5 font-medium">Reference</th>
+                  <th className="px-4 py-2.5 font-medium">Client</th>
+                  <th className="px-4 py-2.5 font-medium">Project</th>
+                  <th className="px-4 py-2.5 font-medium">Category</th>
+                  <th className="px-4 py-2.5 font-medium">Status</th>
+                  <th className="px-4 py-2.5 font-medium">Progress</th>
+                  <th className="px-4 py-2.5 font-medium">Agreement</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-cream-200">
@@ -116,22 +118,17 @@ export default function ProjectsListPage() {
                     className="cursor-pointer hover:bg-cream-100"
                     onClick={() => navigate(`/projects/${p.id}`)}
                   >
-                    <td className="px-4 py-3 font-medium text-brand-700">{p.referenceNumber}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.clientName}</td>
-                    <td className="px-4 py-3 text-slate-800">{p.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.category || '—'}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2.5 font-medium text-brand-700">{p.referenceNumber}</td>
+                    <td className="px-4 py-2.5 text-slate-600">{p.clientName}</td>
+                    <td className="px-4 py-2.5 text-slate-800">{p.name}</td>
+                    <td className="px-4 py-2.5 text-slate-600">{p.category || '—'}</td>
+                    <td className="px-4 py-2.5">
                       <StatusBadge status={p.status} label={statusLabel(p.status)} />
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-16 rounded-full bg-cream-200 dark:bg-slate-700">
-                          <div className="h-1.5 rounded-full bg-brand-500" style={{ width: `${p.progress ?? 0}%` }} />
-                        </div>
-                        <span className="text-xs text-slate-500">{p.progress ?? 0}%</span>
-                      </div>
+                    <td className="px-4 py-2.5">
+                      <Progress value={p.progress ?? 0} className="w-28" />
                     </td>
-                    <td className="px-4 py-3 text-slate-500">{formatDate(p.agreementDate)}</td>
+                    <td className="px-4 py-2.5 text-slate-500">{formatDate(p.agreementDate)}</td>
                   </tr>
                 ))}
               </tbody>

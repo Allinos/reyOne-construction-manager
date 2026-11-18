@@ -7,6 +7,7 @@ import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDateTime, formatDate } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
 import Modal from '../../components/Modal';
+import Select from '../../components/Select';
 
 // Spacious user-detail view (rendered in a wide modal). Built as independent
 // sections so more (Attendance, Payments…) can be added later.
@@ -44,7 +45,9 @@ function UserDetail({ user, currency }) {
         <Section title="Profile Information">
           <Row label="Phone" value={user.phone} />
           <Row label="Designation" value={user.designation} />
-          <Row label="Salary" value={user.salary != null ? formatMoney(user.salary, currency) : '—'} />
+          <Row label="Type" value={STAFF_TYPES[user.staffType] || 'Employee'} />
+          {user.staffType !== 'APP_USER' && <Row label="Monthly salary" value={user.salary != null ? formatMoney(user.salary, currency) : '—'} />}
+          {user.joiningDate && <Row label="Joined" value={formatDate(user.joiningDate)} />}
           <Row label="Member since" value={formatDate(user.createdAt)} />
         </Section>
         <Section title="Last Login">
@@ -62,7 +65,8 @@ function UserDetail({ user, currency }) {
 }
 
 const STATUSES = ['ACTIVE', 'INACTIVE', 'SUSPENDED'];
-const blank = { name: '', email: '', password: '', phone: '', designation: '', roleId: '', salary: '', status: 'ACTIVE' };
+const blank = { name: '', email: '', password: '', phone: '', designation: '', roleId: '', salary: '', status: 'ACTIVE', staffType: 'EMPLOYEE', joiningDate: '' };
+export const STAFF_TYPES = { EMPLOYEE: 'Employee', APP_USER: 'App user only' };
 
 export default function UsersPage() {
   const { bootstrap, can } = useAuth();
@@ -112,6 +116,7 @@ export default function UsersPage() {
       form: {
         name: u.name, email: u.email, phone: u.phone || '', designation: u.designation || '',
         roleId: u.roleId, salary: u.salary ?? '', status: u.status, password: '',
+        staffType: u.staffType || 'EMPLOYEE', joiningDate: u.joiningDate ? String(u.joiningDate).slice(0, 10) : '',
       },
     });
 
@@ -124,7 +129,9 @@ export default function UsersPage() {
       const body = {
         name: f.name, phone: f.phone || undefined, designation: f.designation || undefined,
         roleId: Number(f.roleId), status: f.status,
-        salary: f.salary === '' ? undefined : Number(f.salary),
+        staffType: f.staffType,
+        joiningDate: f.joiningDate || null,
+        salary: f.staffType !== 'EMPLOYEE' ? undefined : f.salary === '' ? (modal.editingId ? null : undefined) : Number(f.salary),
       };
       if (modal.editingId) {
         body.email = f.email;
@@ -176,22 +183,27 @@ export default function UsersPage() {
   return (
     <div>
       <PageHeader
-        title="Users"
-        subtitle="Team members"
+        title="User Management"
+        subtitle="Everyone who can sign in, and on-staff employees"
         actions={can('users.create') && <button className="btn-primary" onClick={openNew}>+ Add User</button>}
       />
 
       <Card className="mb-4">
         <div className="flex flex-wrap gap-3">
           <input className="input flex-1 min-w-[200px]" placeholder="Search name, email, phone…" value={filters.search} onChange={(e) => update({ search: e.target.value })} />
-          <select className="input w-auto" value={filters.roleId} onChange={(e) => update({ roleId: e.target.value })}>
+          <Select className="input w-auto" value={filters.roleId} onChange={(e) => update({ roleId: e.target.value })}>
             <option value="">All roles</option>
             {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-          <select className="input w-auto" value={filters.status} onChange={(e) => update({ status: e.target.value })}>
+          </Select>
+          <Select className="input w-auto" value={filters.staffType || ''} onChange={(e) => update({ staffType: e.target.value })}>
+            <option value="">All types</option>
+            <option value="EMPLOYEE">Employees</option>
+            <option value="APP_USER">App users only</option>
+          </Select>
+          <Select className="input w-auto" value={filters.status} onChange={(e) => update({ status: e.target.value })}>
             <option value="">All statuses</option>
             {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          </Select>
         </div>
       </Card>
 
@@ -210,6 +222,7 @@ export default function UsersPage() {
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="px-4 py-3 font-medium">Designation</th>
+                  <th className="px-4 py-3 font-medium">Type</th>
                   <th className="px-4 py-3 font-medium">Role</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3" />
@@ -221,6 +234,9 @@ export default function UsersPage() {
                     <td className="px-4 py-3 font-medium text-slate-800">{u.name}</td>
                     <td className="px-4 py-3 text-slate-600">{u.email}</td>
                     <td className="px-4 py-3 text-slate-600">{u.designation || '—'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`badge ${u.staffType === 'APP_USER' ? 'bg-slate-100 text-slate-600' : 'bg-blue-50 text-blue-700'}`}>{STAFF_TYPES[u.staffType] || 'Employee'}</span>
+                    </td>
                     <td className="px-4 py-3 text-slate-600">{roleMap[u.roleId] || u.role?.name || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`badge ${u.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>
@@ -288,20 +304,48 @@ export default function UsersPage() {
             </div>
             <div>
               <label className="label">Role</label>
-              <select className="input" value={modal.form.roleId} onChange={(e) => setField('roleId', e.target.value)} required>
+              <Select className="input" value={modal.form.roleId} onChange={(e) => setField('roleId', e.target.value)} required>
                 <option value="">Select…</option>
                 {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
+              </Select>
             </div>
-            <div>
-              <label className="label">Salary</label>
-              <input type="number" step="0.01" min="0" className="input" placeholder="e.g., 35000" value={modal.form.salary} onChange={(e) => setField('salary', e.target.value)} />
+            <div className="col-span-2">
+              <label className="label">User type</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { k: 'EMPLOYEE', t: 'Employee', d: 'On staff — included in Attendance & Payroll' },
+                  { k: 'APP_USER', t: 'App user only', d: 'System access only (owner, partner, CA) — not on attendance/payroll' },
+                ].map((o) => (
+                  <button
+                    type="button"
+                    key={o.k}
+                    onClick={() => setField('staffType', o.k)}
+                    className={`rounded-lg border px-3 py-2 text-left ${modal.form.staffType === o.k ? 'border-brand-500 bg-brand-50 dark:bg-slate-700' : 'border-slate-200 hover:bg-slate-50 dark:border-slate-600'}`}
+                  >
+                    <span className="block text-sm font-medium text-slate-800 dark:text-slate-100">{o.t}</span>
+                    <span className="block text-xs text-slate-500">{o.d}</span>
+                  </button>
+                ))}
+              </div>
             </div>
+            {modal.form.staffType === 'EMPLOYEE' && (
+              <>
+                <div>
+                  <label className="label">Monthly salary</label>
+                  <input type="number" step="0.01" min="0" className="input" placeholder="e.g., 35000" value={modal.form.salary} onChange={(e) => setField('salary', e.target.value)} />
+                  <p className="mt-1 text-[11px] text-slate-400">Used by Salary &amp; Payroll. Daily-wage staff can be set up in Payroll.</p>
+                </div>
+                <div>
+                  <label className="label">Joining date</label>
+                  <input type="date" className="input" value={modal.form.joiningDate} onChange={(e) => setField('joiningDate', e.target.value)} />
+                </div>
+              </>
+            )}
             <div>
               <label className="label">Status</label>
-              <select className="input" value={modal.form.status} onChange={(e) => setField('status', e.target.value)}>
+              <Select className="input" value={modal.form.status} onChange={(e) => setField('status', e.target.value)}>
                 {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
+              </Select>
             </div>
           </form>
         )}

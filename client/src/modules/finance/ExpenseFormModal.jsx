@@ -5,10 +5,11 @@ import { workforceOptions } from '../workforce/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
-import { formatMoney, toAmount } from '../../lib/format';
+import { formatMoney, toAmount, localDate } from '../../lib/format';
 import Modal from '../../components/Modal';
 import { Spinner } from '../../components/ui';
 import SearchSelect from '../../components/SearchSelect';
+import Select from '../../components/Select';
 
 const PAY_OPTIONS = [
   { v: 'PAID', l: 'Paid' },
@@ -22,7 +23,7 @@ const blank = (scope, presetProjectId = '') => ({
   vendorId: '',
   category: '',
   amount: '',
-  date: new Date().toISOString().slice(0, 10),
+  date: localDate(),
   notes: '',
   account: '',
   paymentStatus: 'PAID',
@@ -32,7 +33,7 @@ const blank = (scope, presetProjectId = '') => ({
   workforceId: '',
 });
 
-export default function ExpenseFormModal({ open, onClose, scope, editing, onSaved, presetProjectId }) {
+export default function ExpenseFormModal({ open, onClose, scope, editing, onSaved, presetProjectId, presetWorkforceId }) {
   const { bootstrap } = useAuth();
   const toast = useToast();
   const currency = bootstrap?.company?.currency || 'INR';
@@ -77,11 +78,11 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
         workforceId: editing.workforceId || '',
       });
     } else {
-      setPayeeMode('vendor');
-      setForm(blank(scope, presetProjectId));
+      setPayeeMode(presetWorkforceId ? 'workforce' : 'vendor');
+      setForm({ ...blank(scope, presetProjectId), workforceId: presetWorkforceId ? String(presetWorkforceId) : '' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, scope, editing, presetProjectId]);
+  }, [open, scope, editing, presetProjectId, presetWorkforceId]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -234,10 +235,10 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
           )}
           <div>
             <label className="label">Category</label>
-            <select className="input" value={form.category} onChange={(e) => set('category', e.target.value)} required>
+            <Select className="input" value={form.category} onChange={(e) => set('category', e.target.value)} required>
               <option value="">e.g., Select Category</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="label">Amount</label>
@@ -249,16 +250,16 @@ export default function ExpenseFormModal({ open, onClose, scope, editing, onSave
           </div>
           <div>
             <label className="label">Payment Status</label>
-            <select className="input" value={form.paymentStatus} onChange={(e) => set('paymentStatus', e.target.value)}>
+            <Select className="input" value={form.paymentStatus} onChange={(e) => set('paymentStatus', e.target.value)}>
               {PAY_OPTIONS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="label">Account (optional)</label>
-            <select className="input" value={form.account} onChange={(e) => set('account', e.target.value)}>
+            <Select className="input" value={form.account} onChange={(e) => set('account', e.target.value)}>
               <option value="">Default</option>
               {accounts.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}
-            </select>
+            </Select>
           </div>
 
           {form.paymentStatus === 'PARTIAL' && (

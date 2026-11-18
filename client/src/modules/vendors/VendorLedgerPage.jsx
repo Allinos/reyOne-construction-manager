@@ -76,7 +76,7 @@ export default function VendorLedgerPage() {
         actions={
           <div className="flex items-center gap-3">
           {v.rating ? <span title={v.ratingNote || ''}><StarRating value={v.rating} size="text-xl" /></span> : null}
-          <button className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-white hover:bg-brand-600" onClick={() => navigate('/vendors')} aria-label="Back">
+          <button className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-brand-900 hover:bg-brand-400" onClick={() => navigate('/vendors')} aria-label="Back">
             <Icon name="arrowLeft" className="h-4 w-4" />
           </button>
           </div>

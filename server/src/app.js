@@ -36,6 +36,19 @@ async function createApp() {
   app.get('/health', health);
   app.get(`${env.apiPrefix}/health`, health);
 
+  // Public instance info — lets the mobile app confirm a connection code/QR
+  // points at a real reyOne instance (and whether the app is activated) before
+  // the user signs in. Exposes nothing beyond name/logo.
+  app.get(`${env.apiPrefix}/public/instance`, async (_req, res, next) => {
+    try {
+      const prisma = require('./config/prisma');
+      const company = await prisma.company.findFirst({ select: { name: true, logoUrl: true } });
+      ok(res, { app: 'reyone', name: company?.name || 'reyOne', logoUrl: company?.logoUrl || null, mobileEnabled: await mobileEnabled() });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // The Flutter app identifies itself with "X-Client: mobile". It only works
   // for companies where the Mobile App module is enabled.
   app.use(env.apiPrefix, async (req, _res, next) => {

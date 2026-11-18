@@ -6,11 +6,11 @@ import { errorMessage } from '../../lib/api';
 import { Card, Spinner, Alert } from '../../components/ui';
 
 const fields = [
-  { key: 'name', label: 'Company Name', required: true },
+  { key: 'name', label: 'Company name', required: true },
   { key: 'phone', label: 'Phone' },
   { key: 'email', label: 'Email', type: 'email' },
-  { key: 'logoUrl', label: 'Logo URL' },
-  { key: 'currency', label: 'Currency (e.g. INR)' },
+  { key: 'logoUrl', label: 'Logo URL (https://…)' },
+  { key: 'currency', label: 'Currency code (e.g. INR)' },
   { key: 'timezone', label: 'Timezone' },
 ];
 
@@ -45,9 +45,8 @@ export default function CompanyPage() {
   };
 
   return (
-    <form onSubmit={save} className="max-w-2xl">
+    <form onSubmit={save} className="max-w-3xl">
       {state.error && <Alert>{state.error}</Alert>}
-      {state.saved && <Alert type="success">Company profile saved.</Alert>}
       <Card>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {fields.map((f) => (
@@ -69,7 +68,7 @@ export default function CompanyPage() {
         </div>
         <div className="mt-4 flex justify-end">
           <button className="btn-primary" disabled={state.saving}>
-            {state.saving ? <Spinner className="h-4 w-4" /> : 'Save Changes'}
+            {state.saving ? <Spinner className="h-4 w-4" /> : 'Save changes'}
           </button>
         </div>
       </Card>

@@ -10,6 +10,7 @@ import { PageHeader, Card, Spinner, EmptyState } from '../../components/ui';
 import Modal from '../../components/Modal';
 import Attachments from '../../components/Attachments';
 import * as api from './api';
+import Select from '../../components/Select';
 
 export const PRIORITY = {
   low: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
@@ -112,7 +113,7 @@ function QueryDetail({ id, users, onClose, onChanged }) {
         {q.replies.length === 0 && <p className="text-center text-xs text-slate-400">No replies yet.</p>}
         {q.replies.map((r) => (
           <div key={r.id} className={`flex ${r.userId === user?.id ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${r.userId === user?.id ? 'bg-brand-500 text-white' : 'bg-cream-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>
+            <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${r.userId === user?.id ? 'bg-brand-500 text-brand-900' : 'bg-cream-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>
               <p className={`text-[10px] ${r.userId === user?.id ? 'text-brand-100' : 'text-slate-400'}`}>{r.userName} · {formatDateTime(r.createdAt)}</p>
               <p className="whitespace-pre-wrap">{r.message}</p>
             </div>
@@ -164,15 +165,15 @@ export default function QueriesPage() {
       <PageHeader title="Queries" subtitle="Raise, assign and resolve project & site queries" actions={can('queries.create') && <button className="btn-primary" onClick={() => setCreate({ title: '', description: '', priority: 'normal', visibility: 'assigned', projectId: '', assigneeIds: [] })}>+ Raise Query</button>} />
       <div className="mb-4 flex flex-wrap gap-2">
         {[['all', 'All'], ['mine', 'Raised by / for me'], ['assigned', 'Assigned to me']].map(([k, l]) => (
-          <button key={k} onClick={() => set('scope', k)} className={`rounded-full px-3 py-1.5 text-sm font-medium ${filters.scope === k ? 'bg-brand-500 text-white' : 'bg-cream-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{l}</button>
+          <button key={k} onClick={() => set('scope', k)} className={`rounded-full px-3 py-1.5 text-sm font-medium ${filters.scope === k ? 'bg-brand-500 text-brand-900' : 'bg-cream-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{l}</button>
         ))}
       </div>
       <Card className="mb-4">
         <div className="flex flex-wrap gap-3">
           <input className="input min-w-[180px] flex-1" placeholder="Search…" value={filters.search} onChange={(e) => set('search', e.target.value)} />
-          <select className="input w-auto" value={filters.status} onChange={(e) => set('status', e.target.value)}><option value="active">Open &amp; in progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="all">All</option></select>
-          <select className="input w-auto" value={filters.priority} onChange={(e) => set('priority', e.target.value)}><option value="">Any priority</option>{Object.keys(PRIORITY).map((p) => <option key={p} value={p}>{p}</option>)}</select>
-          <select className="input w-auto" value={filters.projectId} onChange={(e) => set('projectId', e.target.value)}><option value="">All projects</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+          <Select className="input w-auto" value={filters.status} onChange={(e) => set('status', e.target.value)}><option value="active">Open &amp; in progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="all">All</option></Select>
+          <Select className="input w-auto" value={filters.priority} onChange={(e) => set('priority', e.target.value)}><option value="">Any priority</option>{Object.keys(PRIORITY).map((p) => <option key={p} value={p}>{p}</option>)}</Select>
+          <Select className="input w-auto" value={filters.projectId} onChange={(e) => set('projectId', e.target.value)}><option value="">All projects</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select>
         </div>
       </Card>
       {!rows ? <div className="flex justify-center p-10"><Spinner /></div> : rows.length === 0 ? <Card><EmptyState title="No queries" hint="Nothing matches these filters." /></Card> : (
@@ -201,10 +202,10 @@ export default function QueriesPage() {
             <div><label className="label">Title</label><input className="input" autoFocus value={create.title} onChange={(e) => setCreate({ ...create, title: e.target.value })} /></div>
             <div><label className="label">Details</label><textarea className="input" rows={3} value={create.description} onChange={(e) => setCreate({ ...create, description: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="label">Project / Site</label><select className="input" value={create.projectId} onChange={(e) => setCreate({ ...create, projectId: e.target.value })}><option value="">General (no project)</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-              <div><label className="label">Priority</label><select className="input" value={create.priority} onChange={(e) => setCreate({ ...create, priority: e.target.value })}>{Object.keys(PRIORITY).map((p) => <option key={p} value={p}>{p}</option>)}</select></div>
+              <div><label className="label">Project / Site</label><Select className="input" value={create.projectId} onChange={(e) => setCreate({ ...create, projectId: e.target.value })}><option value="">General (no project)</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></div>
+              <div><label className="label">Priority</label><Select className="input" value={create.priority} onChange={(e) => setCreate({ ...create, priority: e.target.value })}>{Object.keys(PRIORITY).map((p) => <option key={p} value={p}>{p}</option>)}</Select></div>
             </div>
-            <div><label className="label">Visibility</label><select className="input" value={create.visibility} onChange={(e) => setCreate({ ...create, visibility: e.target.value })}><option value="assigned">Only me, assignees &amp; managers</option><option value="all">Everyone (with project access)</option></select></div>
+            <div><label className="label">Visibility</label><Select className="input" value={create.visibility} onChange={(e) => setCreate({ ...create, visibility: e.target.value })}><option value="assigned">Only me, assignees &amp; managers</option><option value="all">Everyone (with project access)</option></Select></div>
             <div><label className="label">Assign to</label><UserMultiSelect users={users} value={create.assigneeIds} onChange={(v) => setCreate({ ...create, assigneeIds: v })} /></div>
             <p className="text-xs text-slate-400">You can attach photos or files after submitting.</p>
           </div>

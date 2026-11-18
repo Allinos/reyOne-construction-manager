@@ -37,6 +37,7 @@ const listQuery = z.object({
   templateKey: z.string().max(60).optional(),
   category: z.string().max(40).optional(),
   projectId: z.coerce.number().int().positive().optional(),
+  clientId: z.coerce.number().int().positive().optional(),
 });
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });

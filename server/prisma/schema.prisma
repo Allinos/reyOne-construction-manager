@@ -40,6 +40,10 @@ model User {
   passwordHash String
   designation  String?
   salary       Decimal?   @db.Decimal(15, 2)
+  // EMPLOYEE = on staff (attendance + payroll); APP_USER = system access only
+  // (owner, partner, external CA/consultant) — excluded from attendance/payroll.
+  staffType    String     @default("EMPLOYEE")
+  joiningDate  DateTime?  @db.Date
   status       UserStatus @default(ACTIVE)
   lastLoginAt  DateTime?
   roleId       Int
@@ -519,6 +523,10 @@ model Workforce {
   id        Int             @id @default(autoincrement())
   name      String
   category  String
+  workerType String         @default("LABOUR") // LABOUR | CONTRACTOR
+  firmName  String? // contractor's company / team name
+  siteProjectId Int? // site currently working at (default for attendance)
+  joiningDate DateTime?     @db.Date
   phone     String?
   address   String?         @db.Text
   notes     String?         @db.Text
@@ -633,6 +641,8 @@ model StoredFile {
   mimeType     String?
   size         Int?
   data         String   @db.LongText
+  caption      String?
+  takenAt      DateTime? // original capture time (from photo EXIF) when known
   uploadedById Int?
   createdAt    DateTime @default(now())
 
@@ -790,9 +800,15 @@ model Inspection {
   title       String
   date        DateTime
   inspectorId Int?
-  status      String   @default("open") // open | closed
+  // assigned (waiting for inspector) | in_progress | completed (submitted) | closed
+  // Legacy "open" rows are treated as in_progress.
+  status      String   @default("assigned")
   checklist   Json // [{ item, result: pass|fail|na, remark }]
   remarks     String?  @db.Text
+  instructions String? @db.Text // what the inspector must check / focus on
+  dueDate     DateTime?
+  completedAt DateTime?
+  completedById Int?
   createdById Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

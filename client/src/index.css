@@ -18,48 +18,71 @@
 }
 
 @layer components {
+  /* Buttons — one size scale, three intents + semantic danger/success. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
-      transition-colors focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-medium
+      transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1 text-xs;
   }
   .btn-primary {
-    @apply btn bg-brand-500 text-white hover:bg-brand-600;
+    @apply btn bg-brand-500 font-semibold text-brand-900 shadow-sm hover:bg-brand-400;
   }
   .btn-secondary {
-    @apply btn border border-slate-200 bg-white text-slate-700 hover:bg-cream-200
+    @apply btn border border-slate-200 bg-white text-slate-700 hover:bg-slate-50
       dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700;
   }
   .btn-ghost {
-    @apply btn text-slate-600 hover:bg-cream-200 dark:text-slate-300 dark:hover:bg-slate-700;
+    @apply btn text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white shadow-sm hover:bg-red-700;
+  }
+  .btn-success {
+    @apply btn bg-emerald-600 text-white shadow-sm hover:bg-emerald-700;
   }
   .card {
-    @apply rounded-xl border border-cream-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800;
+    @apply rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800;
   }
   .input {
-    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400
       focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100
+      disabled:bg-slate-50 disabled:text-slate-500
       dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-brand-900;
   }
   .label {
-    @apply mb-1 block text-sm font-medium text-slate-600 dark:text-slate-300;
+    @apply mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400;
   }
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
   }
   .pill {
-    @apply inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors;
+    @apply inline-flex items-center rounded-md px-2 py-1 text-xs font-medium transition-colors;
   }
   .pill-edit {
-    @apply pill bg-brand-100 text-brand-700 hover:bg-brand-200;
+    @apply pill bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200;
   }
   .pill-delete {
-    @apply pill bg-red-100 text-red-600 hover:bg-red-200;
+    @apply pill bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300;
   }
   .section-head {
-    @apply flex items-center justify-between rounded-t-xl bg-brand-50 px-4 py-3 dark:bg-slate-700/40;
+    @apply flex items-center justify-between border-b border-slate-100 px-4 py-2.5 dark:border-slate-700;
   }
   .section-title {
-    @apply flex items-center gap-2 font-semibold text-brand-800 dark:text-brand-300;
+    @apply flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100;
+  }
+  .table-base {
+    @apply w-full text-sm;
+  }
+  .table-base thead {
+    @apply bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900/40;
+  }
+  .table-base th {
+    @apply px-4 py-2.5 font-medium;
+  }
+  .table-base td {
+    @apply border-t border-slate-100 px-4 py-2.5 dark:border-slate-700;
   }
 }
 
@@ -83,7 +106,7 @@
   background-color: #334155;
 }
 .dark .bg-brand-50 {
-  background-color: rgba(249, 115, 22, 0.16);
+  background-color: rgba(242, 169, 0, 0.14);
 }
 .dark .text-slate-800 {
   color: #e2e8f0;
@@ -118,15 +141,15 @@
 .help-content p { margin: 0 0 0.75rem; }
 .help-content ul { list-style: disc; padding-left: 1.25rem; margin: 0 0 0.75rem; }
 .help-content ol { list-style: decimal; padding-left: 1.25rem; margin: 0 0 0.75rem; }
-.help-content a { color: #ea580c; text-decoration: underline; }
+.help-content a { color: #cc6e02; text-decoration: underline; }
 .help-content img { max-width: 100%; height: auto; }
 .help-content table { width: 100%; border-collapse: collapse; margin: 0 0 0.75rem; }
-.help-content th, .help-content td { border: 1px solid #f8e6d2; padding: 0.4rem 0.6rem; text-align: left; }
+.help-content th, .help-content td { border: 1px solid #e2e8f0; padding: 0.4rem 0.6rem; text-align: left; }
 
-/* Thin, subtle, brand-orange scrollbar for independent scroll areas. */
+/* Thin, subtle, neutral scrollbar for independent scroll areas. */
 .scroll-thin {
   scrollbar-width: thin; /* Firefox */
-  scrollbar-color: #f97316 transparent;
+  scrollbar-color: #cbd5e1 transparent;
 }
 .scroll-thin::-webkit-scrollbar {
   width: 6px;
@@ -136,9 +159,20 @@
   background: transparent;
 }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background-color: #fb923c;
+  background-color: #cbd5e1;
   border-radius: 9999px;
 }
 .scroll-thin::-webkit-scrollbar-thumb:hover {
-  background-color: #f97316;
+  background-color: #94a3b8;
 }
+
+.dark .bg-slate-50 { background-color: #172033; }
+.dark .bg-slate-100 { background-color: #273449; }
+.dark .border-slate-100, .dark .border-slate-200, .dark .border-slate-200\/80 { border-color: #334155; }
+.dark .hover\:bg-slate-50:hover, .dark .hover\:bg-slate-100:hover { background-color: #334155; }
+.dark .bg-brand-100 { background-color: rgba(242, 169, 0, 0.22); }
+.dark .text-brand-700, .dark .text-brand-800, .dark .text-brand-600 { color: #F5CF5E; }
+.dark .bg-emerald-50, .dark .bg-green-50 { background-color: rgba(16, 185, 129, 0.12); }
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.12); }
+.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.12); }
+.dark .bg-blue-50, .dark .bg-sky-50 { background-color: rgba(59, 130, 246, 0.12); }

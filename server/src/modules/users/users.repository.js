@@ -11,6 +11,8 @@ const publicSelect = {
   phone: true,
   designation: true,
   salary: true,
+  staffType: true,
+  joiningDate: true,
   status: true,
   lastLoginAt: true,
   roleId: true,

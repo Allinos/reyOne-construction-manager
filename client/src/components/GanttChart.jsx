@@ -80,7 +80,7 @@ export default function GanttChart({ phases = [], project = {}, statusLabel = (s
               style={{ left: `calc(10rem + ${pct(now)})` }}
               title={`Today · ${formatDate(now)}`}
             >
-              <span className="absolute -top-0.5 -translate-x-1/2 rounded-sm bg-brand-500 px-1 text-[8px] font-medium text-white">
+              <span className="absolute -top-0.5 -translate-x-1/2 rounded-sm bg-brand-500 px-1 text-[8px] font-medium text-brand-900">
                 Today
               </span>
             </div>

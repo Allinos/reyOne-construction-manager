@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Modal from '../../components/Modal';
 import SearchSelect from '../../components/SearchSelect';
 import { useAuth } from '../../context/AuthContext';
@@ -6,11 +6,14 @@ import { useToast } from '../../context/ToastContext';
 import { errorMessage } from '../../lib/api';
 import {
   getTemplate, previewDocument, createDocument, updateDocument, getDocument,
-  listProjectsForDocs, getProjectForDocs,
+  listProjectsForDocs, getProjectForDocs, listClientsForDocs, getClientForDocs,
 } from './api';
 import { printHtml } from './print';
+import PreviewModal from './PreviewModal';
+import Select from '../../components/Select';
+import { localDate } from '../../lib/format';
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => localDate();
 
 function resolveSource(source, ctx) {
   switch (source) {
@@ -19,9 +22,9 @@ function resolveSource(source, ctx) {
     case 'company.address': return ctx.company?.address || '';
     case 'project.name': return ctx.project?.name || '';
     case 'project.address': return ctx.project?.clientAddress || '';
-    case 'client.name': return ctx.project?.clientName || '';
-    case 'client.phone': return ctx.project?.clientPhone || '';
-    case 'client.address': return ctx.project?.clientAddress || '';
+    case 'client.name': return ctx.client?.name || ctx.project?.clientName || '';
+    case 'client.phone': return ctx.client?.phone || ctx.project?.clientPhone || '';
+    case 'client.address': return ctx.client?.address || ctx.project?.clientAddress || '';
     default: return '';
   }
 }
@@ -65,7 +68,7 @@ function ItemsEditor({ value = [], onChange, showRate }) {
   );
 }
 
-export default function DocumentFormModal({ open, templateKey, docId, onClose, onSaved }) {
+export default function DocumentFormModal({ open, templateKey, docId, presetProjectId, presetClientId, onClose, onSaved }) {
   const { bootstrap } = useAuth();
   const toast = useToast();
   const company = bootstrap?.company || {};
@@ -76,10 +79,10 @@ export default function DocumentFormModal({ open, templateKey, docId, onClose, o
   const [projectId, setProjectId] = useState('');
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [clientId, setClientId] = useState('');
+  const [clients, setClients] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [busyPreview, setBusyPreview] = useState(false);
-
-  const ctx = useMemo(() => ({ company, project: selectedProject }), [company, selectedProject]);
+  const [previewing, setPreviewing] = useState(false);
 
   // Load the template (and, in edit mode, the existing document).
   useEffect(() => {
@@ -96,6 +99,7 @@ export default function DocumentFormModal({ open, templateKey, docId, onClose, o
           setValues(doc.data || {});
           setTitle(doc.title || t.name);
           setProjectId(doc.projectId || '');
+          setClientId(doc.clientId || '');
         } else {
           // Seed source defaults (company/today) for a fresh document.
           const seed = {};
@@ -108,7 +112,11 @@ export default function DocumentFormModal({ open, templateKey, docId, onClose, o
           setValues(seed);
           setTitle(t.name);
           setProjectId('');
+          setClientId('');
           setSelectedProject(null);
+          // Pre-selected from "Create Document": fill project / client details.
+          if (presetProjectId) await fillFromProject(presetProjectId, t, seed);
+          else if (presetClientId) await fillFromClient(presetClientId, t, seed);
         }
       } catch (err) {
         toast.error(errorMessage(err));
@@ -119,29 +127,42 @@ export default function DocumentFormModal({ open, templateKey, docId, onClose, o
   }, [open, templateKey, docId]);
 
   useEffect(() => {
-    if (open) listProjectsForDocs().then(setProjects);
+    if (open) {
+      listProjectsForDocs().then(setProjects);
+      listClientsForDocs().then(setClients);
+    }
   }, [open]);
 
-  // When a project is chosen (SearchSelect passes the id), fetch its detail and
-  // fill empty source fields.
-  const onPickProject = async (pid) => {
-    setProjectId(pid || '');
-    const p = projects.find((x) => String(x.id) === String(pid));
-    if (!p) { setSelectedProject(null); return; }
-    const detail = (await getProjectForDocs(p.id)) || p;
-    setSelectedProject(detail);
-    setValues((prev) => {
-      const next = { ...prev };
-      for (const f of tpl?.fields || []) {
-        if (f.source && f.source.startsWith('project') === false && f.source.startsWith('client') === false) continue;
-        if (f.source && (!next[f.key] || next[f.key] === '')) {
-          const v = resolveSource(f.source, { company, project: detail });
-          if (v) next[f.key] = v;
-        }
+  // Fill empty project/client-sourced fields from the chosen record.
+  const fillSources = (t, ctxIn) => setValues((prev) => {
+    const next = { ...prev };
+    for (const f of t?.fields || []) {
+      if (!f.source || !(f.source.startsWith('project') || f.source.startsWith('client'))) continue;
+      if (!next[f.key] || next[f.key] === '') {
+        const v = resolveSource(f.source, { company, ...ctxIn });
+        if (v) next[f.key] = v;
       }
-      return next;
-    });
-  };
+    }
+    return next;
+  });
+
+  async function fillFromProject(pid, t = tpl) {
+    setProjectId(pid || '');
+    if (!pid) { setSelectedProject(null); return; }
+    const detail = await getProjectForDocs(pid);
+    setSelectedProject(detail);
+    if (detail) fillSources(t, { project: detail });
+  }
+
+  async function fillFromClient(cid, t = tpl) {
+    setClientId(cid || '');
+    if (!cid) return;
+    const c = await getClientForDocs(cid);
+    if (c) fillSources(t, { client: c });
+  }
+
+  const onPickProject = (pid) => fillFromProject(pid);
+  const onPickClient = (cid) => fillFromClient(cid);
 
   const setVal = (key, v) => setValues((prev) => ({ ...prev, [key]: v }));
 
@@ -153,17 +174,7 @@ export default function DocumentFormModal({ open, templateKey, docId, onClose, o
       .filter((f) => !values[f.key] || String(values[f.key]).trim() === '')
       .map((f) => f.label);
 
-  const doPreview = async () => {
-    setBusyPreview(true);
-    try {
-      const { html } = await previewDocument(templateKey, buildData());
-      printHtml(html); // opens print-ready view; user can review or print
-    } catch (err) {
-      toast.error(errorMessage(err));
-    } finally {
-      setBusyPreview(false);
-    }
-  };
+  const doPreview = () => setPreviewing(true);
 
   const save = async (thenPrint) => {
     const missing = missingRequired();
@@ -172,8 +183,9 @@ export default function DocumentFormModal({ open, templateKey, docId, onClose, o
     try {
       const body = { templateKey, title: title.trim() || tpl.name, data: buildData() };
       if (projectId) body.projectId = Number(projectId);
+      if (clientId) body.clientId = Number(clientId);
       if (values.reference) body.reference = values.reference;
-      const saved = docId ? await updateDocument(docId, { title: body.title, data: body.data, projectId: body.projectId ?? null }) : await createDocument(body);
+      const saved = docId ? await updateDocument(docId, { title: body.title, data: body.data, projectId: body.projectId ?? null, clientId: body.clientId ?? null }) : await createDocument(body);
       toast.success(docId ? 'Document updated' : 'Document created');
       onSaved?.(saved);
       if (thenPrint) {
@@ -199,10 +211,10 @@ export default function DocumentFormModal({ open, templateKey, docId, onClose, o
     }
     if (f.type === 'select') {
       return (
-        <select className="input" value={v} onChange={(e) => setVal(f.key, e.target.value)}>
+        <Select className="input" value={v} onChange={(e) => setVal(f.key, e.target.value)}>
           <option value="">—</option>
           {(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
+        </Select>
       );
     }
     const inputType = f.type === 'date' ? 'date' : f.type === 'number' || f.type === 'money' ? 'number' : 'text';
@@ -219,6 +231,7 @@ export default function DocumentFormModal({ open, templateKey, docId, onClose, o
   };
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -229,9 +242,7 @@ export default function DocumentFormModal({ open, templateKey, docId, onClose, o
       footer={
         <>
           <button className="btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
-          <button className="btn-secondary" onClick={doPreview} disabled={busyPreview || !tpl}>
-            {busyPreview ? 'Preparing…' : 'Preview'}
-          </button>
+          <button className="btn-secondary" onClick={doPreview} disabled={!tpl}>Preview</button>
           <button className="btn-secondary" onClick={() => save(false)} disabled={saving || !tpl}>Save</button>
           <button className="btn-primary" onClick={() => save(true)} disabled={saving || !tpl}>Save &amp; Print</button>
         </>
@@ -239,13 +250,24 @@ export default function DocumentFormModal({ open, templateKey, docId, onClose, o
     >
       {tpl && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <label className="label">Document title</label>
               <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
             <div>
-              <label className="label">Link to project (optional — auto-fills details)</label>
+              <label className="label">Client (auto-fills)</label>
+              <SearchSelect
+                options={clients}
+                value={clientId}
+                onChange={onPickClient}
+                getLabel={(c) => c.name}
+                getSub={(c) => c.phone || c.contactPerson}
+                placeholder="Search clients…"
+              />
+            </div>
+            <div>
+              <label className="label">Project (auto-fills)</label>
               <SearchSelect
                 options={projects}
                 value={projectId}
@@ -271,5 +293,12 @@ export default function DocumentFormModal({ open, templateKey, docId, onClose, o
         </div>
       )}
     </Modal>
+    <PreviewModal
+      open={previewing}
+      title={`Preview · ${title || tpl?.name || ''}`}
+      load={() => previewDocument(templateKey, buildData())}
+      onClose={() => setPreviewing(false)}
+    />
+    </>
   );
 }

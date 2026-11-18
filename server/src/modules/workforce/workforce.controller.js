@@ -5,8 +5,14 @@ const { ok, created } = require('../../core/http/response');
 
 const workforceController = {
   async list(req, res) {
-    const { data, meta } = await service.list(req.query);
+    const { data, meta } = await service.list(req.query, req.user);
     return ok(res, data, meta);
+  },
+  async overview(req, res) {
+    return ok(res, await service.overview(req.params.id, req.user));
+  },
+  async stats(req, res) {
+    return ok(res, await service.stats(req.user));
   },
   async get(req, res) {
     return ok(res, await service.get(req.params.id));
