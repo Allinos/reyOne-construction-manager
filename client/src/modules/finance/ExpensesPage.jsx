@@ -11,6 +11,7 @@ import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDate } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
 import Modal from '../../components/Modal';
+import Attachments from '../../components/Attachments';
 import AnalyticsModal, { AnalyticsButton } from '../../components/AnalyticsModal';
 import { ExpenseAnalytics } from './analytics';
 
@@ -46,6 +47,7 @@ export default function ExpensesPage() {
   })();
   const [chooser, setChooser] = useState(false); // scope selection dialog
   const [form, setForm] = useState(null); // { scope, editing }
+  const [billFor, setBillFor] = useState(null); // expense whose bills are open
 
   const projectMap = Object.fromEntries(projects.map((p) => [p.id, p]));
   const vendorMap = Object.fromEntries(vendors.map((v) => [v.id, v.name]));
@@ -213,6 +215,7 @@ export default function ExpensesPage() {
                       <td className="px-4 py-3"><span className={`badge ${PAY_BADGE[x.paymentStatus] || 'bg-cream-200 text-slate-600'}`}>{x.paymentStatus}</span></td>
                       <td className="px-4 py-3 text-slate-500">{formatDate(x.date)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <button className="pill mr-2 bg-cream-200 text-slate-600 hover:bg-cream-300" onClick={() => setBillFor(x)} title="Bills & receipts">Bill</button>
                         {can('finance.update') && <button className="pill-edit" onClick={() => setForm({ scope: x.scope, editing: x })}>Edit</button>}
                         {can('finance.delete') && <button className="pill-delete ml-2" onClick={() => remove(x.id)}>Delete</button>}
                       </td>
@@ -248,6 +251,11 @@ export default function ExpensesPage() {
       <AnalyticsModal open={analytics} onClose={() => setAnalytics(false)} title="Expense Analytics">
         <ExpenseAnalytics open={analytics} />
       </AnalyticsModal>
+      {billFor && (
+        <Modal open onClose={() => setBillFor(null)} title={`Bills & receipts · ${billFor.category} · ${formatMoney(billFor.amount, currency)}`}>
+          <Attachments entityType="expense" entityId={billFor.id} canUpload={can('finance.update')} label="Bills / receipts" capture />
+        </Modal>
+      )}
     </div>
   );
 }

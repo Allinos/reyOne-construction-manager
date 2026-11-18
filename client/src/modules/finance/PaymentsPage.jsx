@@ -9,6 +9,17 @@ import { formatMoney, formatDate, toAmount } from '../../lib/format';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
 import Modal from '../../components/Modal';
 import SearchSelect from '../../components/SearchSelect';
+import { getReceipt } from './accountsApi';
+import { printHtml } from '../documents/print';
+
+async function printReceipt(paymentId) {
+  try {
+    const { html } = await getReceipt(paymentId);
+    printHtml(html);
+  } catch (e) {
+    alert(errorMessage(e));
+  }
+}
 
 const blank = { projectId: '', amount: '', date: '', method: '', account: '', notes: '' };
 
@@ -175,6 +186,7 @@ export default function PaymentsPage({ search = '' }) {
                       ) : '—'}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button className="pill mr-2 bg-brand-50 text-brand-700 hover:bg-brand-100" onClick={() => printReceipt(p.id)} title="Print / save receipt as PDF">Receipt</button>
                       {can('finance.update') && (
                         <button className="pill-edit" onClick={() => openEdit(p)}>Edit</button>
                       )}

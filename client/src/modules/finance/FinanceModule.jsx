@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import CollectionsPage from './CollectionsPage';
+import ReportsPage from './ReportsPage';
 import PaymentsPage from './PaymentsPage';
 import ProjectFinancePage from './ProjectFinancePage';
 import { getOverview } from './api';
@@ -42,6 +44,8 @@ function OverviewBar() {
 const TABS = [
   { to: '/finance', label: 'Payments', end: true },
   { to: '/finance/project', label: 'Project Finance' },
+  { to: '/finance/collections', label: 'Collections' },
+  { to: '/finance/reports', label: 'Expense Reports' },
 ];
 
 export default function FinanceModule() {
@@ -71,14 +75,14 @@ export default function FinanceModule() {
       />
       <OverviewBar />
 
-      <div className="mb-5 flex gap-1 border-b border-cream-300">
+      <div className="mb-5 flex gap-1 overflow-x-auto border-b border-cream-300 dark:border-slate-700">
         {TABS.map((t) => (
           <NavLink
             key={t.to}
             to={t.to}
             end={t.end}
             className={({ isActive }) =>
-              `-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
+              `-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${
                 isActive ? 'border-brand-500 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700'
               }`
             }
@@ -91,6 +95,8 @@ export default function FinanceModule() {
       <Routes>
         <Route index element={<PaymentsPage search={search} />} />
         <Route path="project" element={<ProjectFinancePage />} />
+        <Route path="collections" element={<CollectionsPage />} />
+        <Route path="reports" element={<ReportsPage />} />
       </Routes>
 
       <AnalyticsModal open={analytics} onClose={() => setAnalytics(false)} title="Financial Analytics">

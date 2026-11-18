@@ -1,5 +1,7 @@
 'use strict';
 
+const { registerFinanceExtras } = require('./finance.extra');
+
 const controller = require('./finance.controller');
 const asyncHandler = require('../../core/http/asyncHandler');
 const authenticate = require('../../core/middleware/authenticate');
@@ -19,6 +21,7 @@ const {
 
 function registerRoutes(router) {
   router.use(authenticate);
+  registerFinanceExtras(router);
 
   // Payments
   router.get('/payments', authorize('finance.read'), validate({ query: listPaymentsQuery }), asyncHandler(controller.listPayments));

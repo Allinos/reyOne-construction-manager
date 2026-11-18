@@ -8,6 +8,7 @@ import { formatMoney, formatDate } from '../../lib/format';
 import { PageHeader, Card, FullPageLoader, Alert, StatusBadge } from '../../components/ui';
 import Modal from '../../components/Modal';
 import Icon from '../../components/Icon';
+import { ClientAccount, ClientNotes, ClientDocuments } from './ClientExtras';
 
 function Stat({ label, value, accent }) {
   return (
@@ -109,6 +110,8 @@ export default function ClientProfilePage() {
         </div>
       </Card>
 
+      <ClientAccount clientId={Number(id)} />
+
       <Card className="mt-6 !p-0 overflow-hidden">
         <div className="border-b border-cream-300 px-5 py-3 font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">Projects</div>
         {client.projects.length === 0 ? (
@@ -140,6 +143,9 @@ export default function ClientProfilePage() {
           </div>
         )}
       </Card>
+
+      <ClientNotes clientId={Number(id)} />
+      <ClientDocuments clientId={Number(id)} />
 
       <Modal
         open={Boolean(edit)}

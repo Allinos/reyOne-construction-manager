@@ -3,6 +3,7 @@
 const createApp = require('./app');
 const env = require('./config/env');
 const prisma = require('./config/prisma');
+const { startReminders } = require('./core/services/reminders');
 
 async function start() {
   const app = await createApp();
@@ -10,6 +11,8 @@ async function start() {
   const server = app.listen(env.port, () => {
     // eslint-disable-next-line no-console
     console.log(`reyOne API listening on http://localhost:${env.port}${env.apiPrefix}`);
+    // Background reminders (overdue installments, issues, stale requests).
+    startReminders();
   });
 
   const shutdown = async (signal) => {

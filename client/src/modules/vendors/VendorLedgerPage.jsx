@@ -5,6 +5,9 @@ import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/api';
 import { formatMoney, formatDate } from '../../lib/format';
 import { PageHeader, Card, FullPageLoader, Alert } from '../../components/ui';
+import Attachments from '../../components/Attachments';
+import StarRating from '../../components/StarRating';
+import api, { unwrap } from '../../lib/api';
 import Icon from '../../components/Icon';
 
 const PAY_BADGE = {
@@ -22,10 +25,36 @@ function Stat({ label, value, accent }) {
   );
 }
 
+function VendorPurchases({ vendorId }) {
+  const { bootstrap } = useAuth();
+  const money = (v) => formatMoney(v, bootstrap?.company?.currency || 'INR');
+  const [data, setData] = useState(null);
+  useEffect(() => { unwrap(api.get(`/vendors/${vendorId}/purchases`)).then(setData).catch(() => setData({ items: [], totalValue: 0 })); }, [vendorId]);
+  if (!data || !data.items.length) return null;
+  return (
+    <Card className="mt-6 !p-0 overflow-hidden">
+      <div className="flex items-center justify-between border-b border-cream-300 px-5 py-3 dark:border-slate-700">
+        <span className="font-semibold text-slate-700 dark:text-slate-200">Material Purchase History</span>
+        <span className="text-sm font-semibold text-brand-600">{money(data.totalValue)}</span>
+      </div>
+      <div className="max-h-80 overflow-auto">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-cream-100 text-left text-xs text-slate-500 dark:bg-slate-800"><tr><th className="px-4 py-2">Date</th><th className="px-3 py-2">Material</th><th className="px-3 py-2 text-right">Qty</th><th className="px-3 py-2 text-right">Rate</th><th className="px-3 py-2 text-right">Value</th><th className="px-3 py-2">Delivered to</th></tr></thead>
+          <tbody className="divide-y divide-cream-200 dark:divide-slate-700">
+            {data.items.map((i) => (
+              <tr key={i.id}><td className="px-4 py-2">{formatDate(i.date)}</td><td className="px-3 py-2 font-medium">{i.materialName}</td><td className="px-3 py-2 text-right">{i.quantity} {i.unit}</td><td className="px-3 py-2 text-right">{i.rate != null ? money(i.rate) : '—'}</td><td className="px-3 py-2 text-right">{i.value != null ? money(i.value) : '—'}</td><td className="px-3 py-2 text-slate-500">{i.location}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
 export default function VendorLedgerPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { bootstrap } = useAuth();
+  const { bootstrap, can } = useAuth();
   const currency = bootstrap?.company?.currency || 'INR';
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -45,9 +74,12 @@ export default function VendorLedgerPage() {
         title={v.name}
         subtitle={[v.contactPerson, v.phone, v.gstNumber, v.address].filter(Boolean).join(' · ') || 'Vendor ledger'}
         actions={
+          <div className="flex items-center gap-3">
+          {v.rating ? <span title={v.ratingNote || ''}><StarRating value={v.rating} size="text-xl" /></span> : null}
           <button className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-white hover:bg-brand-600" onClick={() => navigate('/vendors')} aria-label="Back">
             <Icon name="arrowLeft" className="h-4 w-4" />
           </button>
+          </div>
         }
       />
 
@@ -56,6 +88,9 @@ export default function VendorLedgerPage() {
         <Stat label="Total Paid" value={formatMoney(data.totals.paid, currency)} accent="text-green-600" />
         <Stat label="Outstanding" value={formatMoney(data.totals.outstanding, currency)} accent="text-red-600" />
       </div>
+
+      <VendorPurchases vendorId={Number(id)} />
+      <Card className="mt-6"><Attachments entityType="vendor_bill" entityId={Number(id)} canUpload={can('vendors.update')} label="Bills & invoices" capture /></Card>
 
       <Card className="mt-6 !p-0 overflow-hidden">
         <div className="border-b border-cream-300 px-5 py-3 font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">

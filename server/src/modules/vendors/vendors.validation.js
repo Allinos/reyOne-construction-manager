@@ -10,6 +10,8 @@ const createVendorSchema = z.object({
   gstNumber: z.string().max(40).optional(),
   address: z.string().max(1000).optional(),
   notes: z.string().max(2000).optional(),
+  rating: z.coerce.number().int().min(1).max(5).optional(),
+  ratingNote: z.string().max(2000).optional(),
 });
 
 const updateVendorSchema = z
@@ -21,6 +23,8 @@ const updateVendorSchema = z
     gstNumber: z.string().max(40).nullable().optional(),
     address: z.string().max(1000).nullable().optional(),
     notes: z.string().max(2000).nullable().optional(),
+    rating: z.coerce.number().int().min(1).max(5).nullable().optional(),
+    ratingNote: z.string().max(2000).nullable().optional(),
   })
   .refine((d) => Object.keys(d).length > 0, { message: 'No fields to update' });
 

@@ -7,8 +7,9 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
 import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
 import Modal from '../../components/Modal';
+import StarRating from '../../components/StarRating';
 
-const blank = { name: '', contactPerson: '', phone: '', email: '', gstNumber: '', address: '', notes: '' };
+const blank = { name: '', contactPerson: '', phone: '', email: '', gstNumber: '', address: '', notes: '', rating: null, ratingNote: '' };
 const FIELDS = [
   ['name', 'Vendor Name', true, 'e.g., ABC Building Materials'],
   ['contactPerson', 'Contact Person', false, 'e.g., Ramesh Kumar'],
@@ -55,7 +56,10 @@ export default function VendorsPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const body = { ...modal.form };
+      const { rating, ratingNote, ...rest } = modal.form;
+      const body = { ...rest };
+      if (modal.editingId) { body.rating = rating || null; body.ratingNote = ratingNote || null; }
+      else { if (rating) body.rating = rating; if (ratingNote) body.ratingNote = ratingNote; }
       if (modal.editingId) await updateVendor(modal.editingId, body);
       else await createVendor(body);
       toast.success(`Vendor ${modal.editingId ? 'updated' : 'added'}`);
@@ -109,6 +113,7 @@ export default function VendorsPage() {
                   <th className="px-4 py-3 font-medium">Phone</th>
                   <th className="px-4 py-3 font-medium">Address</th>
                   <th className="px-4 py-3 font-medium">GST</th>
+                  <th className="px-4 py-3 font-medium">Rating</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -122,6 +127,7 @@ export default function VendorsPage() {
                       <span className="block max-w-[200px] truncate" title={v.address || ''}>{v.address || '—'}</span>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{v.gstNumber || '—'}</td>
+                    <td className="px-4 py-3" title={v.ratingNote || ''}>{v.rating ? <StarRating value={v.rating} size="text-sm" /> : <span className="text-xs text-slate-400">—</span>}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <button className="pill bg-cream-200 text-slate-600 hover:bg-cream-300" onClick={() => navigate(`/vendors/${v.id}`)}>Ledger</button>
                       {can('vendors.update') && <button className="pill-edit ml-2" onClick={() => openEdit(v)}>Edit</button>}
@@ -155,6 +161,13 @@ export default function VendorsPage() {
                 <input className="input" placeholder={placeholder} value={modal.form[key] || ''} onChange={(e) => setField(key, e.target.value)} required={required} />
               </div>
             ))}
+            <div className="sm:col-span-2">
+              <label className="label">Vendor rating</label>
+              <div className="flex flex-wrap items-center gap-3">
+                <StarRating value={modal.form.rating || 0} onChange={(v) => setField('rating', v)} size="text-2xl" />
+                <input className="input flex-1" placeholder="Quality, timeliness, pricing…" value={modal.form.ratingNote || ''} onChange={(e) => setField('ratingNote', e.target.value)} />
+              </div>
+            </div>
             <div className="sm:col-span-2">
               <label className="label">Notes</label>
               <textarea className="input" rows={2} placeholder="e.g., Preferred supplier for cement & steel" value={modal.form.notes || ''} onChange={(e) => setField('notes', e.target.value)} />

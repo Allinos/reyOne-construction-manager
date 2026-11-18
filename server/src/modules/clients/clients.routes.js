@@ -1,5 +1,7 @@
 'use strict';
 
+const { registerClientExtras } = require('./clients.extra');
+
 const controller = require('./clients.controller');
 const asyncHandler = require('../../core/http/asyncHandler');
 const authenticate = require('../../core/middleware/authenticate');
@@ -11,6 +13,7 @@ function registerRoutes(router) {
   router.use(authenticate);
   router.get('/', authorize('clients.read'), validate({ query: listQuery }), asyncHandler(controller.list));
   router.get('/:id', authorize('clients.read'), validate({ params: idParam }), asyncHandler(controller.get));
+  registerClientExtras(router);
   router.patch('/:id', authorize('clients.update'), validate({ params: idParam, body: updateClientSchema }), asyncHandler(controller.update));
   router.delete('/:id', authorize('clients.delete'), validate({ params: idParam }), asyncHandler(controller.remove));
 }

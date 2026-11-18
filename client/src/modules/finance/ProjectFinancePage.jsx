@@ -1,3 +1,4 @@
+import PaymentScheduleCard from './PaymentScheduleCard';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getProjectsFinance, getProjectSummary } from './api';
@@ -201,6 +202,8 @@ export default function ProjectFinancePage() {
                 <Stat label="Total Expense" value={formatMoney(summary.projectExpenses, currency)} accent="text-red-600" />
               </div>
             </div>
+
+            <PaymentScheduleCard projectId={Number(selected)} refreshKey={summary.receivedAmount} />
 
             <Card>
               <div className="mb-3 flex items-center justify-between gap-2">
