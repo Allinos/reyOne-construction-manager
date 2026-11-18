@@ -20,3 +20,13 @@ export const fulfillRequest = (id, b) => unwrap(api.post(`/materials/requests/${
 export const listProjectsLite = () => api.get('/projects', { params: { limit: 100 } }).then((r) => r.data.data).catch(() => []);
 export const listVendorsLite = () => api.get('/vendors', { params: { limit: 100 } }).then((r) => r.data.data).catch(() => []);
 export const getLocations = (id) => unwrap(api.get(`/materials/items/${id}/locations`));
+export const listPOs = (params) => unwrap(api.get('/materials/purchase-orders', { params }));
+export const getPO = (id) => unwrap(api.get(`/materials/purchase-orders/${id}`));
+export const createPO = (b) => unwrap(api.post('/materials/purchase-orders', b));
+export const updatePO = (id, b) => unwrap(api.patch(`/materials/purchase-orders/${id}`, b));
+export const deletePO = (id) => unwrap(api.delete(`/materials/purchase-orders/${id}`));
+export const listReceipts = (params) => unwrap(api.get('/materials/receipts', { params }));
+export const receiveGoods = (b) => unwrap(api.post('/materials/receipts', b));
+export const getPrices = (params) => unwrap(api.get('/materials/prices', { params }));
+export const returnToStore = (b) => unwrap(api.post('/materials/return', b));
+export const recordWastage = (b) => unwrap(api.post('/materials/wastage', b));

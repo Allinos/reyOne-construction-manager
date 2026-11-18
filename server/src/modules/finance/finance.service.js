@@ -198,6 +198,8 @@ const financeService = {
       scope: payload.scope,
       projectId: payload.scope === 'PROJECT' ? payload.projectId : null,
       vendorId: payload.vendorId ?? null,
+      billNumber: payload.billNumber || null,
+      dueDate: payload.dueDate || null,
       workforceId: payload.workforceId ?? null,
       category: payload.category,
       amount: payload.amount,
@@ -224,8 +226,21 @@ const financeService = {
     if (payload.account) assertIn(payload.account, config.accounts.map((a) => a.key), 'account');
 
     const data = { ...payload };
-    // Recompute amountPaid whenever status or amount changes.
-    if (payload.paymentStatus || payload.amount != null || payload.amountPaid != null) {
+    // Bills settled through Vendor Payments keep their paid amount in sync with
+    // those payments — don't let a manual edit contradict them.
+    const prismaClient = require('../../config/prisma');
+    const allocated = await prismaClient.vendorPaymentAllocation.aggregate({ where: { expenseId: id, payment: { deletedAt: null } }, _sum: { amount: true } });
+    if (D(allocated._sum.amount).gt(0)) {
+      if (payload.paymentStatus || payload.amountPaid != null) {
+        delete data.paymentStatus;
+        delete data.amountPaid;
+      }
+      if (payload.amount != null) {
+        if (D(payload.amount).lt(D(existing.amountPaid))) throw AppError.badRequest('This bill already has payments larger than the new amount');
+        const paid = D(existing.amountPaid);
+        data.paymentStatus = paid.gte(D(payload.amount)) ? 'PAID' : paid.gt(0) ? 'PARTIAL' : 'CREDIT';
+      }
+    } else if (payload.paymentStatus || payload.amount != null || payload.amountPaid != null) {
       const pay = normalizePayment(
         payload.paymentStatus || existing.paymentStatus,
         payload.amount != null ? payload.amount : existing.amount,
@@ -253,9 +268,20 @@ const financeService = {
   // Per-account balances derived from the ledger + configured opening balances.
   async accounts() {
     const config = await loadConfig();
-    const [payAgg, expAgg] = await Promise.all([repo.paymentsByAccount(), repo.expensesByAccount()]);
+    // Cash basis: money actually paid out of each account — the part of each
+    // expense paid at entry, plus vendor payments (by the payment's account).
+    // Unpaid (credit) bills don't reduce a balance until they're paid.
+    const prisma = require('../../config/prisma');
+    const [payAgg, expAgg, allocs, vpays] = await Promise.all([
+      repo.paymentsByAccount(),
+      prisma.expense.groupBy({ by: ['account'], _sum: { amountPaid: true } }),
+      prisma.vendorPaymentAllocation.findMany({ where: { payment: { deletedAt: null } }, select: { amount: true, expense: { select: { account: true } } } }),
+      prisma.vendorPayment.groupBy({ by: ['account'], where: { deletedAt: null }, _sum: { amount: true } }),
+    ]);
     const inByAccount = new Map(payAgg.map((r) => [r.account, D(r._sum.amount)]));
-    const outByAccount = new Map(expAgg.map((r) => [r.account, D(r._sum.amount)]));
+    const outByAccount = new Map(expAgg.map((r) => [r.account, D(r._sum.amountPaid)]));
+    for (const a of allocs) outByAccount.set(a.expense.account, (outByAccount.get(a.expense.account) || D(0)).minus(D(a.amount)));
+    for (const v of vpays) outByAccount.set(v.account, (outByAccount.get(v.account) || D(0)).plus(D(v._sum.amount)));
 
     const byType = {};
     const accounts = config.accounts.map((a) => {

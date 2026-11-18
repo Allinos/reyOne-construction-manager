@@ -9,6 +9,9 @@ import Icon from '../../components/Icon';
 import Modal from '../../components/Modal';
 import { Tabs } from '../../components/ui';
 import * as api from './api';
+import { useSearchParams } from 'react-router-dom';
+import { POModal, ReceiveModal, PurchaseOrdersTab, ReceiptsTab } from './Procurement';
+import { formatMoney as fmtMoney } from '../../lib/format';
 import Select from '../../components/Select';
 
 const today = () => localDate();
@@ -21,7 +24,7 @@ const REQ_STATUS = {
   rejected: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
 };
 const REQ_LABEL = { pending: 'Awaiting approval', approved: 'Approved', partially_fulfilled: 'Partly sent', fulfilled: 'Delivered', rejected: 'Rejected' };
-const TYPE_LABEL = { PURCHASE: 'Purchase', TRANSFER_IN: 'Transfer in', TRANSFER_OUT: 'Transfer out', CONSUME: 'Consumed', ADJUST: 'Adjustment', RETURN: 'Return' };
+const TYPE_LABEL = { PURCHASE: 'Received (purchase)', TRANSFER_IN: 'Transfer in', TRANSFER_OUT: 'Transfer out', CONSUME: 'Consumed', ADJUST: 'Adjustment', RETURN: 'Returned', WASTAGE: 'Wastage' };
 
 function useLookups() {
   const [projects, setProjects] = useState([]);
@@ -58,12 +61,12 @@ function StockOpModal({ op, lookups, onClose, onDone }) {
   const [f, setF] = useState({
     materialId: op.materialId || '', quantity: '', rate: '', vendorId: '', projectId: op.projectId || '',
     fromProjectId: op.projectId || '', toProjectId: '', date: today(), notes: '', method: methods[0],
-    paymentStatus: 'PAID', addToExpenses: true, direction: 'add',
+    paymentStatus: 'PAID', addToExpenses: true, direction: 'add', reason: 'Damaged',
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
   const mat = materials.find((m) => String(m.id) === String(f.materialId));
-  const titles = { purchase: 'Purchase / receive material', transfer: 'Transfer material', consume: 'Record site usage', adjust: 'Stock adjustment' };
+  const titles = { purchase: 'Purchase / receive material', transfer: 'Transfer material', consume: 'Record site usage', adjust: 'Stock adjustment', return: 'Return unused material to store', wastage: 'Record wastage / damage' };
 
   const submit = async () => {
     const q = Number(f.quantity);
@@ -77,6 +80,11 @@ function StockOpModal({ op, lookups, onClose, onDone }) {
         if (!f.projectId) { toast.error('Select the site'); setSaving(false); return; }
         await api.consume({ materialId: Number(f.materialId), quantity: q, projectId: Number(f.projectId), date: f.date, notes: f.notes || undefined });
       }
+      if (op.kind === 'return') {
+        if (!f.projectId) { toast.error('Select the site returning the material'); setSaving(false); return; }
+        await api.returnToStore({ materialId: Number(f.materialId), quantity: q, projectId: Number(f.projectId), date: f.date, notes: f.notes || undefined });
+      }
+      if (op.kind === 'wastage') await api.recordWastage({ materialId: Number(f.materialId), quantity: q, projectId: opt(f.projectId), reason: f.reason || undefined, date: f.date, notes: f.notes || undefined });
       if (op.kind === 'adjust') await api.adjust({ materialId: Number(f.materialId), quantity: f.direction === 'add' ? q : -q, projectId: opt(f.projectId), notes: f.notes || undefined });
       toast.success('Saved');
       onDone();
@@ -119,6 +127,13 @@ function StockOpModal({ op, lookups, onClose, onDone }) {
           </>
         )}
         {op.kind === 'consume' && <div className="col-span-2"><LocationSelect label="Site" value={f.projectId} onChange={(v) => set('projectId', v)} projects={projects} includeStore={false} /></div>}
+        {op.kind === 'return' && <div className="col-span-2"><LocationSelect label="Returning site" value={f.projectId} onChange={(v) => set('projectId', v)} projects={projects} includeStore={false} /></div>}
+        {op.kind === 'wastage' && (
+          <>
+            <LocationSelect label="Location" value={f.projectId} onChange={(v) => set('projectId', v)} projects={projects} />
+            <div><label className="label">Reason</label><Select className="input" value={f.reason || 'Damaged'} onChange={(e) => set('reason', e.target.value)}>{['Damaged', 'Expired / set', 'Spillage', 'Theft / missing', 'Rejected quality', 'Other'].map((r) => <option key={r}>{r}</option>)}</Select></div>
+          </>
+        )}
         {op.kind === 'adjust' && (
           <>
             <div><label className="label">Direction</label><Select className="input" value={f.direction} onChange={(e) => set('direction', e.target.value)}><option value="add">Add (+)</option><option value="remove">Remove (−)</option></Select></div>
@@ -131,7 +146,7 @@ function StockOpModal({ op, lookups, onClose, onDone }) {
   );
 }
 
-function RequestsTab({ lookups, onChanged, openNew }) {
+function RequestsTab({ lookups, onChanged, openNew, onCreatePO }) {
   const { can } = useAuth();
   const toast = useToast();
   const [status, setStatus] = useState('');
@@ -202,6 +217,7 @@ function RequestsTab({ lookups, onChanged, openNew }) {
               <div className="mt-3 flex gap-2">
                 {r.status === 'pending' && can('materials.approve') && <button className="btn-primary btn-sm" onClick={() => setDecide({ ...r, note: '', items: r.items.map((i) => ({ ...i, approvedQty: i.quantity })) })}>Review</button>}
                 {['approved', 'partially_fulfilled'].includes(r.status) && can('materials.manage') && <button className="btn-success btn-sm" onClick={() => fulfill(r)}>Dispatch from store</button>}
+                {['approved', 'partially_fulfilled'].includes(r.status) && can('materials.manage') && <button className="btn-secondary btn-sm" onClick={() => onCreatePO({ requestId: r.id, projectId: r.projectId, expectedDate: r.neededBy ? String(r.neededBy).slice(0, 10) : '', notes: `Against site request #${r.id}`, items: r.items.map((i) => ({ materialId: i.materialId, quantity: Math.max(0, (i.approvedQty ?? i.quantity) - (Number(i.fulfilledQty) || 0)) })).filter((i) => i.quantity > 0) })}>Order from vendor</button>}
               </div>
             </div>
           ))}
@@ -289,9 +305,11 @@ function MaterialPanel({ material, onClose, openOp, onEdit }) {
           </div>
           {can('materials.manage') && (
             <div className="grid grid-cols-2 gap-2">
-              <button className="btn-primary btn-sm" onClick={() => openOp({ kind: 'purchase', materialId: material.id })}>Purchase</button>
+              <button className="btn-primary btn-sm" onClick={() => openOp({ kind: 'po', materialId: material.id })}>Order (PO)</button>
               <button className="btn-secondary btn-sm" onClick={() => openOp({ kind: 'transfer', materialId: material.id })}>Transfer</button>
               <button className="btn-secondary btn-sm" onClick={() => openOp({ kind: 'consume', materialId: material.id })}>Record usage</button>
+              <button className="btn-secondary btn-sm" onClick={() => openOp({ kind: 'return', materialId: material.id })}>Return to store</button>
+              <button className="btn-secondary btn-sm" onClick={() => openOp({ kind: 'wastage', materialId: material.id })}>Wastage</button>
               <button className="btn-secondary btn-sm" onClick={() => openOp({ kind: 'adjust', materialId: material.id })}>Adjust stock</button>
             </div>
           )}
@@ -433,7 +451,7 @@ function InventoryTab({ lookups, openOp, refreshKey }) {
                       <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
                       <td onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-1">
-                          {can('materials.manage') && <button className="btn-ghost btn-sm" onClick={() => openOp({ kind: 'purchase', materialId: m.id, projectId: site ? location : '' })}>Purchase</button>}
+                          {can('materials.manage') && <button className="btn-ghost btn-sm" onClick={() => openOp({ kind: 'po', materialId: m.id, projectId: site ? location : '' })}>Order</button>}
                           {can('materials.manage') && <button className="btn-ghost btn-sm" onClick={() => openOp({ kind: 'transfer', materialId: m.id, projectId: site ? location : '' })}>Transfer</button>}
                           {(can('materials.request') || can('materials.manage')) && site && <button className="btn-ghost btn-sm" onClick={() => openOp({ kind: 'consume', materialId: m.id, projectId: location })}>Use</button>}
                         </div>
@@ -518,12 +536,13 @@ function ConsumptionTab({ lookups }) {
         <Select className="input w-auto" value={projectId} onChange={(e) => setProjectId(e.target.value)}><option value="">All sites</option>{lookups.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select>
       </div>
       <Card className="!p-0 overflow-hidden">
-        {!rows ? <div className="flex justify-center p-10"><Spinner /></div> : rows.length === 0 ? <div className="p-6"><EmptyState title="No consumption recorded" /></div> : (
+        {!rows ? <div className="flex justify-center p-10"><Spinner /></div> : rows.length === 0 ? <div className="p-6"><EmptyState title="No usage recorded" hint="Site usage and wastage appear here with their estimated cost." /></div> : (
           <table className="table-base">
-            <thead><tr><th className="px-4 py-3">Site</th><th className="px-3 py-3">Material</th><th className="px-3 py-3 text-right">Consumed</th></tr></thead>
+            <thead><tr><th>Site</th><th>Material</th><th className="text-right">Consumed</th><th className="text-right">Wasted</th><th className="text-right">Avg rate</th><th className="text-right">Est. cost</th></tr></thead>
             <tbody>
-              {rows.map((r) => <tr key={`${r.projectId}-${r.materialId}`}><td className="px-4 py-2.5">{r.projectName}</td><td className="px-3 py-2.5 font-medium">{r.materialName}</td><td className="px-3 py-2.5 text-right font-semibold">{qty(r.quantity, r.unit)}</td></tr>)}
+              {rows.map((r) => <tr key={`${r.projectId}-${r.materialId}`}><td>{r.projectName}</td><td className="font-medium">{r.materialName}</td><td className="text-right font-semibold tabular-nums">{qty(r.quantity, r.unit)}</td><td className={`text-right tabular-nums ${r.wasted > 0 ? 'text-red-600' : 'text-slate-400'}`}>{r.wasted > 0 ? qty(r.wasted, r.unit) : '—'}</td><td className="text-right tabular-nums text-slate-500">{r.avgRate ? <MoneyCell v={r.avgRate} /> : '—'}</td><td className="text-right tabular-nums">{r.cost ? <MoneyCell v={r.cost} /> : '—'}</td></tr>)}
             </tbody>
+            <tfoot><tr className="font-semibold"><td colSpan={5} className="text-right">Total estimated cost</td><td className="text-right tabular-nums"><MoneyCell v={rows.reduce((s, r) => s + (r.cost || 0), 0)} /></td></tr></tfoot>
           </table>
         )}
       </Card>
@@ -536,6 +555,12 @@ export default function MaterialsPage() {
   const lookups = useLookups();
   const [tab, setTab] = useState('inventory');
   const [op, setOp] = useState(null);
+  const [poPreset, setPoPreset] = useState(null);
+  const [receiveDirect, setReceiveDirect] = useState(false);
+  const [params] = useSearchParams();
+  const openPo = params.get('po') ? Number(params.get('po')) : null;
+  useEffect(() => { if (openPo) setTab('pos'); }, [openPo]);
+  const openOp = (o) => (o.kind === 'po' ? setPoPreset({ materialId: o.materialId, projectId: o.projectId || '' }) : setOp(o));
   const [newRequest, setNewRequest] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [stats, setStats] = useState(null);
@@ -548,20 +573,22 @@ export default function MaterialsPage() {
     <div>
       <PageHeader
         title="Materials"
-        subtitle="Stock in the store and at each site, requests from sites, purchases and usage"
+        subtitle="Site requests → purchase orders → goods received → stock at store & sites → usage"
         actions={
           <>
             {canRequest && <button className={manage ? 'btn-secondary' : 'btn-primary'} onClick={() => { setTab('requests'); setNewRequest((n) => n + 1); }}><Icon name="add" className="h-4 w-4" /> Request material</button>}
             {manage && <button className="btn-secondary" onClick={() => setOp({ kind: 'transfer' })}>Transfer</button>}
-            {manage && <button className="btn-primary" onClick={() => setOp({ kind: 'purchase' })}><Icon name="add" className="h-4 w-4" /> Purchase</button>}
+            {manage && <button className="btn-secondary" onClick={() => setReceiveDirect(true)}>Receive goods</button>}
+            {manage && <button className="btn-primary" onClick={() => setPoPreset({})}><Icon name="add" className="h-4 w-4" /> Purchase order</button>}
           </>
         }
       />
       {stats && (
-        <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-5">
           <Stat label="Materials" value={stats.materials} />
           <Stat label="Low / out of stock" value={stats.lowStock} tone={stats.lowStock ? 'danger' : 'neutral'} hint="Below reorder level in store" />
-          <Stat label="Requests pending" value={stats.pendingRequests} tone={stats.pendingRequests ? 'warning' : 'neutral'} onClick={() => setTab('requests')} hint="Awaiting approval" />
+          <Stat label="Requests pending" value={stats.pendingRequests} tone={stats.pendingRequests ? 'warning' : 'neutral'} onClick={() => setTab('requests')} hint={stats.toDispatch ? `${stats.toDispatch} approved, to supply` : 'Awaiting approval'} />
+          <Stat label="Open purchase orders" value={stats.openPurchaseOrders ?? 0} tone={stats.openPurchaseOrders ? 'info' : 'neutral'} onClick={() => setTab('pos')} hint="Awaiting delivery" />
           <Stat label="Purchases this month" value={formatMoney(stats.purchaseValueThisMonth, bootstrap?.company?.currency || 'INR')} />
         </div>
       )}
@@ -569,17 +596,28 @@ export default function MaterialsPage() {
         tabs={[
           { key: 'inventory', label: 'Inventory' },
           { key: 'requests', label: 'Site requests', count: stats?.pendingRequests },
-          { key: 'movements', label: 'Purchases & movements' },
+          { key: 'pos', label: 'Purchase orders', count: stats?.openPurchaseOrders },
+          { key: 'receipts', label: 'Goods received' },
+          { key: 'movements', label: 'Stock movements' },
           { key: 'consumption', label: 'Site usage' },
         ]}
         value={tab}
         onChange={setTab}
       />
-      {tab === 'inventory' && <InventoryTab lookups={lookups} openOp={setOp} refreshKey={refreshKey} />}
-      {tab === 'requests' && <RequestsTab lookups={lookups} onChanged={refresh} openNew={newRequest} />}
+      {tab === 'inventory' && <InventoryTab lookups={lookups} openOp={openOp} refreshKey={refreshKey} />}
+      {tab === 'requests' && <RequestsTab lookups={lookups} onChanged={refresh} openNew={newRequest} onCreatePO={setPoPreset} />}
+      {tab === 'pos' && <PurchaseOrdersTab lookups={lookups} refreshKey={refreshKey} onChanged={refresh} openId={openPo} onNew={() => setPoPreset({})} />}
+      {tab === 'receipts' && <ReceiptsTab refreshKey={refreshKey} />}
       {tab === 'movements' && <MovementsTab lookups={lookups} refreshKey={refreshKey} />}
       {tab === 'consumption' && <ConsumptionTab lookups={lookups} />}
       {op && <StockOpModal op={op} lookups={lookups} onClose={() => setOp(null)} onDone={refresh} />}
+      {poPreset && <POModal lookups={lookups} preset={poPreset} onClose={() => setPoPreset(null)} onSaved={() => { setPoPreset(null); setTab('pos'); refresh(); }} />}
+      {receiveDirect && <ReceiveModal lookups={lookups} onClose={() => setReceiveDirect(false)} onDone={() => { setReceiveDirect(false); refresh(); }} />}
     </div>
   );
+}
+
+function MoneyCell({ v }) {
+  const { bootstrap } = useAuth();
+  return fmtMoney(v, bootstrap?.company?.currency || 'INR');
 }

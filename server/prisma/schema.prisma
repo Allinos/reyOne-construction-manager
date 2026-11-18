@@ -492,9 +492,13 @@ model Expense {
   vendorId      Int?
   workforceId   Int? // payee when it's a workforce member
   paymentStatus String   @default("PAID") // PAID | PARTIAL | CREDIT
-  amountPaid    Decimal  @default(0) @db.Decimal(15, 2)
+  amountPaid    Decimal  @default(0) @db.Decimal(15, 2) // total settled (at entry + later vendor payments)
+  billNumber    String? // supplier's bill / invoice no.
+  dueDate       DateTime? // when the unpaid balance is due
+  purchaseOrderId Int?
   notes         String?  @db.Text
   createdById   Int?
+  allocations   VendorPaymentAllocation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -601,6 +605,8 @@ model Vendor {
   notes         String?   @db.Text
   rating        Int? // 1-5 vendor rating
   ratingNote    String?   @db.Text
+  creditDays    Int       @default(0) // default payment terms for new bills
+  category      String? // e.g. Cement supplier, Steel, Hardware, Transport
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
@@ -915,4 +921,84 @@ model DeviceToken {
 
   @@index([userId])
   @@map("device_tokens")
+}
+
+// ===========================================================================
+// PROCUREMENT: purchase orders, goods receipts and vendor payables.
+// Workflow: (site request →) PO to vendor → goods received note (stock in +
+// vendor bill) → vendor payments settle bills; unallocated payment = advance.
+// ===========================================================================
+model PurchaseOrder {
+  id           Int       @id @default(autoincrement())
+  number       String    @unique // PO-0001
+  vendorId     Int
+  projectId    Int? // deliver to site; null = central store
+  requestId    Int? // raised from a material request
+  status       String    @default("draft") // draft | ordered | partially_received | received | cancelled
+  orderDate    DateTime
+  expectedDate DateTime?
+  items        Json // [{ materialId, name, unit, quantity, rate, receivedQty }]
+  taxPercent   Decimal   @default(0) @db.Decimal(5, 2)
+  notes        String?   @db.Text
+  terms        String?   @db.Text
+  createdById  Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  @@index([vendorId])
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+model GoodsReceipt {
+  id              Int      @id @default(autoincrement())
+  number          String   @unique // GRN-0001
+  purchaseOrderId Int?
+  vendorId        Int?
+  projectId       Int? // received at site; null = central store
+  date            DateTime
+  items           Json // [{ materialId, name, unit, quantity, rate }]
+  billNumber      String?
+  amount          Decimal  @default(0) @db.Decimal(15, 2)
+  expenseId       Int? // the vendor bill created for this receipt
+  notes           String?  @db.Text
+  createdById     Int?
+  createdAt       DateTime @default(now())
+
+  @@index([purchaseOrderId])
+  @@index([vendorId])
+  @@map("goods_receipts")
+}
+
+model VendorPayment {
+  id          Int       @id @default(autoincrement())
+  vendorId    Int
+  date        DateTime
+  amount      Decimal   @db.Decimal(15, 2)
+  method      String
+  account     String
+  reference   String? // cheque / UTR no.
+  notes       String?   @db.Text
+  createdById Int?
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  allocations VendorPaymentAllocation[]
+
+  @@index([vendorId])
+  @@map("vendor_payments")
+}
+
+model VendorPaymentAllocation {
+  id        Int           @id @default(autoincrement())
+  paymentId Int
+  payment   VendorPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  expenseId Int
+  expense   Expense       @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  amount    Decimal       @db.Decimal(15, 2)
+  createdAt DateTime      @default(now())
+
+  @@index([paymentId])
+  @@index([expenseId])
+  @@map("vendor_payment_allocations")
 }

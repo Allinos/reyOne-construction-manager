@@ -12,6 +12,8 @@ const createVendorSchema = z.object({
   notes: z.string().max(2000).optional(),
   rating: z.coerce.number().int().min(1).max(5).optional(),
   ratingNote: z.string().max(2000).optional(),
+  creditDays: z.coerce.number().int().min(0).max(365).optional(),
+  category: z.string().max(80).optional().nullable(),
 });
 
 const updateVendorSchema = z
@@ -25,6 +27,8 @@ const updateVendorSchema = z
     notes: z.string().max(2000).nullable().optional(),
     rating: z.coerce.number().int().min(1).max(5).nullable().optional(),
     ratingNote: z.string().max(2000).nullable().optional(),
+    creditDays: z.coerce.number().int().min(0).max(365).optional(),
+    category: z.string().max(80).nullable().optional(),
   })
   .refine((d) => Object.keys(d).length > 0, { message: 'No fields to update' });
 

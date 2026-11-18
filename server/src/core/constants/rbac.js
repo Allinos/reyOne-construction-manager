@@ -91,6 +91,7 @@ const PERMISSIONS = [
   { key: 'vendors.create', module: 'vendors', action: 'create', description: 'Create vendors' },
   { key: 'vendors.update', module: 'vendors', action: 'update', description: 'Edit vendors' },
   { key: 'vendors.delete', module: 'vendors', action: 'delete', description: 'Delete vendors' },
+  { key: 'vendors.pay', module: 'vendors', action: 'pay', description: 'Record vendor bills & payments' },
 
   // Workforce
   { key: 'workforce.read', module: 'workforce', action: 'read', description: 'View workforce' },
@@ -178,7 +179,7 @@ const DEFAULT_ROLES = [
       'invoices.read', 'invoices.create', 'invoices.update', 'invoices.delete',
       'documents.read', 'documents.create', 'documents.update', 'documents.delete',
       'clients.read', 'clients.update',
-      'vendors.read', 'vendors.create', 'vendors.update', 'vendors.delete',
+      'vendors.read', 'vendors.create', 'vendors.update', 'vendors.delete', 'vendors.pay',
       'workforce.read', 'workforce.create', 'workforce.update', 'workforce.delete',
       'requirements.read', 'requirements.update',
       'activity.read',

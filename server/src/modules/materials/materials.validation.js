@@ -15,6 +15,8 @@ module.exports = {
   movementsQuery: z.object({ page: id.optional(), limit: id.optional(), materialId: id.optional(), vendorId: id.optional(), type: z.string().optional(), projectId: z.union([z.literal('store'), z.string().regex(/^\d+$/)]).optional() }),
   purchaseSchema: z.object({ materialId: id, quantity: qty, rate: z.coerce.number().nonnegative().optional(), vendorId: id.optional().nullable(), projectId: optProject, date: z.coerce.date().optional(), notes: z.string().max(1000).optional(), method: z.string().max(50).optional(), paymentStatus: z.enum(['PAID', 'CREDIT']).optional(), addToExpenses: z.boolean().optional() }),
   transferSchema: z.object({ materialId: id, quantity: qty, fromProjectId: optProject, toProjectId: optProject, date: z.coerce.date().optional(), notes: z.string().max(1000).optional() }),
+  returnSchema: z.object({ materialId: id, quantity: qty, projectId: id, date: z.coerce.date().optional(), notes: z.string().max(1000).optional() }),
+  wastageSchema: z.object({ materialId: id, quantity: qty, projectId: optProject, reason: z.string().max(100).optional(), date: z.coerce.date().optional(), notes: z.string().max(1000).optional() }),
   consumeSchema: z.object({ materialId: id, quantity: qty, projectId: id, date: z.coerce.date().optional(), notes: z.string().max(1000).optional() }),
   adjustSchema: z.object({ materialId: id, quantity: z.coerce.number().refine((n) => n !== 0, 'Quantity cannot be zero'), projectId: optProject, reason: z.enum(['adjust', 'return']).optional(), notes: z.string().max(1000).optional() }),
   requestsQuery: z.object({ status: z.string().optional(), projectId: id.optional() }),

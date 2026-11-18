@@ -1,17 +1,20 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listVendors, createVendor, updateVendor, deleteVendor } from './api';
+import { listVendors, createVendor, updateVendor, deleteVendor, getPayables } from './api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { errorMessage } from '../../lib/api';
-import { PageHeader, Card, Spinner, EmptyState, Pagination, Alert } from '../../components/ui';
+import { PageHeader, Spinner, EmptyState, Pagination, Alert, Stat } from '../../components/ui';
+import Icon from '../../components/Icon';
+import { formatMoney, formatDate } from '../../lib/format';
 import Modal from '../../components/Modal';
 import StarRating from '../../components/StarRating';
 
-const blank = { name: '', contactPerson: '', phone: '', email: '', gstNumber: '', address: '', notes: '', rating: null, ratingNote: '' };
+const blank = { name: '', category: '', contactPerson: '', phone: '', email: '', gstNumber: '', address: '', creditDays: 0, notes: '', rating: null, ratingNote: '' };
 const FIELDS = [
   ['name', 'Vendor Name', true, 'e.g., ABC Building Materials'],
+  ['category', 'Supplies', false, 'e.g., Cement & steel, Hardware, Transport'],
   ['contactPerson', 'Contact Person', false, 'e.g., Ramesh Kumar'],
   ['phone', 'Phone', false, 'e.g., +91 98765 43210'],
   ['email', 'Email', false, 'e.g., sales@abcmaterials.com'],
@@ -20,8 +23,12 @@ const FIELDS = [
 ];
 
 export default function VendorsPage() {
-  const { can } = useAuth();
+  const { can, bootstrap } = useAuth();
+  const money = (v) => formatMoney(v, bootstrap?.company?.currency || 'INR');
   const navigate = useNavigate();
+  const [dues, setDues] = useState(null);
+  useEffect(() => { getPayables().then(setDues).catch(() => setDues(null)); }, []);
+  const dueOf = (id) => dues?.rows.find((r) => r.id === id);
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -88,58 +95,71 @@ export default function VendorsPage() {
     <div>
       <PageHeader
         title="Vendors"
-        subtitle="Suppliers & service providers"
-        actions={can('vendors.create') && <button className="btn-primary" onClick={openNew}>+ Add Vendor</button>}
+        subtitle="Suppliers, bills, payments and outstanding dues"
+        actions={can('vendors.create') && <button className="btn-primary" onClick={openNew}><Icon name="add" className="h-4 w-4" /> Add vendor</button>}
       />
 
-      <Card className="mb-4">
-        <input className="input" placeholder="Search vendors…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
-      </Card>
+      {dues && (
+        <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat label="Payable to vendors" value={money(dues.totals.outstanding)} tone={dues.totals.outstanding > 0 ? 'warning' : 'neutral'} hint={`${dues.totals.vendorsWithDues} vendor(s) with dues`} />
+          <Stat label="Overdue" value={money(dues.totals.overdue)} tone={dues.totals.overdue > 0 ? 'danger' : 'neutral'} hint="Past bill due date" />
+          <Stat label="Advances paid" value={money(dues.totals.advance)} tone="info" hint="Not yet adjusted against bills" />
+          <Stat label="Vendors" value={dues.rows.length} />
+        </div>
+      )}
+
+      <div className="relative mb-3">
+        <Icon name="search" className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+        <input className="input pl-9" placeholder="Search vendors…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+      </div>
 
       {error && <Alert>{error}</Alert>}
 
-      <Card className="!p-0 overflow-hidden">
+      <div className="card overflow-hidden">
         {loading ? (
           <div className="flex justify-center p-10"><Spinner /></div>
         ) : result.items.length === 0 ? (
           <div className="p-6"><EmptyState title="No vendors yet" /></div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-cream-100 text-left text-slate-500">
+            <table className="table-base">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 font-medium">Vendor</th>
-                  <th className="px-4 py-3 font-medium">Contact Person</th>
-                  <th className="px-4 py-3 font-medium">Phone</th>
-                  <th className="px-4 py-3 font-medium">Address</th>
-                  <th className="px-4 py-3 font-medium">GST</th>
-                  <th className="px-4 py-3 font-medium">Rating</th>
-                  <th className="px-4 py-3" />
+                  <th>Vendor</th>
+                  <th>Contact</th>
+                  <th>Rating</th>
+                  <th className="text-right">Outstanding</th>
+                  <th className="text-right">Overdue</th>
+                  <th>Next due</th>
+                  <th />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-cream-200">
-                {result.items.map((v) => (
-                  <tr key={v.id} className="cursor-pointer hover:bg-cream-100" onClick={() => navigate(`/vendors/${v.id}`)}>
-                    <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{v.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{v.contactPerson || '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">{v.phone || '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      <span className="block max-w-[200px] truncate" title={v.address || ''}>{v.address || '—'}</span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{v.gstNumber || '—'}</td>
-                    <td className="px-4 py-3" title={v.ratingNote || ''}>{v.rating ? <StarRating value={v.rating} size="text-sm" /> : <span className="text-xs text-slate-400">—</span>}</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                      <button className="pill bg-cream-200 text-slate-600 hover:bg-cream-300" onClick={() => navigate(`/vendors/${v.id}`)}>Ledger</button>
-                      {can('vendors.update') && <button className="pill-edit ml-2" onClick={() => openEdit(v)}>Edit</button>}
-                      {can('vendors.delete') && <button className="pill-delete ml-2" onClick={() => remove(v)}>Delete</button>}
-                    </td>
-                  </tr>
-                ))}
+              <tbody>
+                {result.items.map((v) => {
+                  const d = dueOf(v.id);
+                  return (
+                    <tr key={v.id} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60" onClick={() => navigate(`/vendors/${v.id}`)}>
+                      <td>
+                        <p className="font-medium text-slate-800 dark:text-slate-100">{v.name}</p>
+                        <p className="text-xs text-slate-400">{[v.category, v.gstNumber && `GST ${v.gstNumber}`, v.creditDays ? `${v.creditDays}-day credit` : null].filter(Boolean).join(' · ') || '—'}</p>
+                      </td>
+                      <td className="text-slate-600 dark:text-slate-300">{[v.contactPerson, v.phone].filter(Boolean).join(' · ') || '—'}</td>
+                      <td title={v.ratingNote || ''}>{v.rating ? <StarRating value={v.rating} size="text-sm" /> : <span className="text-xs text-slate-400">—</span>}</td>
+                      <td className={`text-right tabular-nums ${d?.outstanding > 0 ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-400'}`}>{d?.outstanding > 0 ? money(d.outstanding) : '—'}{d?.advance > 0 && <span className="block text-[11px] font-normal text-blue-600">Advance {money(d.advance)}</span>}</td>
+                      <td className={`text-right tabular-nums ${d?.overdue > 0 ? 'font-semibold text-red-600' : 'text-slate-400'}`}>{d?.overdue > 0 ? money(d.overdue) : '—'}</td>
+                      <td className="text-slate-500">{d?.nextDue ? formatDate(d.nextDue) : '—'}</td>
+                      <td className="whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                        {can('vendors.update') && <button className="btn-ghost btn-sm" onClick={() => openEdit(v)} title="Edit"><Icon name="edit" className="h-4 w-4" /></button>}
+                        {can('vendors.delete') && <button className="btn-ghost btn-sm text-red-600 hover:bg-red-50" onClick={() => remove(v)} title="Delete"><Icon name="trash" className="h-4 w-4" /></button>}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
-      </Card>
+      </div>
       <Pagination meta={result.meta} onPage={setPage} />
 
       <Modal
@@ -161,6 +181,11 @@ export default function VendorsPage() {
                 <input className="input" placeholder={placeholder} value={modal.form[key] || ''} onChange={(e) => setField(key, e.target.value)} required={required} />
               </div>
             ))}
+            <div>
+              <label className="label">Payment terms (credit days)</label>
+              <input type="number" min="0" max="365" className="input" value={modal.form.creditDays ?? 0} onChange={(e) => setField('creditDays', e.target.value)} />
+              <p className="mt-1 text-[11px] text-slate-400">Due date for new bills = bill date + these days.</p>
+            </div>
             <div className="sm:col-span-2">
               <label className="label">Vendor rating</label>
               <div className="flex flex-wrap items-center gap-3">

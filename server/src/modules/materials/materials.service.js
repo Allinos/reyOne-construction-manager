@@ -286,8 +286,36 @@ const materialsService = {
   },
 
   // Site-wise consumption for a month (or all time).
+  // Unused material sent back from a site to the central store.
+  async returnToStore(payload, actor, req) {
+    const m = await assertMaterial(payload.materialId);
+    await assertProjectAccess(actor, payload.projectId);
+    await prisma.$transaction(async (tx) => {
+      const available = await balance(m.id, payload.projectId, tx);
+      if (payload.quantity > available + 1e-9) throw AppError.badRequest(`Only ${r3(available)} ${m.unit} of ${m.name} at this site`);
+      const base = { materialId: m.id, type: 'RETURN', date: payload.date || new Date(), notes: payload.notes || 'Returned to store', createdById: actor.id };
+      await move(tx, { ...base, projectId: loc(payload.projectId), quantity: -payload.quantity });
+      await move(tx, { ...base, projectId: null, quantity: payload.quantity });
+    });
+    activity.record({ userId: actor.id, action: 'material.returned', entityType: 'material', entityId: m.id, req });
+    return { success: true };
+  },
+
+  // Damaged / wasted / stolen material written off at a location.
+  async wastage(payload, actor, req) {
+    const m = await assertMaterial(payload.materialId);
+    if (payload.projectId) await assertProjectAccess(actor, payload.projectId);
+    await prisma.$transaction(async (tx) => {
+      const available = await balance(m.id, payload.projectId, tx);
+      if (payload.quantity > available + 1e-9) throw AppError.badRequest(`Only ${r3(available)} ${m.unit} of ${m.name} available here`);
+      await move(tx, { materialId: m.id, projectId: loc(payload.projectId), type: 'WASTAGE', quantity: -payload.quantity, date: payload.date || new Date(), notes: [payload.reason, payload.notes].filter(Boolean).join(' — ') || 'Wastage', createdById: actor.id });
+    });
+    activity.record({ userId: actor.id, action: 'material.wastage', entityType: 'material', entityId: m.id, req });
+    return { success: true };
+  },
+
   async consumption(query, actor) {
-    const where = { type: 'CONSUME' };
+    const where = { type: { in: ['CONSUME', 'WASTAGE'] } };
     if (query.month) {
       const [y, m] = query.month.split('-').map(Number);
       where.date = { gte: new Date(Date.UTC(y, m - 1, 1)), lt: new Date(Date.UTC(y, m, 1)) };
@@ -295,17 +323,34 @@ const materialsService = {
     if (query.projectId) where.projectId = query.projectId;
     const allowed = await accessibleProjectIds(actor);
     if (allowed !== null) where.projectId = query.projectId ? (allowed.includes(query.projectId) ? query.projectId : -1) : { in: allowed };
-    const groups = await prisma.stockMovement.groupBy({ by: ['projectId', 'materialId'], where, _sum: { quantity: true } });
-    const [mats, projects] = await Promise.all([
-      prisma.material.findMany({ where: { id: { in: [...new Set(groups.map((g) => g.materialId))] } }, select: { id: true, name: true, unit: true } }),
+    const groups = await prisma.stockMovement.groupBy({ by: ['projectId', 'materialId', 'type'], where, _sum: { quantity: true } });
+    const matIds = [...new Set(groups.map((g) => g.materialId))];
+    const [mats, projects, rates] = await Promise.all([
+      prisma.material.findMany({ where: { id: { in: matIds } }, select: { id: true, name: true, unit: true } }),
       projectNames(groups.map((g) => g.projectId)),
+      prisma.stockMovement.findMany({ where: { type: 'PURCHASE', materialId: { in: matIds }, rate: { not: null } }, select: { materialId: true, rate: true, quantity: true } }),
     ]);
     const mm = new Map(mats.map((m) => [m.id, m]));
-    return groups.map((g) => ({
-      projectId: g.projectId, projectName: projects.get(g.projectId)?.name || '—',
-      materialId: g.materialId, materialName: mm.get(g.materialId)?.name, unit: mm.get(g.materialId)?.unit,
-      quantity: r3(-num(g._sum.quantity)),
-    })).sort((a, b) => (a.projectName || '').localeCompare(b.projectName || '') || (a.materialName || '').localeCompare(b.materialName || ''));
+    // Weighted average purchase rate → estimated cost of what was used.
+    const avg = new Map();
+    for (const r of rates) {
+      const a = avg.get(r.materialId) || { q: 0, v: 0 };
+      a.q += num(r.quantity);
+      a.v += num(r.quantity) * num(r.rate);
+      avg.set(r.materialId, a);
+    }
+    const rateOf = (id) => { const a = avg.get(id); return a && a.q ? a.v / a.q : 0; };
+    const rows = new Map();
+    for (const g of groups) {
+      const k = `${g.projectId}:${g.materialId}`;
+      const row = rows.get(k) || { projectId: g.projectId, projectName: g.projectId ? projects.get(g.projectId)?.name || '—' : 'Central Store', materialId: g.materialId, materialName: mm.get(g.materialId)?.name, unit: mm.get(g.materialId)?.unit, quantity: 0, wasted: 0 };
+      if (g.type === 'WASTAGE') row.wasted = r3(row.wasted - num(g._sum.quantity));
+      else row.quantity = r3(row.quantity - num(g._sum.quantity));
+      rows.set(k, row);
+    }
+    return [...rows.values()]
+      .map((r) => ({ ...r, avgRate: Math.round(rateOf(r.materialId) * 100) / 100, cost: Math.round((r.quantity + r.wasted) * rateOf(r.materialId)) }))
+      .sort((a, b) => (a.projectName || '').localeCompare(b.projectName || '') || (a.materialName || '').localeCompare(b.materialName || ''));
   },
 
   async analytics(actor) {
@@ -313,15 +358,19 @@ const materialsService = {
     const allowed = await accessibleProjectIds(actor);
     const reqWhere = { status: 'pending', ...(allowed !== null ? { projectId: { in: allowed } } : {}) };
     const start = new Date(); start.setUTCDate(1); start.setUTCHours(0, 0, 0, 0);
-    const [pending, purchases] = await Promise.all([
+    const [pending, purchases, openPOs, approved] = await Promise.all([
       prisma.materialRequest.count({ where: reqWhere }),
       prisma.stockMovement.findMany({ where: { type: 'PURCHASE', date: { gte: start } }, select: { quantity: true, rate: true } }),
+      prisma.purchaseOrder.count({ where: { deletedAt: null, status: { in: ['ordered', 'partially_received'] } } }),
+      prisma.materialRequest.count({ where: { status: { in: ['approved', 'partially_fulfilled'] }, ...(allowed !== null ? { projectId: { in: allowed } } : {}) } }),
     ]);
     return {
       materials: items.length,
       lowStock: items.filter((i) => i.low).length,
       lowStockItems: items.filter((i) => i.low).slice(0, 10).map((i) => ({ id: i.id, name: i.name, inStore: i.inStore, unit: i.unit, reorderLevel: num(i.reorderLevel) })),
       pendingRequests: pending,
+      openPurchaseOrders: openPOs,
+      toDispatch: approved,
       purchaseValueThisMonth: Math.round(purchases.reduce((s, p) => s + num(p.quantity) * num(p.rate), 0) * 100) / 100,
     };
   },
