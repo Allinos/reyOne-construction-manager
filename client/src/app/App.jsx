@@ -7,6 +7,7 @@ import ProtectedRoute from './ProtectedRoute';
 import AppLayout from '../components/layout/AppLayout';
 import LoginPage from '../pages/LoginPage';
 import { MODULE_DEFS } from './modules';
+import ModuleGuard from './ModuleGuard';
 
 export default function App() {
   return (
@@ -26,10 +27,10 @@ export default function App() {
               >
                 {MODULE_DEFS.map((m) =>
                   m.path === '/' ? (
-                    <Route key={m.key} index element={m.element} />
+                    <Route key={m.key} index element={<ModuleGuard def={m}>{m.element}</ModuleGuard>} />
                   ) : (
                     // "/*" so modules can define their own nested routes.
-                    <Route key={m.key} path={`${m.path}/*`} element={m.element} />
+                    <Route key={m.key} path={`${m.path}/*`} element={<ModuleGuard def={m}>{m.element}</ModuleGuard>} />
                   ),
                 )}
                 <Route path="*" element={<Navigate to="/" replace />} />

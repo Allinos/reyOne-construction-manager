@@ -31,7 +31,7 @@ function TemplateLibrary({ catalog, canCreate, onClose, onUse, onPreview }) {
 
   return (
     <div className="-m-4 flex min-h-[calc(100vh-3.5rem)] flex-col bg-cream md:-m-6 dark:bg-slate-900">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 md:px-6 dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 md:px-6 dark:border-slate-700 dark:bg-slate-800">
         <button className="btn-ghost px-2" onClick={onClose} aria-label="Back to documents"><Icon name="arrowLeft" className="h-4 w-4" /></button>
         <div className="mr-auto">
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Template Library</h1>
@@ -39,7 +39,7 @@ function TemplateLibrary({ catalog, canCreate, onClose, onUse, onPreview }) {
         </div>
         <div className="relative w-full sm:w-72">
           <Icon name="search" className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input className="input pl-9" placeholder="Search templates…" value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+          <input className="input pl-9" placeholder="Search templates…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </div>
       <div className="flex flex-1 flex-col md:flex-row">

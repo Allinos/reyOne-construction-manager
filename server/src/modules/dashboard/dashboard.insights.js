@@ -45,6 +45,11 @@ async function insights(actor) {
       if (forMe.length) out.attention.push({ kind: 'queries', count: forMe.length, label: `${forMe.length} quer${forMe.length === 1 ? 'y' : 'ies'} assigned to you`, to: '/queries', tone: forMe.some((q) => q.priority === 'urgent') ? 'red' : 'sky' });
     }
     if (on.has('inspections')) {
+      const todo = await prisma.inspection.findMany({ where: { inspectorId: actor.id, deletedAt: null, status: { in: ['assigned', 'in_progress', 'open'] } }, select: { id: true, dueDate: true } });
+      if (todo.length) {
+        const late = todo.filter((i) => i.dueDate && i.dueDate < new Date(new Date().toDateString())).length;
+        out.attention.push({ kind: 'inspections_assigned', count: todo.length, label: `${todo.length} inspection${todo.length === 1 ? '' : 's'} assigned to you${late ? ` · ${late} overdue` : ''}`, to: todo.length === 1 ? `/inspections/${todo[0].id}` : '/inspections', tone: late ? 'red' : 'sky' });
+      }
       const issues = await prisma.inspectionIssue.findMany({ where: { assignedToId: actor.id, status: { in: ['open', 'in_progress'] }, inspection: { deletedAt: null } }, select: { dueDate: true } });
       mine.issues = issues.length;
       if (issues.length) {

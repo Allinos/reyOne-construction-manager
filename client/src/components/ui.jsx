@@ -96,8 +96,8 @@ export function StatusBadge({ status, label }) {
 // Underline tabs used by every multi-view page. Items: { key, label, count?, hidden? }.
 export function Tabs({ tabs, value, onChange, right, className = 'mb-4' }) {
   return (
-    <div className={`flex items-end justify-between gap-2 border-b border-slate-200 dark:border-slate-700 ${className}`}>
-      <div className="scroll-thin -mb-px flex gap-1 overflow-x-auto">
+    <div className={`flex flex-col-reverse gap-2 border-b border-slate-200 sm:flex-row sm:items-end sm:justify-between dark:border-slate-700 ${className}`}>
+      <div className="scroll-thin -mb-px flex min-w-0 gap-1 overflow-x-auto">
         {tabs.filter((t) => !t.hidden).map((t) => (
           <button
             key={t.key}
@@ -116,7 +116,7 @@ export function Tabs({ tabs, value, onChange, right, className = 'mb-4' }) {
           </button>
         ))}
       </div>
-      {right && <div className="flex shrink-0 items-center gap-2 pb-1.5">{right}</div>}
+      {right && <div className="scroll-thin flex shrink-0 items-center gap-2 overflow-x-auto sm:pb-1.5">{right}</div>}
     </div>
   );
 }
