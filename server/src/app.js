@@ -13,6 +13,8 @@ const { mountModules } = require('./core/modules/registry');
 const { ok } = require('./core/http/response');
 const notFound = require('./core/middleware/notFound');
 const errorHandler = require('./core/middleware/errorHandler');
+const AppError = require('./core/errors/AppError');
+const { mobileEnabled } = require('./core/services/push');
 
 /**
  * Builds the Express app. Async because modules are mounted dynamically from
@@ -22,7 +24,7 @@ async function createApp() {
   const app = express();
 
   app.use(helmet());
-  app.use(cors({ origin: env.clientOrigin, credentials: true }));
+  app.use(cors({ origin: env.clientOrigin, credentials: true, allowedHeaders: ['Content-Type', 'Authorization', 'X-Client'] }));
   app.use(express.json({ limit: '12mb' }));
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
@@ -33,6 +35,18 @@ async function createApp() {
   const health = (_req, res) => ok(res, { status: 'ok', uptime: process.uptime() });
   app.get('/health', health);
   app.get(`${env.apiPrefix}/health`, health);
+
+  // The Flutter app identifies itself with "X-Client: mobile". It only works
+  // for companies where the Mobile App module is enabled.
+  app.use(env.apiPrefix, async (req, _res, next) => {
+    if (String(req.get('x-client') || '').toLowerCase() !== 'mobile') return next();
+    try {
+      if (await mobileEnabled()) return next();
+      return next(AppError.forbidden('The mobile app is not activated for this company. Ask your administrator to enable it in Settings → Modules.'));
+    } catch (err) {
+      return next(err);
+    }
+  });
 
   // Mount enabled modules under the API prefix.
   await mountModules(app, env.apiPrefix);

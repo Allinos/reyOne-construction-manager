@@ -5,6 +5,7 @@ const AppError = require('../../core/errors/AppError');
 const activity = require('../../core/services/activityLog');
 const { loadManifests } = require('../../core/modules/registry');
 const { MODULE_CATALOG } = require('../../core/constants/modules');
+const { invalidateModuleCache } = require('../../core/services/push');
 
 // Catalog entries that are pure frontend feature flags (no backend routes).
 // They still count as "buildable" so they stay toggleable in the manager.
@@ -68,6 +69,7 @@ const modulesService = {
     }
 
     const updated = await repo.setEnabled(key, enabled);
+    invalidateModuleCache();
     activity.record({
       userId: actor.id,
       action: enabled ? 'module.enabled' : 'module.disabled',

@@ -1,6 +1,7 @@
 'use strict';
 
 const prisma = require('../../config/prisma');
+const push = require('./push');
 
 function swallow(err) {
   if (process.env.NODE_ENV !== 'production') {
@@ -23,6 +24,10 @@ function notify({ userId, type, title, message, entityType, entityId }) {
         entityId: entityId != null ? String(entityId) : null,
       },
     })
+    .then((row) => {
+      push.sendToUsers([userId], { title, body: message, data: { type, entityType, entityId } });
+      return row;
+    })
     .catch(swallow);
 }
 
@@ -40,6 +45,10 @@ function notifyMany(userIds, payload) {
         entityType: payload.entityType ?? null,
         entityId: payload.entityId != null ? String(payload.entityId) : null,
       })),
+    })
+    .then((r) => {
+      push.sendToUsers(unique, { title: payload.title, body: payload.message, data: { type: payload.type, entityType: payload.entityType, entityId: payload.entityId } });
+      return r;
     })
     .catch(swallow);
 }

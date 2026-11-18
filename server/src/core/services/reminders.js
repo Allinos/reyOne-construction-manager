@@ -11,6 +11,7 @@
 const prisma = require('../../config/prisma');
 const { projectCollections } = require('./collections');
 const { usersWithPermission } = require('./access');
+const push = require('./push');
 
 const DAY = 86400000;
 const fmt = (d) => new Date(d).toLocaleDateString('en-GB');
@@ -28,6 +29,7 @@ async function sendOnce(userIds, payload, windowMs = DAY - 60000) {
   const targets = unique.filter((u) => !skip.has(u));
   if (!targets.length) return 0;
   await prisma.notification.createMany({ data: targets.map((userId) => ({ userId, ...payload, entityId: String(payload.entityId) })) });
+  push.sendToUsers(targets, { title: payload.title, body: payload.message, data: { type: payload.type, entityType: payload.entityType, entityId: payload.entityId } });
   return targets.length;
 }
 

@@ -885,3 +885,18 @@ model PaymentSchedule {
   @@index([projectId])
   @@map("payment_schedules")
 }
+
+// ===========================================================================
+// MOBILE: push notification device tokens (Firebase Cloud Messaging)
+// ===========================================================================
+model DeviceToken {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  token      String   @unique @db.VarChar(512)
+  platform   String   @default("android") // android | ios
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@map("device_tokens")
+}
