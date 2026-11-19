@@ -38,7 +38,7 @@ async function guard(actor, entityType, mode, entityId) {
 }
 
 const entityType = z.enum(Object.keys(ENTITY_PERMS));
-const listQuery = z.object({ entityType, entityId: z.coerce.number().int().positive(), withData: z.enum(['true', 'false']).optional() });
+const listQuery = z.object({ entityType, entityId: z.coerce.number().int().positive(), tag: z.string().max(60).optional(), withData: z.enum(['true', 'false']).optional() });
 const createSchema = z.object({
   entityType,
   entityId: z.coerce.number().int().positive(),
@@ -46,11 +46,12 @@ const createSchema = z.object({
   mimeType: z.string().max(100).optional(),
   data: z.string().min(10).refine((d) => d.startsWith('data:'), 'Expected a data URL'),
   caption: z.string().max(255).optional(),
+  tag: z.string().max(60).optional(),
   takenAt: z.coerce.date().optional().nullable(),
 });
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 
-const meta = { id: true, entityType: true, entityId: true, name: true, mimeType: true, size: true, caption: true, takenAt: true, uploadedById: true, createdAt: true };
+const meta = { id: true, entityType: true, entityId: true, name: true, mimeType: true, size: true, caption: true, tag: true, takenAt: true, uploadedById: true, createdAt: true };
 
 function registerRoutes(router) {
   router.use(authenticate);
@@ -58,7 +59,7 @@ function registerRoutes(router) {
   router.get('/', validate({ query: listQuery }), asyncHandler(async (req, res) => {
     await guard(req.user, req.query.entityType, 'read', req.query.entityId);
     const rows = await prisma.storedFile.findMany({
-      where: { entityType: req.query.entityType, entityId: req.query.entityId },
+      where: { entityType: req.query.entityType, entityId: req.query.entityId, ...(req.query.tag ? { tag: req.query.tag } : {}) },
       select: req.query.withData === 'true' ? { ...meta, data: true } : meta,
       orderBy: { id: 'desc' },
     });

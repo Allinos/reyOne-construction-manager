@@ -11,7 +11,9 @@ const AppError = require('../../core/errors/AppError');
 const { hasPerm } = require('../../core/services/access');
 
 const id = z.coerce.number().int().positive();
-const checkItem = z.object({ item: z.string().min(1).max(300), result: z.enum(['pass', 'fail', 'action', 'na', '']).optional(), remark: z.string().max(1000).optional().nullable() });
+const checkItem = z.object({ item: z.string().min(1).max(300), kind: z.enum(['check', 'photo', 'document', 'measure']).optional(), ref: z.string().max(20).optional(), type: z.string().max(120).optional(), value: z.union([z.string().max(60), z.number()]).optional().nullable(), result: z.enum(['pass', 'fail', 'action', 'na', '']).optional(), remark: z.string().max(1000).optional().nullable() });
+const libItem = z.object({ text: z.string().min(1).max(300), kind: z.enum(['check', 'photo', 'document', 'measure']) });
+const libType = z.object({ key: z.string().max(60).optional(), name: z.string().min(1).max(120), category: z.string().max(30).optional(), description: z.string().max(500).optional(), items: z.array(libItem).max(100) });
 const severity = z.enum(['low', 'medium', 'high', 'critical']);
 const issueStatus = z.enum(['open', 'in_progress', 'resolved', 'verified']);
 
@@ -20,7 +22,7 @@ const s = {
   issueParam: z.object({ issueId: id }),
   listQuery: z.object({ status: z.enum(['active', 'pending', 'assigned', 'in_progress', 'completed', 'follow_up', 'closed', 'open']).optional(), projectId: id.optional(), mine: z.enum(['true', 'false']).optional() }),
   issuesQuery: z.object({ mine: z.enum(['true', 'false']).optional(), status: z.string().optional() }),
-  create: z.object({ projectId: id, title: z.string().min(1).max(200), date: z.coerce.date().optional(), inspectorId: id.optional(), templateKey: z.string().max(60).optional(), checklist: z.array(checkItem).max(200).optional(), remarks: z.string().max(5000).optional(), instructions: z.string().max(5000).optional(), dueDate: z.coerce.date().optional().nullable(), unassigned: z.boolean().optional() }),
+  create: z.object({ projectId: id, title: z.string().min(1).max(200), date: z.coerce.date().optional(), inspectorId: id.optional(), templateKey: z.string().max(60).optional(), templateKeys: z.array(z.string().max(60)).max(30).optional(), checklist: z.array(checkItem).max(200).optional(), remarks: z.string().max(5000).optional(), instructions: z.string().max(5000).optional(), dueDate: z.coerce.date().optional().nullable(), unassigned: z.boolean().optional() }),
   update: z.object({ title: z.string().min(1).max(200).optional(), date: z.coerce.date().optional(), checklist: z.array(checkItem).max(200).optional(), remarks: z.string().max(5000).nullable().optional(), instructions: z.string().max(5000).nullable().optional(), dueDate: z.coerce.date().nullable().optional(), inspectorId: id.optional(), status: z.enum(['assigned', 'in_progress', 'completed', 'closed']).optional() }).refine((d) => Object.keys(d).length > 0, { message: 'No fields to update' }),
   issue: z.object({ description: z.string().min(1).max(3000), severity: severity.optional(), assignedToId: id.optional().nullable(), correctiveAction: z.string().max(3000).optional(), dueDate: z.coerce.date().optional().nullable() }),
   issueUpdate: z.object({ description: z.string().min(1).max(3000).optional(), severity: severity.optional(), assignedToId: id.nullable().optional(), correctiveAction: z.string().max(3000).nullable().optional(), dueDate: z.coerce.date().nullable().optional(), status: issueStatus.optional() }).refine((d) => Object.keys(d).length > 0, { message: 'No fields to update' }),
@@ -33,6 +35,9 @@ function registerRoutes(router) {
   const read = authorize('inspections.read');
   const manage = authorize('inspections.manage');
   router.get('/templates', read, h(async (req, res) => ok(res, await service.templates())));
+  // The inspection library is managed by anyone who can assign inspections.
+  router.get('/library/standard', manage, h(async (req, res) => ok(res, service.standardLibrary())));
+  router.put('/library', manage, validate({ body: z.object({ types: z.array(libType).max(100) }) }), h(async (req, res) => ok(res, await service.saveLibrary(req.body.types, req.user, req))));
   // Assignees can always list and progress issues assigned to them, even
   // without inspections.read; the service enforces the rest.
   router.get('/issues', validate({ query: s.issuesQuery }), h(async (req, res, next) => {

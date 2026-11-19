@@ -14,6 +14,9 @@ import { Tabs } from '../../components/ui';
 import { printHtml } from '../documents/print';
 import * as api from './api';
 import Select from '../../components/Select';
+import { LibraryManager, RequirementPicker, KindBadge } from './Library';
+import { uploadFile, readFileAsDataUrl, openFile } from '../../lib/files';
+import { readPhotoDate } from '../../lib/exif';
 
 const SEVERITY = { low: 'bg-slate-100 text-slate-600', medium: 'bg-amber-100 text-amber-700', high: 'bg-orange-100 text-orange-700', critical: 'bg-red-600 text-white' };
 const ISSUE_STATUS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved', verified: 'Verified' };
@@ -51,28 +54,34 @@ function IssueStatusSelect({ issue, onChange, allowVerify }) {
   );
 }
 
-function AssignModal({ onClose, onCreated }) {
+function AssignModal({ onClose, onCreated, onManageLibrary }) {
   const { user } = useAuth();
   const toast = useToast();
   const [projects, setProjects] = useState([]);
-  const [templates, setTemplates] = useState([]);
+  const [library, setLibrary] = useState(null);
   const [users, setUsers] = useState([]);
   const [busy, setBusy] = useState(false);
-  const [f, setF] = useState({ projectId: '', title: '', date: today(), dueDate: '', templateKey: '', inspectorId: String(user?.id || ''), instructions: '' });
+  const [reqs, setReqs] = useState([]);
+  const [f, setF] = useState({ projectId: '', title: '', date: today(), dueDate: '', inspectorId: String(user?.id || ''), instructions: '' });
   useEffect(() => {
     api.listProjectsLite().then(setProjects);
-    api.getTemplates().then((t) => { setTemplates(t); setF((x) => ({ ...x, templateKey: x.templateKey || t[0]?.key || '' })); }).catch(() => {});
+    api.getTemplates().then(setLibrary).catch(() => setLibrary([]));
     listDirectory().then(setUsers);
   }, []);
-  const tpl = templates.find((t) => t.key === f.templateKey);
+  // Suggest a title from the chosen inspection types.
+  const types = [...new Set(reqs.map((r) => r.type).filter((t) => t && t !== 'Custom'))];
+  const autoTitle = types.length === 1 ? types[0] : types.length > 1 ? `${types[0]} + ${types.length - 1} more` : reqs.length && reqs.every((r) => r.kind === 'photo') ? 'Site photographs' : '';
   const submit = async () => {
-    if (!f.projectId || !f.title.trim()) { toast.error('Select a site and enter a title'); return; }
+    const title = f.title.trim() || autoTitle;
+    if (!f.projectId) { toast.error('Select a site'); return; }
+    if (!reqs.length) { toast.error('Select at least one requirement'); return; }
+    if (!title) { toast.error('Enter a title'); return; }
     setBusy(true);
     try {
       const row = await api.createInspection({
-        projectId: Number(f.projectId), title: f.title.trim(), date: f.date,
+        projectId: Number(f.projectId), title, date: f.date,
         ...(f.dueDate ? { dueDate: f.dueDate } : {}),
-        ...(f.templateKey ? { templateKey: f.templateKey } : {}),
+        checklist: reqs.map((r) => ({ item: r.item, kind: r.kind, ...(r.type ? { type: r.type } : {}) })),
         ...(f.inspectorId === 'none' ? { unassigned: true } : f.inspectorId ? { inspectorId: Number(f.inspectorId) } : {}),
         ...(f.instructions.trim() ? { instructions: f.instructions.trim() } : {}),
       });
@@ -81,25 +90,23 @@ function AssignModal({ onClose, onCreated }) {
     } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
   };
   return (
-    <Modal open onClose={onClose} title="New inspection" wide footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" disabled={busy} onClick={submit}>{Number(f.inspectorId) === user?.id ? 'Start inspection' : 'Assign inspection'}</button></>}>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div><label className="label">Site / Project</label><Select className="input" value={f.projectId} onChange={(e) => setF({ ...f, projectId: e.target.value })}><option value="">Select site…</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></div>
-        <div><label className="label">Title</label><input className="input" placeholder="e.g. Slab L3 pre-pour check" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
-        <div><label className="label">Inspector</label><Select className="input" value={f.inspectorId} searchable onChange={(e) => setF({ ...f, inspectorId: e.target.value })}><option value="none">Assign later (pending)</option>{users.map((u) => <option key={u.id} value={u.id}>{u.id === user?.id ? `${u.name} (me)` : u.name}{u.designation ? ` · ${u.designation}` : ''}</option>)}</Select></div>
-        <div><label className="label">Checklist template</label><Select className="input" value={f.templateKey} onChange={(e) => setF({ ...f, templateKey: e.target.value })}><option value="">Blank checklist</option>{templates.map((t) => <option key={t.key} value={t.key}>{t.name} ({t.items.length} items)</option>)}</Select></div>
-        <div><label className="label">Inspection date</label><input type="date" className="input" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div>
-        <div><label className="label">Due by</label><input type="date" className="input" value={f.dueDate} min={f.date} onChange={(e) => setF({ ...f, dueDate: e.target.value })} /></div>
-        <div className="sm:col-span-2">
-          <label className="label">What to inspect / instructions</label>
-          <textarea className="input" rows={3} placeholder="e.g. Check reinforcement spacing on grid C–D, cover blocks, and shuttering alignment before tomorrow's pour." value={f.instructions} onChange={(e) => setF({ ...f, instructions: e.target.value })} />
+    <Modal open onClose={onClose} title="New site inspection" wide fullscreenable dismissOnBackdrop={false} footer={<><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" disabled={busy} onClick={submit}>{f.inspectorId === 'none' ? 'Create inspection' : Number(f.inspectorId) === user?.id ? 'Start inspection' : 'Assign inspection'}{reqs.length ? ` (${reqs.length})` : ''}</button></>}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div><label className="label">Site / Project *</label><Select className="input" value={f.projectId} searchable onChange={(e) => setF({ ...f, projectId: e.target.value })}><option value="">Select site…</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></div>
+        <div className="lg:col-span-2"><label className="label">Title</label><input className="input" placeholder={autoTitle || 'e.g. Slab L3 pre-pour check'} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+        <div><label className="label">Assign to</label><Select className="input" value={f.inspectorId} searchable onChange={(e) => setF({ ...f, inspectorId: e.target.value })}><option value="none">Assign later (pending)</option>{users.map((u) => <option key={u.id} value={u.id}>{u.id === user?.id ? `${u.name} (me)` : u.name}{u.designation ? ` · ${u.designation}` : ''}</option>)}</Select></div>
+        <div><label className="label">Start date</label><input type="date" className="input" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div>
+        <div><label className="label">Deadline (optional)</label><input type="date" className="input" value={f.dueDate} min={f.date} onChange={(e) => setF({ ...f, dueDate: e.target.value })} /></div>
+        <div className="sm:col-span-2 lg:col-span-3">
+          <label className="label">Notes for the inspector</label>
+          <textarea className="input" rows={2} placeholder="e.g. Check grid C–D before tomorrow's pour. Send photos of all four sides." value={f.instructions} onChange={(e) => setF({ ...f, instructions: e.target.value })} />
         </div>
-        {tpl && (
-          <div className="sm:col-span-2 rounded-lg bg-slate-50 p-3 dark:bg-slate-900/40">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Checklist the inspector will fill</p>
-            <ol className="grid list-decimal gap-x-6 pl-5 text-xs text-slate-600 sm:grid-cols-2 dark:text-slate-300">{tpl.items.map((it) => <li key={it}>{it}</li>)}</ol>
-          </div>
-        )}
       </div>
+      <div className="mt-4 mb-2 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-700">
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Inspection requirements</p>
+        {onManageLibrary && <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline" onClick={onManageLibrary}><Icon name="settings" className="h-3.5 w-3.5" /> Manage list</button>}
+      </div>
+      {!library ? <div className="flex justify-center p-6"><Spinner /></div> : <RequirementPicker library={library} value={reqs} onChange={setReqs} />}
     </Modal>
   );
 }
@@ -159,6 +166,58 @@ function InspectionsList({ mine = false, onChanged }) {
   );
 }
 
+// Photos / documents uploaded as evidence for one checklist requirement.
+function Evidence({ inspectionId, item, canUpload, onUploaded }) {
+  const toast = useToast();
+  const [files, setFiles] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const isPhoto = item.kind === 'photo';
+  const load = useCallback(() => api.listEvidence(inspectionId, item.ref).then(setFiles).catch(() => setFiles([])), [inspectionId, item.ref]);
+  useEffect(() => { if (item.evidence) load(); else setFiles([]); }, [load, item.evidence]);
+  const onPick = async (e) => {
+    const picked = [...(e.target.files || [])];
+    e.target.value = '';
+    if (!picked.length) return;
+    setBusy(true);
+    try {
+      for (const file of picked) {
+        // eslint-disable-next-line no-await-in-loop
+        const takenAt = await readPhotoDate(file);
+        // eslint-disable-next-line no-await-in-loop
+        const { data, mimeType } = await readFileAsDataUrl(file);
+        // eslint-disable-next-line no-await-in-loop
+        await uploadFile({ entityType: 'inspection', entityId: inspectionId, tag: item.ref, caption: item.item.slice(0, 250), name: file.name, mimeType, data, ...(takenAt ? { takenAt } : {}) });
+      }
+      toast.success(`${picked.length} file(s) uploaded`);
+      const next = await api.listEvidence(inspectionId, item.ref);
+      setFiles(next);
+      onUploaded(next.length);
+    } catch (err) { toast.error(errorMessage(err)); } finally { setBusy(false); }
+  };
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+      {(files || []).map((f) => (
+        f.mimeType?.startsWith('image/')
+          ? <button key={f.id} type="button" onClick={() => openFile(f.id)} title={f.takenAt ? `Taken ${formatDate(f.takenAt)}` : f.name}><img src={f.data} alt={f.name || 'evidence'} className="h-12 w-12 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-600" /></button>
+          : <button key={f.id} type="button" onClick={() => openFile(f.id)} className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700 dark:bg-slate-700 dark:text-slate-200">{f.name || 'File'}</button>
+      ))}
+      {canUpload && (
+        <label className={`btn-secondary btn-sm cursor-pointer ${busy ? 'pointer-events-none opacity-60' : ''}`}>
+          <Icon name={isPhoto ? 'photo' : 'add'} className="h-3.5 w-3.5" />{busy ? 'Uploading…' : isPhoto ? 'Add photo' : 'Upload document'}
+          <input type="file" className="hidden" multiple accept={isPhoto ? 'image/*' : 'image/*,application/pdf'} {...(isPhoto ? { capture: 'environment' } : {})} onChange={onPick} />
+        </label>
+      )}
+      {canUpload && isPhoto && (
+        <label className={`text-xs font-medium text-brand-700 hover:underline cursor-pointer ${busy ? 'pointer-events-none opacity-60' : ''}`}>
+          or pick from gallery
+          <input type="file" className="hidden" multiple accept="image/*" onChange={onPick} />
+        </label>
+      )}
+      <span className={`text-xs font-medium ${item.evidence ? 'text-emerald-700' : 'text-slate-400'}`}>{item.evidence ? `✓ ${item.evidence} received` : 'Not received yet'}</span>
+    </div>
+  );
+}
+
 function InspectionDetail() {
   const { id } = useParams();
   const { can } = useAuth();
@@ -179,7 +238,8 @@ function InspectionDetail() {
   useEffect(() => { load(); listDirectory().then(setUsers); }, [load]);
 
   const setItem = (i, patch) => { setChecklist((c) => c.map((x, j) => (j === i ? { ...x, ...patch } : x))); setDirty(true); };
-  const addItem = () => { if (newItem.trim()) { setChecklist((c) => [...c, { item: newItem.trim(), result: '', remark: '' }]); setNewItem(''); setDirty(true); } };
+  const [newKind, setNewKind] = useState('check');
+  const addItem = () => { if (newItem.trim()) { setChecklist((c) => [...c, { item: newItem.trim(), kind: newKind, type: 'Custom', result: '', remark: '' }]); setNewItem(''); setDirty(true); } };
   const save = async () => {
     try { await api.updateInspection(id, { checklist, remarks: remarks || null }); toast.success('Progress saved'); load(); } catch (e) { toast.error(errorMessage(e)); }
   };
@@ -221,6 +281,7 @@ function InspectionDetail() {
   const pctNow = (() => { const r = checklist.filter((c) => c.result === 'pass' || c.result === 'fail'); return r.length ? Math.round((r.filter((c) => c.result === 'pass').length / r.length) * 100) : null; })();
   const overdue = open && data.dueDate && new Date(data.dueDate) < new Date(new Date().toDateString());
   const RESULTS = [{ k: 'pass', l: 'Pass', on: 'bg-emerald-600 text-white' }, { k: 'fail', l: 'Fail', on: 'bg-red-600 text-white' }, { k: 'action', l: 'Action', on: 'bg-amber-500 text-amber-950', t: 'Needs corrective action' }, { k: 'na', l: 'N/A', on: 'bg-slate-500 text-white' }];
+  const RESULTS_EV = [{ k: 'pass', l: 'Received', on: 'bg-emerald-600 text-white', t: 'Evidence received' }, { k: 'fail', l: 'Missing', on: 'bg-red-600 text-white', t: 'Evidence not available' }, { k: 'na', l: 'N/A', on: 'bg-slate-500 text-white' }];
   const raiseFromItem = (c) => setIssueForm({ description: `${c.item}${c.remark ? ` — ${c.remark}` : ''}`, severity: c.result === 'fail' ? 'high' : 'medium', assignedToId: '', correctiveAction: '', dueDate: '' });
   const assignInspector = async (uid) => {
     try { await api.updateInspection(id, { inspectorId: Number(uid) }); toast.success('Inspector assigned and notified'); load(); } catch (e) { toast.error(errorMessage(e)); }
@@ -284,42 +345,58 @@ function InspectionDetail() {
         <div className="mb-4"><Alert type="warning">Submitted with {data.checklist.filter((c) => ['fail', 'action'].includes(c.result)).length} item(s) needing corrective action{data.issues.filter((x) => !['resolved', 'verified'].includes(x.status)).length ? ` and ${data.issues.filter((x) => !['resolved', 'verified'].includes(x.status)).length} open issue(s)` : ''}. Track fixes below; it becomes Completed when all issues are resolved.</Alert></div>
       )}
       {isInspector && data.status === 'assigned' && (
-        <div className="mb-4"><Alert type="info">This inspection is assigned to you. Mark each checklist item Pass / Fail / N/A, add notes and photos, then click <b>Mark completed</b>.</Alert></div>
+        <div className="mb-4"><Alert type="info">This inspection is assigned to you. Mark each check Pass / Fail / N/A, upload the photos and documents asked for, record readings, then click <b>Mark completed</b>.</Alert></div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-3">
           <div className="card">
             <div className="section-head">
-              <span className="section-title">Checklist</span>
+              <span className="section-title">Requirements</span>
               <div className="flex items-center gap-3"><ScoreBar score={{ pct: pctNow }} /><span className="text-xs text-slate-400">{left > 0 ? `${left} left` : 'All checked'}</span></div>
             </div>
             <Progress value={checklist.length ? (answeredNow / checklist.length) * 100 : 0} showLabel={false} size="xs" className="px-4 pt-2" />
             <ul className="divide-y divide-slate-100 dark:divide-slate-700">
-              {checklist.map((c, i) => (
-                <li key={i} className={`px-4 py-2.5 ${!c.result && editable ? '' : ''}`}>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`flex-1 text-sm ${c.result ? 'text-slate-700 dark:text-slate-200' : 'font-medium text-slate-800 dark:text-slate-100'}`}>{i + 1}. {c.item}</span>
-                    <div className="flex gap-1">
-                      {RESULTS.map((r) => (
-                        <button key={r.k} title={r.t || r.l} disabled={!editable} onClick={() => setItem(i, { result: c.result === r.k ? '' : r.k })}
-                          className={`rounded-md border px-2.5 py-1 text-xs font-semibold transition ${c.result === r.k ? `${r.on} border-transparent` : 'border-slate-200 text-slate-500 hover:bg-slate-50 disabled:hover:bg-transparent dark:border-slate-600'}`}>{r.l}</button>
-                      ))}
+              {checklist.map((c, i) => {
+                const ev = c.kind === 'photo' || c.kind === 'document';
+                const opts = ev ? RESULTS_EV : RESULTS;
+                return (
+                  <li key={c.ref || i} className="px-4 py-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="w-5 shrink-0 text-right text-xs text-slate-400">{i + 1}</span>
+                      <span className={`min-w-0 flex-1 text-sm ${c.result ? 'text-slate-700 dark:text-slate-200' : 'font-medium text-slate-800 dark:text-slate-100'}`}>
+                        {c.item}
+                        {c.type && <span className="block text-[11px] font-normal text-slate-400">{c.type}</span>}
+                      </span>
+                      <KindBadge kind={c.kind} />
+                      {c.kind === 'measure' && (
+                        <input className="input w-28 py-1 text-xs" placeholder="Value" disabled={!editable} value={c.value || ''} onChange={(e) => setItem(i, { value: e.target.value })} aria-label={`Reading for ${c.item}`} />
+                      )}
+                      <div className="flex gap-1">
+                        {opts.map((r) => (
+                          <button key={r.k} title={r.t || r.l} disabled={!editable} onClick={() => setItem(i, { result: c.result === r.k ? '' : r.k })}
+                            className={`rounded-md border px-2.5 py-1 text-xs font-semibold transition ${c.result === r.k ? `${r.on} border-transparent` : 'border-slate-200 text-slate-500 hover:bg-slate-50 disabled:hover:bg-transparent dark:border-slate-600'}`}>{r.l}</button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  {(editable || c.remark) && (
-                    <input className="input mt-1.5 py-1 text-xs" placeholder={['fail', 'action'].includes(c.result) ? 'What is wrong / what must be done?' : 'Note (optional)…'} disabled={!editable} value={c.remark || ''} onChange={(e) => setItem(i, { remark: e.target.value })} />
-                  )}
-                  {['fail', 'action'].includes(c.result) && (canManage || isInspector) && data.status !== 'closed' && !data.issues.some((x) => x.description.startsWith(c.item)) && (
-                    <button className="mt-1 text-xs font-medium text-brand-600 hover:underline" onClick={() => raiseFromItem(c)}>+ Raise issue for this item</button>
-                  )}
-                </li>
-              ))}
+                    <div className="pl-7">
+                      {ev && <Evidence inspectionId={Number(id)} item={c} canUpload={editable || ((canManage || isInspector) && data.status !== 'closed')} onUploaded={(n) => setItem(i, { evidence: n, ...(c.result ? {} : { result: 'pass' }) })} />}
+                      {(editable || c.remark) && (
+                        <input className="input mt-1.5 py-1 text-xs" placeholder={['fail', 'action'].includes(c.result) ? 'What is wrong / what must be done?' : 'Note (optional)…'} disabled={!editable} value={c.remark || ''} onChange={(e) => setItem(i, { remark: e.target.value })} />
+                      )}
+                      {['fail', 'action'].includes(c.result) && (canManage || isInspector) && data.status !== 'closed' && !data.issues.some((x) => x.description.startsWith(c.item)) && (
+                        <button className="mt-1 text-xs font-medium text-brand-600 hover:underline" onClick={() => raiseFromItem(c)}>+ Raise issue for this item</button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
               {!checklist.length && <li className="px-4 py-4 text-sm text-slate-400">No checklist items yet{editable ? ' — add what needs checking below.' : '.'}</li>}
             </ul>
             {editable && (
               <div className="flex gap-2 border-t border-slate-100 p-3 dark:border-slate-700">
-                <input className="input flex-1" placeholder="Add checklist item…" value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addItem()} />
+                <input className="input flex-1" placeholder="Add a requirement…" value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addItem()} />
+                <Select className="input w-32" value={newKind} onChange={(e) => setNewKind(e.target.value)}><option value="check">Check</option><option value="photo">Photo</option><option value="document">Document</option><option value="measure">Reading</option></Select>
                 <button className="btn-secondary" onClick={addItem}>Add</button>
               </div>
             )}
@@ -332,7 +409,7 @@ function InspectionDetail() {
         </div>
 
         <div className="space-y-4 lg:col-span-2">
-          <div className="card p-4"><Attachments entityType="inspection" entityId={Number(id)} canUpload={(canManage || isInspector) && data.status !== 'closed'} label="Site photos" accept="image/*" capture /></div>
+          <div className="card p-4"><Attachments entityType="inspection" entityId={Number(id)} canUpload={(canManage || isInspector) && data.status !== 'closed'} label="All site photos" accept="image/*" capture /></div>
           <div className="card">
             <div className="section-head">
               <span className="section-title">Issues &amp; corrective actions</span>
@@ -426,6 +503,8 @@ function InspectionsHome() {
   const [stats, setStats] = useState(null);
   const [tab, setTab] = useState(canRead ? 'list' : 'assigned');
   const [assign, setAssign] = useState(false);
+  const [library, setLibrary] = useState(false);
+  const [libVersion, setLibVersion] = useState(0);
   useEffect(() => { api.getStats().then(setStats).catch(() => {}); }, []);
   const tabs = [
     { key: 'list', label: 'All inspections', hidden: !canRead },
@@ -437,7 +516,12 @@ function InspectionsHome() {
       <PageHeader
         title="Site Inspection"
         subtitle="Assign checklists to inspectors, track completion, photos and corrective actions"
-        actions={can('inspections.manage') && <button className="btn-primary" onClick={() => setAssign(true)}><Icon name="add" className="h-4 w-4" /> New inspection</button>}
+        actions={can('inspections.manage') && (
+          <>
+            <button className="btn-secondary px-2.5" onClick={() => setLibrary(true)} title="Inspection list — predefined inspection types and requirements" aria-label="Manage inspection list"><Icon name="settings" className="h-4 w-4" /><span className="hidden sm:inline">Inspection list</span></button>
+            <button className="btn-primary" onClick={() => setAssign(true)}><Icon name="add" className="h-4 w-4" /> New inspection</button>
+          </>
+        )}
       />
       {stats && canRead && (
         <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-5">
@@ -452,7 +536,8 @@ function InspectionsHome() {
       {tab === 'list' && <InspectionsList />}
       {tab === 'assigned' && <InspectionsList mine />}
       {tab === 'issues' && <MyIssues />}
-      {assign && <AssignModal onClose={() => setAssign(false)} onCreated={(row) => { setAssign(false); navigate(`/inspections/${row.id}`); }} />}
+      {assign && <AssignModal key={libVersion} onClose={() => setAssign(false)} onManageLibrary={() => setLibrary(true)} onCreated={(row) => { setAssign(false); navigate(`/inspections/${row.id}`); }} />}
+      {library && <LibraryManager onClose={() => setLibrary(false)} onSaved={() => setLibVersion((v) => v + 1)} />}
     </div>
   );
 }

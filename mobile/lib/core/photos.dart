@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'api.dart';
 
 /// Take/choose photos (downscaled on device) and upload them as attachments.
-Future<int> pickAndUpload({required String entityType, required int entityId, bool camera = true}) async {
+Future<int> pickAndUpload({required String entityType, required int entityId, bool camera = true, String? tag, String? caption}) async {
   final picker = ImagePicker();
   final files = camera
       ? [await picker.pickImage(source: ImageSource.camera, maxWidth: 1600, imageQuality: 75)].whereType<XFile>().toList()
@@ -22,6 +22,8 @@ Future<int> pickAndUpload({required String entityType, required int entityId, bo
       'mimeType': 'image/jpeg',
       'data': 'data:image/jpeg;base64,${base64Encode(bytes)}',
       'takenAt': ?takenAt,
+      'tag': ?tag,
+      'caption': ?caption,
     });
     n++;
   }

@@ -12,3 +12,6 @@ export const listIssues = (params) => unwrap(api.get('/inspections/issues', { pa
 export const getReport = (id) => unwrap(api.get(`/inspections/${id}/report`));
 export const listProjectsLite = () => api.get('/projects', { params: { limit: 100 } }).then((r) => r.data.data).catch(() => []);
 export const getStats = () => unwrap(api.get('/inspections/stats'));
+export const getStandardLibrary = () => unwrap(api.get('/inspections/library/standard'));
+export const saveLibrary = (types) => unwrap(api.put('/inspections/library', { types }));
+export const listEvidence = (inspectionId, tag) => unwrap(api.get('/files', { params: { entityType: 'inspection', entityId: inspectionId, tag, withData: 'true' } }));

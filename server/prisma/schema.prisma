@@ -651,6 +651,7 @@ model StoredFile {
   size         Int?
   data         String   @db.LongText
   caption      String?
+  tag          String? // sub-item link, e.g. the inspection checklist item a photo is evidence for
   takenAt      DateTime? // original capture time (from photo EXIF) when known
   uploadedById Int?
   createdAt    DateTime @default(now())

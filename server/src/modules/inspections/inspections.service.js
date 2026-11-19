@@ -6,6 +6,8 @@ const activity = require('../../core/services/activityLog');
 const { notify } = require('../../core/services/notify');
 const { userNames, projectNames } = require('../../core/services/people');
 const { accessibleProjectIds, assertProjectAccess, hasPerm } = require('../../core/services/access');
+const { INSPECTION_LIBRARY, KINDS, normalizeType } = require('../../core/constants/inspectionLibrary');
+const crypto = require('crypto');
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-GB') : '—');
@@ -22,6 +24,24 @@ const normStatus = (st) => (st === 'open' ? 'in_progress' : st);
 const answered = (checklist = []) => checklist.filter((c) => c.result).length;
 const flagged = (checklist = []) => checklist.filter((c) => c.result === 'fail' || c.result === 'action').length;
 const OPEN_STATES = ['pending', 'assigned', 'in_progress', 'open'];
+const EVIDENCE = ['photo', 'document'];
+const newRef = () => crypto.randomBytes(5).toString('hex');
+
+// Gives every checklist row a stable ref (evidence photos are tagged with it)
+// and a kind; keeps refs the client already has.
+function withRefs(list = []) {
+  const seen = new Set();
+  return list.map((c) => {
+    let ref = c.ref && !seen.has(c.ref) ? c.ref : newRef();
+    seen.add(ref);
+    return { item: c.item, kind: KINDS.includes(c.kind) ? c.kind : 'check', ref, result: c.result || '', remark: c.remark || '', ...(c.value != null && c.value !== '' ? { value: String(c.value) } : {}), ...(c.type ? { type: c.type } : {}) };
+  });
+}
+
+async function evidenceCounts(inspectionId) {
+  const rows = await prisma.storedFile.groupBy({ by: ['tag'], where: { entityType: 'inspection', entityId: inspectionId, tag: { not: null } }, _count: { _all: true } });
+  return Object.fromEntries(rows.map((r) => [r.tag, r._count._all]));
+}
 
 async function canSee(actor, row) {
   if (row.inspectorId === actor.id) return;
@@ -36,9 +56,32 @@ async function getInspection(id) {
 }
 
 const inspectionsService = {
+  // The inspection library: [{ key, name, category, description, items: [{ text, kind }] }].
   async templates() {
     const row = await prisma.setting.findUnique({ where: { group_key: { group: 'inspections', key: 'checklists' } } });
-    return Array.isArray(row?.value) ? row.value : [];
+    return (Array.isArray(row?.value) ? row.value : []).map(normalizeType);
+  },
+
+  standardLibrary() {
+    return INSPECTION_LIBRARY;
+  },
+
+  async saveLibrary(types, actor, req) {
+    const keys = new Set();
+    const value = types.map((t, i) => {
+      const n = normalizeType(t, i);
+      let key = (t.key || n.name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 50) || `type_${i}`;
+      while (keys.has(key)) key = `${key}_${i}`;
+      keys.add(key);
+      return { ...n, key, name: n.name.trim() };
+    });
+    await prisma.setting.upsert({
+      where: { group_key: { group: 'inspections', key: 'checklists' } },
+      update: { value },
+      create: { group: 'inspections', key: 'checklists', value },
+    });
+    activity.record({ userId: actor.id, action: 'inspection.library_updated', entityType: 'setting', entityId: null, req });
+    return value;
   },
 
   async list(query, actor) {
@@ -69,6 +112,7 @@ const inspectionsService = {
       flagged: flagged(checklist),
       projectName: projects.get(r.projectId)?.name || null,
       inspectorName: users.get(r.inspectorId) || null,
+      evidenceItems: (checklist || []).filter((c) => EVIDENCE.includes(c.kind)).length,
       score: score(checklist),
       issueCount: issues.length,
       openIssues: issues.filter((i) => !['resolved', 'verified'].includes(i.status)).length,
@@ -78,13 +122,20 @@ const inspectionsService = {
   async get(id, actor) {
     const row = await getInspection(id);
     await canSee(actor, row);
-    const [projects, users, photos] = await Promise.all([
+    // Older inspections have no per-item refs yet: assign and store them once.
+    if ((row.checklist || []).some((c) => !c.ref || !c.kind)) {
+      row.checklist = withRefs(row.checklist || []);
+      await prisma.inspection.update({ where: { id }, data: { checklist: row.checklist } });
+    }
+    const [projects, users, photos, evidence] = await Promise.all([
       projectNames([row.projectId]),
       userNames([row.inspectorId, row.createdById, row.completedById, ...row.issues.map((i) => i.assignedToId)]),
       prisma.storedFile.count({ where: { entityType: 'inspection', entityId: id } }),
+      evidenceCounts(id),
     ]);
     return {
       ...row,
+      checklist: (row.checklist || []).map((c) => ({ ...c, evidence: evidence[c.ref] || 0 })),
       status: normStatus(row.status),
       projectName: projects.get(row.projectId)?.name || null,
       inspectorName: users.get(row.inspectorId) || null,
@@ -101,10 +152,16 @@ const inspectionsService = {
   async create(payload, actor, req) {
     await assertProjectAccess(actor, payload.projectId);
     let checklist = payload.checklist;
-    if (!checklist && payload.templateKey) {
-      const tpl = (await this.templates()).find((t) => t.key === payload.templateKey);
-      checklist = (tpl?.items || []).map((item) => ({ item, result: '', remark: '' }));
+    if (!checklist && (payload.templateKey || payload.templateKeys?.length)) {
+      const wanted = payload.templateKeys?.length ? payload.templateKeys : [payload.templateKey];
+      const lib = await this.templates();
+      checklist = wanted.flatMap((k) => {
+        const tpl = lib.find((t) => t.key === k);
+        return (tpl?.items || []).map((it) => ({ item: it.text, kind: it.kind, type: tpl.name }));
+      });
     }
+    checklist = withRefs(checklist || []);
+    if (!checklist.length) throw AppError.badRequest('Select at least one inspection requirement');
     const inspectorId = payload.unassigned ? null : payload.inspectorId || actor.id;
     const row = await prisma.inspection.create({
       data: {
@@ -115,7 +172,7 @@ const inspectionsService = {
         inspectorId,
         instructions: payload.instructions || null,
         status: !inspectorId ? 'pending' : inspectorId === actor.id ? 'in_progress' : 'assigned',
-        checklist: checklist || [],
+        checklist,
         remarks: payload.remarks || null,
         createdById: actor.id,
       },
@@ -136,6 +193,16 @@ const inspectionsService = {
     if (!isManager && !isInspector) throw AppError.forbidden('Only the assigned inspector or a manager can update this inspection');
     if (isManager) await canSee(actor, row);
     const data = { ...payload };
+    if (data.checklist) {
+      // Keep each row's ref (and so its evidence) even if the client dropped it.
+      // Older clients (mobile) send only item/result/remark: keep kind, type and reading too.
+      const byRef = new Map((row.checklist || []).map((c) => [c.ref, c]));
+      const byText = new Map((row.checklist || []).map((c) => [c.item, c]));
+      data.checklist = withRefs(data.checklist.map((c) => {
+        const prev = (c.ref && byRef.get(c.ref)) || byText.get(c.item) || {};
+        return { ...c, ref: c.ref || prev.ref, kind: c.kind || prev.kind, type: c.type || prev.type, value: c.value !== undefined ? c.value : prev.value };
+      }));
+    }
     if (!isManager) {
       // The inspector fills the checklist, notes and submits — nothing else.
       for (const k of Object.keys(data)) if (!['checklist', 'remarks', 'status'].includes(k)) delete data[k];
@@ -150,6 +217,10 @@ const inspectionsService = {
       const list = data.checklist || row.checklist || [];
       const left = list.filter((c) => !c.result).length;
       if (left) throw AppError.badRequest(`Mark every checklist item before submitting (${left} left)`);
+      // A photo / document requirement marked as received needs the evidence attached.
+      const ev = await evidenceCounts(id);
+      const missing = list.filter((c) => EVIDENCE.includes(c.kind) && c.result === 'pass' && !ev[c.ref]);
+      if (missing.length) throw AppError.badRequest(`Upload the evidence for: ${missing.slice(0, 3).map((c) => c.item).join('; ')}${missing.length > 3 ? ` (+${missing.length - 3} more)` : ''}`);
       data.completedAt = new Date();
       data.completedById = actor.id;
       // Failed / action-needed items or open issues → needs follow-up.
@@ -266,9 +337,13 @@ const inspectionsService = {
   async report(id, actor) {
     const r = await this.get(id, actor);
     const company = (await prisma.company.findFirst()) || {};
-    const photos = await prisma.storedFile.findMany({ where: { entityType: 'inspection', entityId: id, mimeType: { startsWith: 'image/' } }, select: { data: true, name: true, caption: true, takenAt: true, createdAt: true }, take: 24 });
+    const photos = await prisma.storedFile.findMany({ where: { entityType: 'inspection', entityId: id, mimeType: { startsWith: 'image/' } }, select: { data: true, name: true, caption: true, tag: true, takenAt: true, createdAt: true }, take: 36 });
     const RES = { pass: '<b style="color:#16a34a">PASS</b>', fail: '<b style="color:#dc2626">FAIL</b>', action: '<b style="color:#d97706">ACTION NEEDED</b>', na: '<span style="color:#94a3b8">N/A</span>' };
-    const rows = (r.checklist || []).map((c, i) => `<tr><td>${i + 1}</td><td>${esc(c.item)}</td><td>${RES[c.result] || '—'}</td><td>${esc(c.remark)}</td></tr>`).join('');
+    const RES_EV = { pass: '<b style="color:#16a34a">RECEIVED</b>', fail: '<b style="color:#dc2626">NOT RECEIVED</b>', action: '<b style="color:#d97706">ACTION NEEDED</b>', na: '<span style="color:#94a3b8">N/A</span>' };
+    const KIND = { check: 'Check', photo: 'Photo', document: 'Document', measure: 'Reading' };
+    const itemByRef = new Map((r.checklist || []).map((c) => [c.ref, c.item]));
+    for (const ph of photos) if (ph.tag && itemByRef.has(ph.tag) && !ph.caption) ph.caption = itemByRef.get(ph.tag);
+    const rows = (r.checklist || []).map((c, i) => `<tr><td>${i + 1}</td><td>${esc(c.item)}${c.type ? `<div style="color:#94a3b8;font-size:10px">${esc(c.type)}</div>` : ''}</td><td>${KIND[c.kind] || 'Check'}</td><td>${(EVIDENCE.includes(c.kind) ? RES_EV : RES)[c.result] || '—'}${EVIDENCE.includes(c.kind) ? ` <span style="color:#64748b">(${c.evidence || 0} file${c.evidence === 1 ? '' : 's'})</span>` : ''}</td><td>${c.value ? `<b>${esc(c.value)}</b> ` : ''}${esc(c.remark)}</td></tr>`).join('');
     const issues = r.issues.map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.description)}</td><td style="text-transform:capitalize">${esc(i.severity)}</td><td>${esc(i.assignedToName || '—')}</td><td>${esc(i.correctiveAction || '—')}</td><td>${fmt(i.dueDate)}</td><td style="text-transform:capitalize">${esc(i.status.replace('_', ' '))}</td></tr>`).join('');
     const pics = photos.map((p) => `<figure><img src="${p.data}" alt=""/><figcaption>${esc(p.caption || p.name || '')} · ${p.takenAt ? `Taken ${new Date(p.takenAt).toLocaleString('en-GB')}` : `Uploaded ${fmt(p.createdAt)}`}</figcaption></figure>`).join('');
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Inspection #${r.id}</title><style>
@@ -281,7 +356,7 @@ table{width:100%;border-collapse:collapse}th{background:#EEF2FF;color:#3730A3;te
 @media print{body{padding:0}}</style></head><body>
 <div class="top"><div><b style="font-size:18px">${esc(company.name || '')}</b><div style="color:#6b7280">${esc(company.address || '')}</div></div><div style="text-align:right"><h1>Inspection Report</h1><div>#${r.id} · ${fmt(r.date)}</div></div></div>
 <table class="kv"><tr><td>Project</td><td><b>${esc(r.projectName)}</b></td></tr><tr><td>Inspection</td><td>${esc(r.title)}</td></tr><tr><td>Inspector</td><td>${esc(r.inspectorName || '—')}</td></tr><tr><td>Status</td><td style="text-transform:capitalize">${esc(r.status.replace('_', ' '))}${r.completedAt ? ` — submitted ${new Date(r.completedAt).toLocaleString('en-GB')}` : ''}</td></tr><tr><td>Score</td><td>${r.score.pct == null ? '—' : `${r.score.pct}% (${r.score.pass} pass / ${r.score.fail} fail)`}</td></tr></table>
-<h2>Checklist</h2><table><thead><tr><th>#</th><th>Item</th><th>Result</th><th>Remark</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No checklist</td></tr>'}</tbody></table>
+<h2>Requirements</h2><table><thead><tr><th>#</th><th>Requirement</th><th>Type</th><th>Result</th><th>Reading / remark</th></tr></thead><tbody>${rows || '<tr><td colspan="5">No checklist</td></tr>'}</tbody></table>
 ${r.instructions ? `<h2>Scope / Instructions</h2><p style="white-space:pre-wrap">${esc(r.instructions)}</p>` : ''}
 ${r.remarks ? `<h2>Remarks</h2><p style="white-space:pre-wrap">${esc(r.remarks)}</p>` : ''}
 <h2>Issues &amp; Corrective Actions</h2><table><thead><tr><th>#</th><th>Issue</th><th>Severity</th><th>Assigned</th><th>Corrective action</th><th>Due</th><th>Status</th></tr></thead><tbody>${issues || '<tr><td colspan="7">No issues identified</td></tr>'}</tbody></table>

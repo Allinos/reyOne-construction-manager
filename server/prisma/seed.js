@@ -10,6 +10,7 @@ const env = require('../src/config/env');
 const { hashPassword } = require('../src/core/utils/password');
 const { PERMISSIONS, DEFAULT_ROLES, WILDCARD } = require('../src/core/constants/rbac');
 const { MODULE_CATALOG } = require('../src/core/constants/modules');
+const { INSPECTION_LIBRARY, normalizeType } = require('../src/core/constants/inspectionLibrary');
 
 const WILDCARD_PERMISSION = {
   key: WILDCARD,
@@ -145,18 +146,8 @@ const DEFAULT_SETTINGS = [
       defaultNotes: 'Thank you for your business.',
     },
   },
-  // Site inspection checklist templates (editable in Settings).
-  {
-    group: 'inspections',
-    key: 'checklists',
-    value: [
-      { key: 'general_site', name: 'General Site Safety', items: ['Barricading & signage in place', 'PPE worn by all workers', 'Scaffolding secure & tagged', 'First-aid kit available', 'Housekeeping / debris cleared', 'Electrical connections safe', 'Fire extinguisher accessible', 'Material stacking safe'] },
-      { key: 'foundation', name: 'Foundation / Footing', items: ['Excavation depth as per drawing', 'Soil bed compacted', 'PCC level & thickness', 'Reinforcement size & spacing', 'Cover blocks provided', 'Shuttering line & level', 'Concrete grade / slump checked', 'Curing arranged'] },
-      { key: 'rcc_slab', name: 'RCC Slab / Beam', items: ['Shuttering & props stable', 'Bar bending schedule followed', 'Lap lengths correct', 'Electrical conduits placed', 'Cover blocks provided', 'Cube samples taken', 'Vibration during pour', 'Curing for 14+ days'] },
-      { key: 'masonry', name: 'Brickwork / Masonry', items: ['Bricks soaked', 'Mortar ratio correct', 'Line, level & plumb', 'Joints fully filled', 'Lintels / sills as per drawing', 'Curing done'] },
-      { key: 'finishing', name: 'Finishing / Handover', items: ['Plaster surface even', 'Tiles level, no hollowness', 'Paint uniform', 'Doors & windows operate smoothly', 'Plumbing leak test passed', 'Electrical points tested', 'Site cleaned'] },
-    ],
-  },
+  // Site inspection library (editable from Site Inspection → Library).
+  { group: 'inspections', key: 'checklists', value: INSPECTION_LIBRARY },
   { group: 'queries', key: 'categories', value: ['General', 'Design / Drawing', 'Materials', 'Payment', 'Site Issue', 'Client Request'] },
 ];
 
@@ -225,6 +216,25 @@ async function seedSettings() {
     });
   }
   console.log(`  ✓ ${DEFAULT_SETTINGS.length} settings`);
+  await upgradeInspectionLibrary();
+}
+
+// One-time: older installs had five plain-text checklists. Keep them (typed)
+// and add any standard inspection types they don't have yet.
+async function upgradeInspectionLibrary() {
+  const flag = await prisma.setting.findUnique({ where: { group_key: { group: 'system', key: 'inspection_library_v2' } } });
+  if (flag) return;
+  const row = await prisma.setting.findUnique({ where: { group_key: { group: 'inspections', key: 'checklists' } } });
+  const current = (Array.isArray(row?.value) ? row.value : []).map(normalizeType);
+  const have = new Set(current.map((t) => t.key));
+  const merged = [...current, ...INSPECTION_LIBRARY.filter((t) => !have.has(t.key))];
+  await prisma.setting.upsert({
+    where: { group_key: { group: 'inspections', key: 'checklists' } },
+    update: { value: merged },
+    create: { group: 'inspections', key: 'checklists', value: merged },
+  });
+  await prisma.setting.create({ data: { group: 'system', key: 'inspection_library_v2', value: true } });
+  console.log('  ✓ inspection library upgraded');
 }
 
 async function seedAdmin() {

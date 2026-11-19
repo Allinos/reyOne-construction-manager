@@ -12,7 +12,24 @@ import { AttendanceSettings, SecuritySettings } from './PolicyPages';
 import RolesPage from '../roles/RolesPage';
 import ActivityPage from '../activity/ActivityPage';
 import ModuleManagerPage from '../modulemanager/ModuleManagerPage';
-import { StringListEditor, ObjectListEditor, TextSettingEditor, ToggleGroupEditor, ChecklistTemplatesEditor } from './editors';
+import { StringListEditor, ObjectListEditor, TextSettingEditor, ToggleGroupEditor } from './editors';
+import { LibraryManager } from '../inspections/Library';
+
+function InspectionListCard({ initial }) {
+  const [types, setTypes] = useState(initial || []);
+  const [open, setOpen] = useState(false);
+  const items = types.reduce((n, t) => n + (t.items || []).length, 0);
+  return (
+    <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
+      <div>
+        <p className="font-semibold text-slate-800 dark:text-slate-100">Inspection list</p>
+        <p className="mt-0.5 text-sm text-slate-500">{types.length} inspection types · {items} requirements (checks, photos, documents and readings).</p>
+      </div>
+      <button className="btn-primary" onClick={() => setOpen(true)}><Icon name="settings" className="h-4 w-4" /> Manage inspection list</button>
+      {open && <LibraryManager onClose={() => setOpen(false)} onSaved={setTypes} />}
+    </div>
+  );
+}
 
 const colorList = (list) =>
   (list || []).map((c) => (typeof c === 'string' ? { name: c, color: '#cc6e02' } : { name: c.name || '', color: c.color || '#cc6e02' }));
@@ -135,8 +152,8 @@ const pages = {
     </Section>
   ),
   inspections: (s) => (
-    <Section title="Site inspection" description="Checklist templates used when assigning inspections.">
-      <ChecklistTemplatesEditor initial={(s.inspections || {}).checklists} />
+    <Section title="Site inspection" description="Predefined inspection types and requirements people pick from when creating an inspection.">
+      <InspectionListCard initial={(s.inspections || {}).checklists} />
     </Section>
   ),
   queries: (s) => (

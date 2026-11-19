@@ -10,6 +10,7 @@ import '../core/widgets.dart';
 
 const _severityColor = {'low': Colors.blueGrey, 'medium': Colors.orange, 'high': Colors.deepOrange, 'critical': Colors.red};
 const _statusColor = {'pending': Colors.grey, 'assigned': Colors.blueGrey, 'in_progress': Colors.blue, 'completed': Colors.green, 'follow_up': Colors.orange, 'closed': Colors.brown};
+const _kindLabel = {'photo': 'Photo', 'document': 'Document', 'measure': 'Reading'};
 const _statusLabel = {'pending': 'Pending', 'assigned': 'Assigned', 'in_progress': 'In progress', 'completed': 'Completed', 'follow_up': 'Needs follow-up', 'closed': 'Closed'};
 
 class InspectionsScreen extends StatefulWidget {
@@ -45,7 +46,7 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
               initialValue: tpl,
               decoration: const InputDecoration(labelText: 'Checklist'),
               items: [
-                const DropdownMenuItem(value: null, child: Text('Blank')),
+                const DropdownMenuItem(value: null, child: Text('Site photographs only')),
                 for (final t in templates) DropdownMenuItem(value: t['key'] as String, child: Text('${t['name']}')),
               ],
               onChanged: (v) => set(() => tpl = v),
@@ -58,7 +59,13 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
     );
     if (ok != true || title.text.trim().isEmpty || !mounted) return;
     try {
-      final row = await Api.I.post('/inspections', {'projectId': project['id'], 'title': title.text.trim(), 'templateKey': ?tpl, 'date': DateTime.now().toIso8601String().substring(0, 10)});
+      final row = await Api.I.post('/inspections', {
+        'projectId': project['id'],
+        'title': title.text.trim(),
+        'templateKey': ?tpl,
+        if (tpl == null) 'checklist': [{'item': 'Site photographs (overall view)', 'kind': 'photo', 'type': 'Custom'}],
+        'date': DateTime.now().toIso8601String().substring(0, 10),
+      });
       if (!mounted) return;
       await Navigator.push(context, MaterialPageRoute(builder: (_) => InspectionDetailScreen(id: row['id'] as int)));
       _key.currentState?.reload();
@@ -186,6 +193,22 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
     _load();
   }
 
+  // Photo evidence for one requirement; marks it received when uploaded.
+  Future<void> _addEvidence(int i, bool camera) async {
+    final c = _checklist[i];
+    var n = 0;
+    final ok = await guard(context, () async {
+      n = await pickAndUpload(entityType: 'inspection', entityId: widget.id, camera: camera, tag: '${c['ref']}', caption: '${c['item']}'.length > 250 ? '${c['item']}'.substring(0, 250) : '${c['item']}');
+    }, success: 'Evidence uploaded');
+    if (!ok || n == 0) return;
+    setState(() {
+      c['evidence'] = ((c['evidence'] as num?)?.toInt() ?? 0) + n;
+      if ('${c['result'] ?? ''}'.isEmpty) c['result'] = 'pass';
+      _dirty = true;
+    });
+    await _save();
+  }
+
   Future<void> _addIssue() async {
     final desc = TextEditingController();
     final action = TextEditingController();
@@ -296,17 +319,50 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${i + 1}. ${_checklist[i]['item']}', style: const TextStyle(fontWeight: FontWeight.w500)),
+                    Row(children: [
+                      Expanded(child: Text('${i + 1}. ${_checklist[i]['item']}', style: const TextStyle(fontWeight: FontWeight.w500))),
+                      if (_kindLabel[_checklist[i]['kind']] != null) Chip2(_kindLabel[_checklist[i]['kind']]!, color: Colors.blueGrey),
+                    ]),
+                    if (_checklist[i]['type'] != null) Text('${_checklist[i]['type']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    if (_checklist[i]['kind'] == 'measure')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: TextFormField(
+                          initialValue: '${_checklist[i]['value'] ?? ''}',
+                          enabled: _editable,
+                          decoration: const InputDecoration(isDense: true, hintText: 'Reading / value'),
+                          onChanged: (v) => setState(() {
+                            _checklist[i]['value'] = v;
+                            _dirty = true;
+                          }),
+                        ),
+                      ),
+                    if (_checklist[i]['kind'] == 'photo' || _checklist[i]['kind'] == 'document')
+                      Row(children: [
+                        Text(((_checklist[i]['evidence'] as num?) ?? 0) > 0 ? '✓ ${_checklist[i]['evidence']} received' : 'Not received yet',
+                            style: TextStyle(fontSize: 12, color: ((_checklist[i]['evidence'] as num?) ?? 0) > 0 ? Colors.green : Colors.grey)),
+                        const Spacer(),
+                        if ((_canManage || _isInspector) && d['status'] != 'closed') ...[
+                          IconButton(tooltip: 'Camera', icon: const Icon(Icons.photo_camera, size: 20), onPressed: () => _addEvidence(i, true)),
+                          IconButton(tooltip: 'Gallery', icon: const Icon(Icons.photo_library_outlined, size: 20), onPressed: () => _addEvidence(i, false)),
+                        ],
+                      ]),
                     const SizedBox(height: 6),
                     SegmentedButton<String>(
                       emptySelectionAllowed: true,
                       showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(value: 'pass', label: Text('Pass')),
-                        ButtonSegment(value: 'fail', label: Text('Fail')),
-                        ButtonSegment(value: 'action', label: Text('Action')),
-                        ButtonSegment(value: 'na', label: Text('N/A')),
-                      ],
+                      segments: (_checklist[i]['kind'] == 'photo' || _checklist[i]['kind'] == 'document')
+                          ? const [
+                              ButtonSegment(value: 'pass', label: Text('Received')),
+                              ButtonSegment(value: 'fail', label: Text('Missing')),
+                              ButtonSegment(value: 'na', label: Text('N/A')),
+                            ]
+                          : const [
+                              ButtonSegment(value: 'pass', label: Text('Pass')),
+                              ButtonSegment(value: 'fail', label: Text('Fail')),
+                              ButtonSegment(value: 'action', label: Text('Action')),
+                              ButtonSegment(value: 'na', label: Text('N/A')),
+                            ],
                       selected: {if ((_checklist[i]['result'] ?? '') != '') '${_checklist[i]['result']}'},
                       onSelectionChanged: _editable
                           ? (s) => setState(() {
