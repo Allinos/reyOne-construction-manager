@@ -190,7 +190,7 @@ function RequestsTab({ lookups, onChanged, openNew, onCreatePO }) {
     <>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {[['', 'All'], ['pending', 'Awaiting approval'], ['approved', 'Approved · to dispatch'], ['partially_fulfilled', 'Partly sent'], ['fulfilled', 'Delivered'], ['rejected', 'Rejected']].map(([k, l]) => (
-          <button key={k || 'all'} onClick={() => setStatus(k)} className={`rounded-full px-3 py-1 text-xs font-medium ${status === k ? 'bg-brand-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600'}`}>{l}</button>
+          <button key={k || 'all'} onClick={() => setStatus(k)} className={`chip ${status === k ? 'chip-on' : ''}`}>{l}</button>
         ))}
         <p className="ml-auto hidden text-xs text-slate-400 lg:block">Site raises request → manager approves → store dispatches to site</p>
       </div>

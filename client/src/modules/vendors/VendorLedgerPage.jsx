@@ -262,7 +262,7 @@ export default function VendorLedgerPage() {
         <>
           <div className="mb-3 flex flex-wrap gap-2">
             {[['open', 'Unpaid'], ['overdue', 'Overdue'], ['paid', 'Paid'], ['all', 'All']].map(([k, l]) => (
-              <button key={k} onClick={() => setBillFilter(k)} className={`rounded-full px-3 py-1 text-xs font-medium ${billFilter === k ? 'bg-brand-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600'}`}>{l}</button>
+              <button key={k} onClick={() => setBillFilter(k)} className={`chip ${billFilter === k ? 'chip-on' : ''}`}>{l}</button>
             ))}
           </div>
           {bills.length === 0 ? <EmptyState title="No bills here" hint={canPay ? 'Bills are created when goods are received, or with "Add bill".' : undefined} /> : (

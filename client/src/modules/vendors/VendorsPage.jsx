@@ -30,7 +30,7 @@ const BILL_BADGE = {
 };
 
 // Right-hand panel: what we owe this vendor, unpaid bills, payment history, contact.
-function VendorPanel({ vendorId, onEdit, onDelete, onChanged }) {
+function VendorPanel({ vendorId, onEdit, onDelete, onChanged, autoPay }) {
   const { bootstrap, can } = useAuth();
   const money = (v) => formatMoney(v, bootstrap?.company?.currency || 'INR');
   const [data, setData] = useState(null);
@@ -38,6 +38,7 @@ function VendorPanel({ vendorId, onEdit, onDelete, onChanged }) {
   const [modal, setModal] = useState(null);
   const load = useCallback(() => { setError(''); getStatement(vendorId).then(setData).catch((e) => setError(errorMessage(e))); }, [vendorId]);
   useEffect(() => { setData(null); load(); }, [load]);
+  useEffect(() => { if (autoPay && can('vendors.pay')) setModal('pay'); }, [autoPay]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) return <div className="card p-4"><Alert>{error}</Alert></div>;
   if (!data) return <div className="card flex justify-center p-10"><Spinner /></div>;
@@ -169,6 +170,10 @@ export default function VendorsPage() {
   const [modal, setModal] = useState(null);
   const [saving, setSaving] = useState(false);
   const selected = Number(params.get('v')) || null;
+  const autoPay = params.get('pay') === '1';
+  useEffect(() => {
+    if (params.get('new') && can('vendors.create')) { setModal({ editingId: null, form: { ...blank } }); setParams({}, { replace: true }); }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadDues = useCallback(() => getPayables().then(setDues).catch(() => setDues(null)), []);
   const load = useCallback(async () => {
@@ -235,7 +240,7 @@ export default function VendorsPage() {
           </div>
           <div className="mb-2 flex gap-1.5">
             {[['all', 'All'], ['due', 'To pay'], ['overdue', 'Overdue']].map(([k, l]) => (
-              <button key={k} onClick={() => setFilter(k)} className={`rounded-full px-3 py-1 text-xs font-medium ${filter === k ? 'bg-brand-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600'}`}>{l}</button>
+              <button key={k} onClick={() => setFilter(k)} className={`chip ${filter === k ? 'chip-on' : ''}`}>{l}</button>
             ))}
           </div>
           <div className="card overflow-hidden">
@@ -273,7 +278,7 @@ export default function VendorsPage() {
 
         {/* Selected vendor */}
         <div className="hidden lg:col-span-3 lg:block">
-          {current ? <VendorPanel key={current} vendorId={current} onEdit={openEdit} onDelete={remove} onChanged={loadDues} /> : <div className="card p-8"><EmptyState title="Select a vendor" hint="Their dues, bills and payments appear here." /></div>}
+          {current ? <VendorPanel key={current} vendorId={current} autoPay={autoPay && current === selected} onEdit={openEdit} onDelete={remove} onChanged={loadDues} /> : <div className="card p-8"><EmptyState title="Select a vendor" hint="Their dues, bills and payments appear here." /></div>}
         </div>
       </div>
 

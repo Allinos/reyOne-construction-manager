@@ -29,9 +29,9 @@ export default function PhotoTab({ projectId, canEdit }) {
 
   // Categories may be legacy strings or { name, color } objects.
   const categories = (bootstrap?.settings?.photos?.categories || []).map((c) =>
-    typeof c === 'string' ? { name: c, color: '#64748b' } : { name: c.name || '', color: c.color || '#64748b' },
+    typeof c === 'string' ? { name: c, color: '#7D6E5C' } : { name: c.name || '', color: c.color || '#7D6E5C' },
   );
-  const colorFor = (name) => categories.find((c) => c.name === name)?.color || '#94a3b8';
+  const colorFor = (name) => categories.find((c) => c.name === name)?.color || '#9A8B78';
 
   const load = useCallback(() => {
     listPhotos(projectId).then(setPhotos).catch((e) => toast.error(errorMessage(e)));

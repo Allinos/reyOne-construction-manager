@@ -47,8 +47,8 @@ export function FinanceAnalytics({ open }) {
           labels={data.monthly.labels}
           formatValue={(v) => formatMoney(v, currency)}
           series={[
-            { name: 'Income', color: '#16a34a', values: data.monthly.revenue },
-            { name: 'Expenses', color: '#ef4444', values: data.monthly.expenses },
+            { name: 'Income', color: '#15803D', values: data.monthly.revenue },
+            { name: 'Expenses', color: '#C2410C', values: data.monthly.expenses },
           ]}
         />
       </Card>
@@ -74,7 +74,7 @@ export function ExpenseAnalytics({ open }) {
         <BarChart
           labels={data.monthly.labels}
           formatValue={(v) => formatMoney(v, currency)}
-          series={[{ name: 'Expenses', color: '#ef4444', values: data.monthly.expenses }]}
+          series={[{ name: 'Expenses', color: '#C2410C', values: data.monthly.expenses }]}
         />
       </Card>
     </>

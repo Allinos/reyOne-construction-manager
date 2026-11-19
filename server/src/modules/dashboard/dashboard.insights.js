@@ -98,7 +98,31 @@ async function insights(actor) {
       const active = rows.filter((r) => r.status !== 'completed');
       const byStatus = {};
       for (const r of rows) byStatus[r.status] = (byStatus[r.status] || 0) + 1;
+      // Active projects for the dashboard table: current stage, and spend vs contract for finance users.
+      const activeRows = await prisma.project.findMany({
+        where: { ...projectWhere, status: { not: 'completed' } },
+        select: { id: true, name: true, clientName: true, status: true, progress: true, endDate: true, projectAmount: true, phases: { select: { name: true, status: true, sortOrder: true }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] } },
+        orderBy: { updatedAt: 'desc' },
+        take: 6,
+      });
+      const seesMoney = can('finance.read');
+      const spentRows = seesMoney && activeRows.length
+        ? await prisma.expense.groupBy({ by: ['projectId'], where: { projectId: { in: activeRows.map((r) => r.id) } }, _sum: { amount: true } })
+        : [];
+      const spentBy = new Map(spentRows.map((r) => [r.projectId, num(r._sum.amount)]));
+      const activeList = activeRows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        clientName: r.clientName,
+        status: r.status,
+        progress: r.progress,
+        endDate: r.endDate,
+        stage: (r.phases.find((ph) => ph.status !== 'completed') || {}).name || null,
+        late: !!(r.endDate && new Date(r.endDate) < new Date()),
+        ...(seesMoney ? { contract: num(r.projectAmount), spent: r2(spentBy.get(r.id) || 0) } : {}),
+      }));
       out.projects = {
+        activeList,
         total: rows.length,
         active: active.length,
         completed: rows.length - active.length,

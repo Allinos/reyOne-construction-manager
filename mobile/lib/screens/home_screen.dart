@@ -86,22 +86,51 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Brown "hero" card: today's check-in status with one big action.
   Widget _checkInCard() {
     final r = _me?['record'] as Map?;
     final start = (_me?['rules'] as Map?)?['workStart'] ?? '';
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.fingerprint, color: accent),
-        title: const Text('My attendance today', style: TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(r?['checkIn'] == null
-            ? 'Not checked in · work starts $start'
-            : 'In ${r!['checkIn']}${r['late'] == true ? ' (late)' : ''}${r['checkOut'] != null ? ' · Out ${r['checkOut']}' : ''}'),
-        trailing: r?['checkIn'] == null
-            ? FilledButton(onPressed: _punching ? null : () => _punch('in'), child: const Text('Check in'))
-            : r!['checkOut'] == null
-                ? OutlinedButton(onPressed: _punching ? null : () => _punch('out'), child: const Text('Check out'))
-                : const Icon(Icons.check_circle, color: Colors.green),
+    final inAt = r?['checkIn'];
+    final outAt = r?['checkOut'];
+    final title = inAt == null ? 'Not checked in' : outAt == null ? 'Checked in $inAt' : 'Done for today';
+    final sub = inAt == null
+        ? 'Work starts $start'
+        : '${r!['late'] == true ? 'Late · ' : ''}In $inAt${outAt != null ? ' · Out $outAt' : ''}';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(colors: [brandDark, Color(0xFF7A4300)], begin: Alignment.topLeft, end: Alignment.bottomRight),
       ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('My attendance today', style: TextStyle(color: Color(0xBFFFE7A8), fontSize: 12)),
+              const SizedBox(height: 2),
+              Text(title, style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
+              const SizedBox(height: 2),
+              Text(sub, style: const TextStyle(color: Color(0xBFFFE7A8), fontSize: 12)),
+            ]),
+          ),
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(color: inAt == null ? Colors.white24 : brand, shape: BoxShape.circle),
+            child: Icon(inAt == null ? Icons.fingerprint : Icons.check, color: inAt == null ? Colors.white : brandDark, size: 24),
+          ),
+        ]),
+        if (outAt == null) ...[
+          const SizedBox(height: 12),
+          inAt == null
+              ? FilledButton(onPressed: _punching ? null : () => _punch('in'), child: const Text('Check in'))
+              : FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.14), foregroundColor: Colors.white),
+                  onPressed: _punching ? null : () => _punch('out'),
+                  child: const Text('Check out'),
+                ),
+        ],
+      ]),
     );
   }
 

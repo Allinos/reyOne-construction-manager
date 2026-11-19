@@ -175,6 +175,37 @@ function PhotosCard({ projectId }) {
   );
 }
 
+// Headline strip: progress and money at a glance (whole-project members with finance access).
+function MoneyStrip({ project, currency, showMoney }) {
+  const [d, setD] = useState(null);
+  useEffect(() => { if (showMoney) getProjectSummary(project.id).then(setD).catch(() => {}); }, [project.id, showMoney]);
+  const money = (v) => formatMoney(v, currency);
+  const tasks = project.phases.flatMap((p) => p.tasks || []);
+  const spent = d ? (d.expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0) : null;
+  const cells = showMoney ? [
+    ['Contract', money(project.projectAmount), '', Number(project.advanceAmount) > 0 ? `Advance ${money(project.advanceAmount)}` : 'incl. GST'],
+    ['Received', d ? money(d.receivedAmount) : '…', 'text-emerald-700 dark:text-emerald-400', d && Number(project.projectAmount) ? `${Math.round((Number(d.receivedAmount) / Number(project.projectAmount)) * 100)}% of contract` : ''],
+    ['Spent', spent == null ? '…' : money(spent), '', d && spent != null ? `Margin ${money(Number(d.receivedAmount) - spent)}` : ''],
+    ['Balance due', d ? money(d.balanceAmount) : '…', 'text-amber-700 dark:text-amber-400', 'from client'],
+  ] : [];
+  return (
+    <div className={`card mb-4 grid grid-cols-1 overflow-hidden ${showMoney ? 'sm:grid-cols-2 lg:grid-cols-[1.6fr_repeat(4,1fr)]' : ''}`}>
+      <div className="border-b border-slate-200 px-[18px] py-3.5 lg:border-b-0 lg:border-r dark:border-slate-700">
+        <div className="flex items-center justify-between text-xs"><span className="text-slate-400">Overall progress</span><span className="text-base font-bold tabular-nums">{project.progress ?? 0}%</span></div>
+        <div className="mt-2.5"><ProgressBar value={project.progress ?? 0} height="h-2" color={(project.progress ?? 0) >= 100 ? '#15803D' : '#F2A900'} /></div>
+        <p className="mt-1.5 text-xs text-slate-400">{project.phases.filter((p) => p.status === 'completed').length} of {project.phases.length} stages · {tasks.filter((t) => t.status === 'completed').length} of {tasks.length} tasks</p>
+      </div>
+      {cells.map(([label, value, tone, sub], i) => (
+        <div key={label} className={`border-b border-slate-200 px-[18px] py-3.5 lg:border-b-0 dark:border-slate-700 ${i < cells.length - 1 ? 'lg:border-r' : ''}`}>
+          <p className="text-xs text-slate-400">{label}</p>
+          <p className={`mt-1 truncate text-[17px] font-bold tabular-nums ${tone || 'text-slate-900 dark:text-white'}`}>{value}</p>
+          <p className="truncate text-xs text-slate-400">{sub}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -374,12 +405,13 @@ export default function ProjectDetailPage() {
       {/* Header — name, status and the key facts in one row */}
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <Link to="/projects" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm hover:bg-brand-600" title="Back to projects" aria-label="Back">
+          <Link to="/projects" className="btn-secondary mt-1 h-9 w-9 shrink-0 p-0" title="Back to projects" aria-label="Back">
             <Icon name="arrowLeft" className="h-4 w-4" />
           </Link>
+          <span className="hidden h-14 w-14 shrink-0 rounded-xl sm:block" style={{ background: `linear-gradient(135deg,${['#d9c3a0,#8a6a42', '#c9d3d8,#6e7f88', '#e3d5b8,#a0835a', '#d6e2d3,#6f8a6a', '#e8d9c4,#9b7b52', '#d8d4e6,#76709a', '#e6cfc3,#9a6650'][project.id % 7]})` }} />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{project.name}</h1>
+              <h1 className="text-[22px] font-bold tracking-tight text-slate-900 dark:text-white">{project.name}</h1>
               <StatusBadge status={project.status} label={statusLabel(project.status)} />
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
@@ -389,7 +421,7 @@ export default function ProjectDetailPage() {
                 · <Icon name="clients" className="h-3.5 w-3.5" />{project.clientName}
               </button>
               {(project.startDate || project.endDate) && <span>· {formatDate(project.startDate) || '—'} → <span className={dl ? `font-medium ${dl.tone}` : ''}>{formatDate(project.endDate) || '—'}</span></span>}
-              {full && project.projectAmount != null && <span>· Contract <b className="font-medium text-slate-700 dark:text-slate-200">{formatMoney(project.projectAmount, currency)}</b></span>}
+              {full && !financeEnabled && project.projectAmount != null && <span>· Contract <b className="font-medium text-slate-700 dark:text-slate-200">{formatMoney(project.projectAmount, currency)}</b></span>}
             </div>
           </div>
         </div>
@@ -412,6 +444,8 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
+      <MoneyStrip project={project} currency={currency} showMoney={full && financeEnabled} />
+
       <Tabs
         tabs={tabs}
         value={activeTab}
@@ -424,27 +458,18 @@ export default function ProjectDetailPage() {
         <div className="min-w-0 lg:col-span-7">
           {activeTab === 'stages' && (
             <>
-              {/* Overall progress */}
-              <div className="card mb-5 p-4">
-                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                    Overall progress <span className="ml-2 text-xs font-normal text-slate-400">{stagesDone}/{project.phases.length} stages · {tasksDone}/{tasksAll.length} tasks done</span>
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-semibold text-brand-600">{project.progress ?? 0}%</span>
-                    {canEdit && (
-                      <Select className="input w-auto py-1 text-xs" value={project.progressMode || 'auto'} onChange={(e) => changeProgressMode(e.target.value)} title="Auto = from stage/task completion. Manual = set it yourself.">
-                        <option value="auto">Auto</option>
-                        <option value="manual">Manual</option>
-                      </Select>
-                    )}
-                  </div>
+              {canEdit && (
+                <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span>Progress is</span>
+                  <Select className="input w-auto py-1 text-xs" value={project.progressMode || 'auto'} onChange={(e) => changeProgressMode(e.target.value)} title="Auto = from stage/task completion. Manual = set it yourself.">
+                    <option value="auto">Calculated from tasks</option>
+                    <option value="manual">Set manually</option>
+                  </Select>
+                  {project.progressMode === 'manual' && (
+                    <input type="range" min="0" max="100" value={project.progress ?? 0} onChange={(e) => changeManualProgress(e.target.value)} className="w-56 accent-brand-500" aria-label="Project progress" />
+                  )}
                 </div>
-                <ProgressBar value={project.progress ?? 0} height="h-3" />
-                {project.progressMode === 'manual' && canEdit && (
-                  <input type="range" min="0" max="100" value={project.progress ?? 0} onChange={(e) => changeManualProgress(e.target.value)} className="mt-2 w-full accent-brand-500" />
-                )}
-              </div>
+              )}
 
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Stages</h2>

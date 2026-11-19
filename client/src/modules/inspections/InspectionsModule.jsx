@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Routes, Route, useNavigate, useParams, Link } from 'react-router-dom';
+import { Routes, Route, useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -505,7 +505,11 @@ function InspectionsHome() {
   const [assign, setAssign] = useState(false);
   const [library, setLibrary] = useState(false);
   const [libVersion, setLibVersion] = useState(0);
+  const [params, setParams] = useSearchParams();
   useEffect(() => { api.getStats().then(setStats).catch(() => {}); }, []);
+  useEffect(() => {
+    if (params.get('new') && can('inspections.manage')) { setAssign(true); setParams({}, { replace: true }); }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const tabs = [
     { key: 'list', label: 'All inspections', hidden: !canRead },
     { key: 'assigned', label: 'Assigned to me', count: stats?.mine },

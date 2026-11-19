@@ -23,8 +23,8 @@ export default function AppLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <TopNav onMenu={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto bg-cream p-4 md:p-6 dark:bg-slate-900">
-          <div className="mx-auto max-w-7xl">
+        <main className="flex-1 overflow-y-auto bg-cream px-4 py-5 md:px-7 md:py-6 dark:bg-slate-900">
+          <div className="mx-auto max-w-[1440px]">
             <Outlet />
           </div>
         </main>

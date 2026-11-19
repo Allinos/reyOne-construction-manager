@@ -319,7 +319,7 @@ export default function QueriesPage() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-1.5">
           {STATUS_CHIPS.map(([k, l]) => (
-            <button key={l} onClick={() => set('status', k)} className={`rounded-full px-3 py-1 text-xs font-medium ${filters.status === k ? 'bg-brand-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600'}`}>{l}</button>
+            <button key={l} onClick={() => set('status', k)} className={`chip ${filters.status === k ? 'chip-on' : ''}`}>{l}</button>
           ))}
         </div>
         <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300"><input type="checkbox" checked={group} onChange={(e) => setGroup(e.target.checked)} /> Group by project</label>

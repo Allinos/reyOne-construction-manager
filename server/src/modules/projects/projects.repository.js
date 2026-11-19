@@ -17,6 +17,8 @@ const listSelect = {
   progress: true,
   progressMode: true,
   createdAt: true,
+  phases: { select: { name: true, status: true }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
+  assignees: { select: { userId: true } },
 };
 
 // Full detail include: project assignees + phases -> tasks + assignees, ordered,

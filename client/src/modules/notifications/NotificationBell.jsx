@@ -97,10 +97,10 @@ export default function NotificationBell() {
 
   return (
     <>
-      <button className="relative rounded-lg p-2 text-slate-500 hover:bg-cream-200 dark:text-slate-300" onClick={openPanel} aria-label="Notifications">
-        <Icon name="bell" className="h-5 w-5" />
+      <button className="relative flex h-[38px] w-[38px] items-center justify-center rounded-[11px] border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300" onClick={openPanel} aria-label="Notifications">
+        <Icon name="bell" className="h-[18px] w-[18px]" />
         {count > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+          <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-semibold text-white dark:border-slate-800">
             {count > 9 ? '9+' : count}
           </span>
         )}

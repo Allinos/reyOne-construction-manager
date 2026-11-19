@@ -18,7 +18,8 @@ import { printHtml } from './print';
 import DocumentFormModal from './DocumentFormModal';
 import PreviewModal, { sampleData } from './PreviewModal';
 
-const CAT_COLORS = ['bg-blue-50 text-blue-700', 'bg-emerald-50 text-emerald-700', 'bg-violet-50 text-violet-700', 'bg-amber-50 text-amber-700', 'bg-rose-50 text-rose-700', 'bg-cyan-50 text-cyan-700', 'bg-slate-100 text-slate-700'];
+// Thumbnail background + accent per category.
+const THUMB = [['#FFF4D6', '#CC6E02'], ['#E8EFFE', '#1D4ED8'], ['#E8F6EC', '#15803D'], ['#F3E8FD', '#7E22CE'], ['#FDEDE4', '#C2410C'], ['#ECE6DA', '#4A2700']];
 
 // Template gallery shown in the "New document" tab.
 function TemplateGallery({ catalog, canCreate, onUse, onPreview }) {
@@ -43,7 +44,7 @@ function TemplateGallery({ catalog, canCreate, onUse, onPreview }) {
           <button
             key={c.key || 'all'}
             onClick={() => setCategory(c.key)}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ${category === c.key ? 'bg-brand-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600'}`}
+            className={`chip shrink-0 ${category === c.key ? 'chip-on' : ''}`}
           >
             {c.label}<span className="opacity-60">{count(c.key)}</span>
           </button>
@@ -52,24 +53,26 @@ function TemplateGallery({ catalog, canCreate, onUse, onPreview }) {
       {list.length === 0 ? (
         <EmptyState title="No templates match" hint="Try a different search or category." />
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {list.map((t) => (
-            <div key={t.key} className="card group flex flex-col p-4 transition hover:border-brand-200 hover:shadow-md">
-              <button className="text-left" onClick={() => onPreview(t)} title="Preview">
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-slate-700 dark:text-brand-300">
-                    <Icon name="documents" className="h-5 w-5" />
-                  </span>
-                  <span className={`badge ${CAT_COLORS[catIdx(t.category) % CAT_COLORS.length]}`}>
-                    {catalog.categories.find((c) => c.key === t.category)?.label || t.category}
-                  </span>
-                </div>
-                <p className="font-medium text-slate-900 group-hover:text-brand-700 dark:text-white">{t.name}</p>
-                <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-xs leading-5 text-slate-500">{t.description}</p>
+            <div key={t.key} className="card group flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-pop">
+              <button className="relative grid h-[118px] place-items-center" style={{ background: THUMB[catIdx(t.category) % THUMB.length][0] }} onClick={() => onPreview(t)} title="Preview" aria-label={`Preview ${t.name}`}>
+                <span className="mt-6 grid h-[100px] w-[84px] content-start gap-[5px] rounded-t-md bg-white px-2 py-2.5 shadow-[0_4px_14px_rgba(0,0,0,.08)] dark:bg-slate-800">
+                  <span className="h-[5px] w-2/5 rounded" style={{ background: THUMB[catIdx(t.category) % THUMB.length][1] }} />
+                  <span className="h-[3px] rounded bg-slate-200 dark:bg-slate-600" />
+                  <span className="h-[3px] w-[70%] rounded bg-slate-200 dark:bg-slate-600" />
+                  <span className="mt-1 h-4 rounded-sm border border-slate-200 bg-slate-50 dark:border-slate-600 dark:bg-slate-700" />
+                  <span className="ml-auto h-[3px] w-1/2 rounded opacity-60" style={{ background: THUMB[catIdx(t.category) % THUMB.length][1] }} />
+                </span>
+                <span className="badge absolute left-2.5 top-2.5 bg-white/90 text-slate-600 dark:bg-slate-800/90 dark:text-slate-300">{catalog.categories.find((c) => c.key === t.category)?.label || t.category}</span>
               </button>
-              <div className="mt-3 flex gap-2">
-                <button className="btn-secondary btn-sm flex-1" onClick={() => onPreview(t)}><Icon name="eye" className="h-3.5 w-3.5" /> Preview</button>
-                {canCreate && <button className="btn-primary btn-sm flex-1" onClick={() => onUse(t)}>Create</button>}
+              <div className="flex flex-1 flex-col px-3.5 py-3">
+                <p className="font-semibold text-slate-900 dark:text-white">{t.name}</p>
+                <p className="mt-0.5 line-clamp-2 min-h-[2.25rem] text-xs leading-[1.125rem] text-slate-400">{t.description}</p>
+                <div className="mt-2.5 flex gap-2">
+                  <button className="btn-secondary btn-sm flex-1" onClick={() => onPreview(t)}><Icon name="eye" className="h-3.5 w-3.5" /> Preview</button>
+                  {canCreate && <button className="btn-primary btn-sm flex-1" onClick={() => onUse(t)}>Create</button>}
+                </div>
               </div>
             </div>
           ))}

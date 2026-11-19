@@ -59,6 +59,15 @@ export default function ExpensesPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const projectId = searchParams.get('projectId') || '';
+  // Deep link from the quick-add menu / command palette: /expenses?new=1
+  useEffect(() => {
+    if (searchParams.get('new')) {
+      setChooser(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('new');
+      setSearchParams(next, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async () => {
     setLoading(true);

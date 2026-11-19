@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 // Lightweight, dependency-free charts (CSS/flex/SVG based).
 
 // A shared color palette for categorical charts.
-export const CHART_COLORS = ['#CC6E02', '#F2A900', '#4A2700', '#3b82f6', '#16a34a', '#8b5cf6', '#ef4444', '#94a3b8'];
+export const CHART_COLORS = ['#F2A900', '#CC6E02', '#4A2700', '#1D4ED8', '#15803D', '#7E22CE', '#C2410C', '#9A8B78'];
 
 // Animated ring chart. Pass thicknessRatio = 0.5 for a full pie, ~0.32 for a donut.
 // (The stroke is centered on radius r = (size - thickness)/2 and extends

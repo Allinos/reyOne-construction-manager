@@ -212,6 +212,33 @@ const projectsService = {
         }
       }
     }
+    // Card details: current stage, team, photo / open query counts, and spend for finance users.
+    if (rows.length) {
+      const ids = rows.map((r) => r.id);
+      const seesMoney = !actor || hasPerm(actor, 'finance.read');
+      const [names, photos, queries, spent] = await Promise.all([
+        repo.activeUsersByIds([...new Set(rows.flatMap((r) => r.assignees.map((a) => a.userId)))]),
+        prisma.projectPhoto.groupBy({ by: ['projectId'], where: { projectId: { in: ids } }, _count: { _all: true } }).catch(() => []),
+        prisma.query.groupBy({ by: ['projectId'], where: { projectId: { in: ids }, deletedAt: null, status: { notIn: ['resolved', 'closed'] } }, _count: { _all: true } }).catch(() => []),
+        seesMoney ? prisma.expense.groupBy({ by: ['projectId'], where: { projectId: { in: ids } }, _sum: { amount: true } }).catch(() => []) : [],
+      ]);
+      const nameOf = new Map(names.map((u) => [u.id, u.name]));
+      const count = (list) => new Map(list.map((x) => [x.projectId, x._count._all]));
+      const photoN = count(photos);
+      const queryN = count(queries);
+      const spentBy = new Map(spent.map((x) => [x.projectId, Number(x._sum.amount || 0)]));
+      for (const r of rows) {
+        r.stage = (r.phases.find((ph) => ph.status !== 'completed') || {}).name || null;
+        r.stageCount = r.phases.length;
+        r.team = r.assignees.map((a) => nameOf.get(a.userId)).filter(Boolean).slice(0, 4);
+        r.teamCount = r.assignees.length;
+        r.photoCount = photoN.get(r.id) || 0;
+        r.openQueries = queryN.get(r.id) || 0;
+        if (seesMoney && r.projectAmount !== null) r.spent = spentBy.get(r.id) || 0;
+        delete r.phases;
+        delete r.assignees;
+      }
+    }
     return { data: rows, meta: buildMeta(page, limit, total) };
   },
 

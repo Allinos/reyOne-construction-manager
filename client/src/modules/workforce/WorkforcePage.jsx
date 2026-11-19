@@ -318,7 +318,7 @@ export default function WorkforcePage() {
   const categories = (bootstrap?.settings?.workforce?.categories || []).map((c) =>
     typeof c === 'string' ? { name: c, color: '#cc6e02' } : { name: c.name || '', color: c.color || '#cc6e02' },
   );
-  const colorFor = (name) => categories.find((c) => c.name === name)?.color || '#64748b';
+  const colorFor = (name) => categories.find((c) => c.name === name)?.color || '#7D6E5C';
 
   const [type, setType] = useState('');
   const [filters, setFilters] = useState({ search: '', category: '', status: 'ACTIVE', siteProjectId: '', sort: 'name:asc', page: 1 });

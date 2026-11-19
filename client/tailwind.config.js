@@ -22,11 +22,35 @@ export default {
         },
         // Warm neutral surfaces (70% of the screen).
         cream: {
-          DEFAULT: '#FBF8F1',
-          100: '#FDFBF6',
-          200: '#F6F0E2',
-          300: '#ECE2CC',
+          DEFAULT: '#F7F4EE',
+          50: '#FBF9F5',
+          100: '#FBF9F5',
+          200: '#F1EBDF',
+          300: '#E2D9C8',
         },
+        // "Warm Site" neutrals: the grey scale is tinted brown so text, borders
+        // and dark-mode surfaces all sit in the brand's warm family.
+        slate: {
+          50: '#FBF9F5',
+          100: '#F3EEE5',
+          200: '#ECE6DA',
+          300: '#D9CFBD',
+          400: '#9A8B78',
+          500: '#7D6E5C',
+          600: '#5B4B3A',
+          700: '#3A3026',
+          800: '#1D1812',
+          900: '#14100B',
+          950: '#0D0A07',
+        },
+      },
+      borderRadius: {
+        xl: '14px',
+        '2xl': '18px',
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(31,20,8,.04), 0 4px 16px rgba(31,20,8,.05)',
+        pop: '0 12px 40px rgba(31,20,8,.18)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],

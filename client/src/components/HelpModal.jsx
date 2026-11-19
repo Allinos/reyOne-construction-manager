@@ -67,7 +67,7 @@ export default function HelpModal({ open, onClose }) {
                 <div
                   className="help-content p-5 text-slate-700 dark:text-slate-200"
                   // Admin-configured content only.
-                  dangerouslySetInnerHTML={{ __html: current.html || '<p style="color:#94a3b8">No content yet.</p>' }}
+                  dangerouslySetInnerHTML={{ __html: current.html || '<p style="color:#9A8B78">No content yet.</p>' }}
                 />
               )}
             </div>

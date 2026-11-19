@@ -1,138 +1,105 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import NotificationBell from '../../modules/notifications/NotificationBell';
 import HelpModal from '../HelpModal';
 import Icon from '../Icon';
-import Modal from '../Modal';
-import api, { unwrap, errorMessage } from '../../lib/api';
-import { useToast } from '../../context/ToastContext';
+import { MODULE_DEFS } from '../../app/modules';
+import CommandPalette, { quickActions } from './CommandPalette';
 
-function ProfileModal({ onClose }) {
-  const { user, reloadBootstrap } = useAuth();
-  const toast = useToast();
-  const [f, setF] = useState({ name: user?.name || '', phone: user?.phone || '' });
-  const [pw, setPw] = useState({ currentPassword: '', newPassword: '', confirm: '' });
-  const [busy, setBusy] = useState(false);
-  const saveProfile = async () => {
-    setBusy(true);
-    try { await unwrap(api.patch('/auth/me', { name: f.name, phone: f.phone || null })); await reloadBootstrap(); toast.success('Profile updated'); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
-  };
-  const changePw = async () => {
-    if (pw.newPassword !== pw.confirm) { toast.error('New passwords do not match'); return; }
-    setBusy(true);
-    try {
-      await unwrap(api.post('/auth/change-password', { currentPassword: pw.currentPassword, newPassword: pw.newPassword }));
-      toast.success('Password changed — other devices have been signed out');
-      setPw({ currentPassword: '', newPassword: '', confirm: '' });
-    } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
-  };
-  return (
-    <Modal open onClose={onClose} title="My profile" footer={<button className="btn-secondary" onClick={onClose}>Close</button>}>
-      <div className="space-y-5">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2"><label className="label">Email</label><input className="input" value={user?.email || ''} disabled /></div>
-          <div><label className="label">Name</label><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
-          <div><label className="label">Phone</label><input className="input" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
-          <div className="col-span-2 flex justify-end"><button className="btn-primary btn-sm" disabled={busy || !f.name.trim()} onClick={saveProfile}>Save profile</button></div>
-        </div>
-        <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 dark:border-slate-700">
-          <p className="col-span-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Change password</p>
-          <div className="col-span-2"><label className="label">Current password</label><input type="password" className="input" autoComplete="current-password" value={pw.currentPassword} onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })} /></div>
-          <div><label className="label">New password</label><input type="password" className="input" autoComplete="new-password" value={pw.newPassword} onChange={(e) => setPw({ ...pw, newPassword: e.target.value })} /></div>
-          <div><label className="label">Confirm</label><input type="password" className="input" autoComplete="new-password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} /></div>
-          <div className="col-span-2 flex justify-end"><button className="btn-secondary btn-sm" disabled={busy || !pw.currentPassword || !pw.newPassword} onClick={changePw}>Change password</button></div>
-        </div>
-      </div>
-    </Modal>
-  );
+// Page name for the breadcrumb, from the module registry.
+function useCrumbs() {
+  const { pathname } = useLocation();
+  const { bootstrap } = useAuth();
+  return useMemo(() => {
+    const def = [...MODULE_DEFS].filter((m) => m.path !== '/' && pathname.startsWith(m.path)).sort((a, b) => b.path.length - a.path.length)[0];
+    if (!def) return pathname === '/' ? [{ label: 'Dashboard' }] : [];
+    const label = def.key === 'custom_module' ? bootstrap?.settings?.custom_module?.name || def.label : def.label;
+    const rest = pathname.slice(def.path.length).split('/').filter(Boolean);
+    return rest.length ? [{ label, to: def.path }, { label: rest[0] === 'new' ? 'New' : rest.includes('edit') ? 'Edit' : 'Details' }] : [{ label }];
+  }, [pathname, bootstrap]);
 }
 
-function initialsOf(name) {
-  return (name || '?').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
-}
-
-function UserMenu() {
-  const { user, logout, can } = useAuth();
+export function QuickAdd({ variant = 'icon' }) {
+  const { bootstrap, can } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [profile, setProfile] = useState(false);
   const ref = useRef(null);
-
+  const actions = quickActions(can, new Set((bootstrap?.modules || []).map((m) => m.key)));
   useEffect(() => {
     if (!open) return undefined;
     const onDoc = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false);
-    const onKey = (e) => e.key === 'Escape' && setOpen(false);
     document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+    return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
-
-  const go = (to) => { setOpen(false); navigate(to); };
-
+  if (!actions.length) return null;
   return (
     <div className="relative" ref={ref}>
-      <button
-        className="ml-1 flex items-center gap-2 rounded-full py-1 pl-1 pr-2 hover:bg-slate-100 dark:hover:bg-slate-700"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-xs font-semibold text-brand-900">{initialsOf(user?.name)}</span>
-        <span className="hidden text-left sm:block">
-          <span className="block max-w-[10rem] truncate text-sm font-medium leading-tight text-slate-800 dark:text-slate-100">{user?.name}</span>
-          <span className="block max-w-[10rem] truncate text-[11px] leading-tight text-slate-500">{user?.role?.name}</span>
-        </span>
-        <svg className="hidden h-4 w-4 text-slate-400 sm:block" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06z" clipRule="evenodd" /></svg>
-      </button>
+      {variant === 'primary' ? (
+        <button className="btn-primary" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}><Icon name="add" className="h-4 w-4" /> New</button>
+      ) : (
+        <button className="flex h-[38px] w-[38px] items-center justify-center rounded-[11px] border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300" onClick={() => setOpen((o) => !o)} aria-label="Create new" title="Create new" aria-haspopup="menu" aria-expanded={open}>
+          <Icon name="add" className="h-[18px] w-[18px]" />
+        </button>
+      )}
       {open && (
-        <div role="menu" className="absolute right-0 z-[95] mt-2 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
-          <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-700">
-            <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{user?.name}</p>
-            <p className="truncate text-xs text-slate-500">{user?.email}</p>
-            <p className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">{user?.role?.name}</p>
-          </div>
-          <div className="py-1">
-            <button role="menuitem" className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700" onClick={() => { setOpen(false); setProfile(true); }}>
-              <Icon name="users" className="h-4 w-4 text-slate-400" /> My profile &amp; password
+        <div role="menu" className="absolute right-0 z-[95] mt-2 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-pop dark:border-slate-700 dark:bg-slate-800">
+          <p className="px-2.5 pb-1 pt-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-slate-400">Create</p>
+          {actions.map((a) => (
+            <button key={a.id} role="menuitem" className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-brand-50 dark:text-slate-200 dark:hover:bg-slate-700" onClick={() => { setOpen(false); navigate(a.to); }}>
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300"><Icon name={a.icon} className="h-4 w-4" /></span>
+              {a.title}
             </button>
-            {can('settings.read') && (
-              <button role="menuitem" className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700" onClick={() => go('/settings')}>
-                <Icon name="settings" className="h-4 w-4 text-slate-400" /> Settings
-              </button>
-            )}
-            <button role="menuitem" className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20" onClick={logout}>
-              <Icon name="logout" className="h-4 w-4" /> Log out
-            </button>
-          </div>
+          ))}
         </div>
       )}
-      {profile && <ProfileModal onClose={() => setProfile(false)} />}
     </div>
   );
 }
 
 export default function TopNav({ onMenu }) {
   const [helpOpen, setHelpOpen] = useState(false);
+  const [palette, setPalette] = useState(false);
+  const crumbs = useCrumbs();
+
+  // Ctrl/⌘ + K opens the command palette from anywhere.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette((o) => !o); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-700 dark:bg-slate-800">
-      <button className="btn-ghost px-2 md:invisible" onClick={onMenu} aria-label="Open menu">
+    <header className="flex h-[62px] shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 md:px-7 dark:border-slate-700 dark:bg-slate-800">
+      <button className="btn-ghost -ml-1 px-2 md:hidden" onClick={onMenu} aria-label="Open menu">
         <Icon name="menu" />
       </button>
-      <div className="flex items-center gap-1">
-        <button
-          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
-          onClick={() => setHelpOpen(true)}
-          aria-label="Help"
-          title="Help"
-        >
-          <Icon name="help" className="h-5 w-5" />
-        </button>
-        <NotificationBell />
-        <UserMenu />
-      </div>
+      <nav className="hidden min-w-0 items-center gap-1.5 text-[13px] text-slate-400 sm:flex" aria-label="Breadcrumb">
+        {crumbs.map((c, i) => (
+          <span key={i} className="flex min-w-0 items-center gap-1.5">
+            {i > 0 && <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>}
+            {c.to ? <Link to={c.to} className="truncate hover:text-slate-700 dark:hover:text-slate-200">{c.label}</Link> : <span className={`truncate ${i === crumbs.length - 1 && crumbs.length > 1 ? 'font-semibold text-slate-800 dark:text-slate-100' : ''}`}>{c.label}</span>}
+          </span>
+        ))}
+      </nav>
+      <button
+        className="ml-auto flex h-[38px] min-w-0 flex-1 items-center gap-2 rounded-[11px] border border-slate-200 bg-slate-50 px-3 text-[13px] text-slate-400 hover:border-slate-300 sm:max-w-[380px] dark:border-slate-700 dark:bg-slate-900/40"
+        onClick={() => setPalette(true)}
+        aria-label="Search (Ctrl K)"
+      >
+        <Icon name="search" className="h-4 w-4 shrink-0" />
+        <span className="truncate">Search projects, bills, people…</span>
+        <kbd className="ml-auto hidden rounded-md border border-slate-300 bg-white px-1.5 text-[11px] font-semibold text-slate-500 sm:block dark:border-slate-600 dark:bg-slate-800">Ctrl K</kbd>
+      </button>
+      <QuickAdd />
+      <button className="hidden h-[38px] w-[38px] items-center justify-center rounded-[11px] border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 sm:flex dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300" onClick={() => setHelpOpen(true)} aria-label="Help" title="Help">
+        <Icon name="help" className="h-[18px] w-[18px]" />
+      </button>
+      <NotificationBell />
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <CommandPalette open={palette} onClose={() => setPalette(false)} />
     </header>
   );
 }

@@ -299,7 +299,7 @@ export function PurchaseOrdersTab({ lookups, refreshKey, onChanged, openId, onNe
     <>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {[['', 'All'], ['draft', 'Drafts'], ['open', 'Awaiting delivery'], ['received', 'Received'], ['cancelled', 'Cancelled']].map(([k, l]) => (
-          <button key={k || 'all'} onClick={() => setStatus(k)} className={`rounded-full px-3 py-1 text-xs font-medium ${status === k ? 'bg-brand-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600'}`}>{l}</button>
+          <button key={k || 'all'} onClick={() => setStatus(k)} className={`chip ${status === k ? 'chip-on' : ''}`}>{l}</button>
         ))}
         {can('materials.manage') && <button className="btn-secondary btn-sm ml-auto" onClick={onNew}><Icon name="add" className="h-3.5 w-3.5" /> New PO</button>}
       </div>

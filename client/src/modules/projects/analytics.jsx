@@ -82,7 +82,7 @@ export function ProjectAnalytics({ open }) {
       </Card>
       <Card className="mt-3">
         <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">Projects by Category</h3>
-        <HBars items={data.byCategory} color="#0ea5e9" />
+        <HBars items={data.byCategory} color="#1D4ED8" />
       </Card>
     </>
   );

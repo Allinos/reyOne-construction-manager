@@ -6,10 +6,12 @@ import '../core/api.dart';
 import '../core/format.dart';
 import '../core/photos.dart';
 import '../core/session.dart';
+import '../core/theme.dart';
 import '../core/widgets.dart';
 
 const _severityColor = {'low': Colors.blueGrey, 'medium': Colors.orange, 'high': Colors.deepOrange, 'critical': Colors.red};
 const _statusColor = {'pending': Colors.grey, 'assigned': Colors.blueGrey, 'in_progress': Colors.blue, 'completed': Colors.green, 'follow_up': Colors.orange, 'closed': Colors.brown};
+Color _resultColor(String r) => switch (r) { 'pass' => ok, 'fail' => bad, 'action' => accent, _ => muted };
 const _kindLabel = {'photo': 'Photo', 'document': 'Document', 'measure': 'Reading'};
 const _statusLabel = {'pending': 'Pending', 'assigned': 'Assigned', 'in_progress': 'In progress', 'completed': 'Completed', 'follow_up': 'Needs follow-up', 'closed': 'Closed'};
 
@@ -351,6 +353,11 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
                     SegmentedButton<String>(
                       emptySelectionAllowed: true,
                       showSelectedIcon: false,
+                      // The chosen result is filled: green pass/received, red fail/missing, amber action.
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.resolveWith((st) => st.contains(WidgetState.selected) ? _resultColor('${_checklist[i]['result']}') : null),
+                        foregroundColor: WidgetStateProperty.resolveWith((st) => st.contains(WidgetState.selected) ? Colors.white : null),
+                      ),
                       segments: (_checklist[i]['kind'] == 'photo' || _checklist[i]['kind'] == 'document')
                           ? const [
                               ButtonSegment(value: 'pass', label: Text('Received')),
