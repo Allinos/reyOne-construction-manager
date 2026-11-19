@@ -76,9 +76,10 @@ function registerRoutes(router) {
     validate({ params: phaseParams, body: addTaskSchema }),
     asyncHandler(controller.addTask),
   );
+  // Task assignees may tick their own task; the service limits them to status.
   router.patch(
     '/:id/phases/:phaseId/tasks/:taskId',
-    authorize('projects.update'),
+    authorize('projects.read'),
     validate({ params: taskParams, body: updateTaskSchema }),
     asyncHandler(controller.updateTask),
   );

@@ -6,7 +6,7 @@ const AppError = require('../../core/errors/AppError');
 const activity = require('../../core/services/activityLog');
 const { notify, notifyMany } = require('../../core/services/notify');
 const { getPagination, buildMeta } = require('../../core/utils/pagination');
-const { accessibleProjectIds, assertProjectAccess } = require('../../core/services/access');
+const { accessibleProjectIds, assertProjectAccess, hasPerm, seesAllProjects } = require('../../core/services/access');
 
 // --- helpers -------------------------------------------------------------
 
@@ -132,6 +132,49 @@ async function decorate(project) {
   };
 }
 
+// --- access levels -------------------------------------------------------
+// full  – sees everything (managers with projects.view_all, project members, creator)
+// phase – assigned to one or more stages: full detail of those stages only
+// task  – assigned to tasks only: full detail of those tasks only
+// Everything else on the project is shown as basic information (names, status,
+// progress) without who is assigned, money or other people's requests.
+function accessLevel(actor, raw) {
+  const phaseIds = [];
+  const taskIds = [];
+  for (const ph of raw.phases || []) {
+    if ((ph.assignees || []).some((a) => a.userId === actor?.id)) phaseIds.push(ph.id);
+    for (const t of ph.tasks || []) if ((t.assignees || []).some((a) => a.userId === actor?.id)) taskIds.push(t.id);
+  }
+  let level = 'full';
+  if (actor && !seesAllProjects(actor) && raw.createdById !== actor.id && !(raw.assignees || []).some((a) => a.userId === actor.id)) {
+    level = phaseIds.length ? 'phase' : 'task';
+  }
+  return { level, phaseIds, taskIds };
+}
+
+function redact(project, access) {
+  const mineTask = (t) => access.taskIds.includes(t.id);
+  const phases = project.phases.map((ph) => {
+    const minePhase = access.phaseIds.includes(ph.id);
+    const tasks = ph.tasks.map((t) => {
+      const full = access.level === 'full' || minePhase || mineTask(t);
+      return full ? { ...t, mine: mineTask(t) } : { id: t.id, title: t.title, status: t.status, deadline: t.deadline, sortOrder: t.sortOrder, assignees: [], description: null, limited: true };
+    });
+    if (access.level === 'full' || minePhase) return { ...ph, mine: minePhase, tasks };
+    return { ...ph, assignees: [], tasks, limited: true, mine: false };
+  });
+  if (access.level === 'full') return { ...project, phases, access };
+  return {
+    ...project,
+    projectAmount: null,
+    advanceAmount: null,
+    assignees: [],
+    approvals: [],
+    phases,
+    access,
+  };
+}
+
 // --- service -------------------------------------------------------------
 
 const projectsService = {
@@ -155,6 +198,20 @@ const projectsService = {
       ];
     }
     const { rows, total } = await repo.list({ where, skip, take });
+    // Stage/task-level members don't see contract values in the list either.
+    if (allowed !== null && rows.length) {
+      const [members, created] = await Promise.all([
+        prisma.projectAssignee.findMany({ where: { userId: actor.id, projectId: { in: rows.map((r) => r.id) } }, select: { projectId: true } }),
+        prisma.project.findMany({ where: { id: { in: rows.map((r) => r.id) }, createdById: actor.id }, select: { id: true } }),
+      ]);
+      const fullIds = new Set([...members.map((m) => m.projectId), ...created.map((c) => c.id)]);
+      for (const r of rows) {
+        if (!fullIds.has(r.id)) {
+          if ('projectAmount' in r) r.projectAmount = null;
+          if ('advanceAmount' in r) r.advanceAmount = null;
+        }
+      }
+    }
     return { data: rows, meta: buildMeta(page, limit, total) };
   },
 
@@ -182,7 +239,13 @@ const projectsService = {
     if (actor) await assertProjectAccess(actor, id);
     const project = await repo.findById(id);
     if (!project) throw AppError.notFound('Project not found');
-    return decorate(project);
+    const access = accessLevel(actor, project);
+    const out = redact(await decorate(project), access);
+    // The client's directory record (contact person, GST) for people who can see clients.
+    if (access.level === 'full' && (!actor || hasPerm(actor, 'clients.read'))) {
+      out.client = await prisma.client.findFirst({ where: { name: project.clientName, deletedAt: null }, select: { id: true, contactPerson: true, phone: true, email: true, address: true, gstNumber: true } }).catch(() => null);
+    }
+    return out;
   },
 
   listClients() {
@@ -424,7 +487,12 @@ const projectsService = {
   async listApprovals(projectId, actor) {
     await this.assertProject(projectId);
     if (actor) await assertProjectAccess(actor, projectId);
-    const rows = await repo.listApprovals({ projectId });
+    let rows = await repo.listApprovals({ projectId });
+    // Stage/task-level members only see the requests they raised themselves.
+    if (actor && !seesAllProjects(actor)) {
+      const raw = await repo.findById(projectId);
+      if (accessLevel(actor, raw).level !== 'full') rows = rows.filter((r) => r.requestedById === actor.id);
+    }
     const ids = [...new Set(rows.flatMap((r) => [r.requestedById, r.decidedById]).filter(Boolean))];
     const users = ids.length ? await repo.activeUsersByIds(ids) : [];
     const byId = new Map(users.map((u) => [u.id, u]));
@@ -536,7 +604,14 @@ const projectsService = {
     const { assigneeIds, ...fields } = payload;
     if (Object.keys(fields).length) await repo.updatePhase(phaseId, fields);
     if (assigneeIds !== undefined) {
-      await repo.setPhaseAssignees(phaseId, await validateAssignees(assigneeIds));
+      const ids = await validateAssignees(assigneeIds);
+      const prev = (await prisma.phaseAssignee.findMany({ where: { phaseId }, select: { userId: true } })).map((a) => a.userId);
+      await repo.setPhaseAssignees(phaseId, ids);
+      const added = ids.filter((u) => !prev.includes(u) && u !== actor.id);
+      if (added.length) {
+        const phase = await prisma.projectPhase.findUnique({ where: { id: phaseId }, select: { name: true, project: { select: { name: true } } } });
+        notifyMany(added, { type: 'project.phase_assigned', title: 'Stage assigned to you', message: `${phase?.name || 'Stage'} — ${phase?.project?.name || 'project'}`, entityType: 'project', entityId: projectId });
+      }
     }
     activity.record({ userId: actor.id, action: 'phase.updated', entityType: 'project', entityId: projectId, req });
     await this.syncProgress(projectId);
@@ -552,6 +627,18 @@ const projectsService = {
   },
 
   // --- tasks ---
+  async notifyTaskAssignees(projectId, title, userIds) {
+    if (!userIds.length) return;
+    const project = await repo.findRawById(projectId);
+    notifyMany(userIds, {
+      type: 'project.task_assigned',
+      title: 'Task assigned to you',
+      message: `${title} — ${project?.name || 'project'}`,
+      entityType: 'project',
+      entityId: projectId,
+    });
+  },
+
   async assertTask(phaseId, taskId) {
     const task = await repo.findTask(taskId);
     if (!task || task.phaseId !== phaseId) throw AppError.notFound('Task not found');
@@ -570,6 +657,7 @@ const projectsService = {
       sortOrder: payload.sortOrder ?? 0,
       assignees: { create: assigneeIds.map((userId) => ({ userId })) },
     });
+    this.notifyTaskAssignees(projectId, payload.title, assigneeIds.filter((u) => u !== actor.id)).catch(() => {});
     activity.record({ userId: actor.id, action: 'task.created', entityType: 'project', entityId: projectId, req });
     await this.syncProgress(projectId);
     return this.get(projectId);
@@ -577,15 +665,31 @@ const projectsService = {
 
   async updateTask(projectId, phaseId, taskId, payload, actor, req) {
     await this.assertPhase(projectId, phaseId);
-    await this.assertTask(phaseId, taskId);
+    const task = await this.assertTask(phaseId, taskId);
+    const canEdit = hasPerm(actor, 'projects.update');
+    if (!canEdit) {
+      // People assigned to the task (or its stage) may only tick it done / reopen it.
+      await assertProjectAccess(actor, projectId);
+      const [onTask, onPhase] = await Promise.all([
+        prisma.taskAssignee.findUnique({ where: { taskId_userId: { taskId, userId: actor.id } } }),
+        prisma.phaseAssignee.findUnique({ where: { phaseId_userId: { phaseId, userId: actor.id } } }),
+      ]);
+      if (!onTask && !onPhase) throw AppError.forbidden('Only people assigned to this task can update it');
+      const keys = Object.keys(payload);
+      if (keys.some((k) => k !== 'status')) throw AppError.forbidden('You can only change the status of your task');
+    }
     const { assigneeIds, ...fields } = payload;
+    const before = task.assignees ? task.assignees.map((a) => a.userId) : null;
     if (Object.keys(fields).length) await repo.updateTask(taskId, fields);
     if (assigneeIds !== undefined) {
-      await repo.setTaskAssignees(taskId, await validateAssignees(assigneeIds));
+      const ids = await validateAssignees(assigneeIds);
+      const prev = before || (await prisma.taskAssignee.findMany({ where: { taskId }, select: { userId: true } })).map((a) => a.userId);
+      await repo.setTaskAssignees(taskId, ids);
+      this.notifyTaskAssignees(projectId, task.title, ids.filter((u) => !prev.includes(u) && u !== actor.id)).catch(() => {});
     }
     activity.record({ userId: actor.id, action: 'task.updated', entityType: 'project', entityId: projectId, req });
     await this.syncProgress(projectId);
-    return this.get(projectId);
+    return this.get(projectId, actor);
   },
 
   async removeTask(projectId, phaseId, taskId, actor, req) {
