@@ -30,6 +30,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _unread = 0;
   List<dynamic> _attention = const [];
+  Map<String, dynamic>? _me; // self check-in state
+  bool _punching = false;
 
   @override
   void initState() {
@@ -41,10 +43,17 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final c = await Api.I.get('/notifications/unread-count');
       final ins = Session.I.can('dashboard.read') ? await Api.I.get('/dashboard/insights') : null;
+      Map<String, dynamic>? me;
+      if (Session.I.on('attendance')) {
+        try {
+          me = await Api.I.get('/attendance/me') as Map<String, dynamic>?;
+        } catch (_) {}
+      }
       if (!mounted) return;
       setState(() {
         _unread = (c?['count'] as num?)?.toInt() ?? 0;
         _attention = (ins?['attention'] as List?) ?? const [];
+        _me = me;
       });
       await Session.I.loadBootstrap();
     } catch (_) {}
@@ -55,11 +64,45 @@ class _HomeScreenState extends State<HomeScreen> {
     return [
       if (s.allowed('attendance', 'attendance.read')) _Tile('Attendance', Icons.how_to_reg, Colors.green, (_) => const AttendanceScreen()),
       if (s.allowed('projects', 'projects.read')) _Tile('Projects', Icons.apartment, Colors.indigo, (_) => const ProjectsScreen()),
-      if (s.allowed('inspections', 'inspections.read')) _Tile('Site Inspection', Icons.fact_check, Colors.teal, (_) => const InspectionsScreen()),
+      if (s.on('inspections')) _Tile('Site Inspection', Icons.fact_check, Colors.teal, (_) => const InspectionsScreen()),
       if (s.on('inspections')) _Tile('My Issues', Icons.build_circle_outlined, Colors.red, (_) => const MyIssuesScreen()),
       if (s.allowed('materials', 'materials.read')) _Tile('Materials', Icons.inventory_2_outlined, Colors.brown, (_) => const MaterialsScreen()),
       if (s.allowed('queries', 'queries.read')) _Tile('Queries', Icons.forum_outlined, Colors.blue, (_) => const QueriesScreen()),
     ];
+  }
+
+  Future<void> _punch(String kind) async {
+    setState(() => _punching = true);
+    try {
+      final r = await Api.I.post('/attendance/me/check-$kind', {}) as Map<String, dynamic>;
+      if (mounted) {
+        setState(() => _me = r);
+        toast(context, kind == 'in' ? 'Checked in' : 'Checked out');
+      }
+    } on ApiException catch (e) {
+      if (mounted) toast(context, e.message, error: true);
+    } finally {
+      if (mounted) setState(() => _punching = false);
+    }
+  }
+
+  Widget _checkInCard() {
+    final r = _me?['record'] as Map?;
+    final start = (_me?['rules'] as Map?)?['workStart'] ?? '';
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.fingerprint, color: accent),
+        title: const Text('My attendance today', style: TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(r?['checkIn'] == null
+            ? 'Not checked in · work starts $start'
+            : 'In ${r!['checkIn']}${r['late'] == true ? ' (late)' : ''}${r['checkOut'] != null ? ' · Out ${r['checkOut']}' : ''}'),
+        trailing: r?['checkIn'] == null
+            ? FilledButton(onPressed: _punching ? null : () => _punch('in'), child: const Text('Check in'))
+            : r!['checkOut'] == null
+                ? OutlinedButton(onPressed: _punching ? null : () => _punch('out'), child: const Text('Check out'))
+                : const Icon(Icons.check_circle, color: Colors.green),
+      ),
+    );
   }
 
   void _open(WidgetBuilder b) => Navigator.push(context, MaterialPageRoute(builder: b)).then((_) => _refresh());
@@ -69,6 +112,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final s = Session.I;
     WidgetBuilder? b;
     if (kind == 'queries' && s.on('queries')) b = (_) => const QueriesScreen(initialScope: 'assigned');
+    if (kind == 'queries_answered' && s.on('queries')) b = (_) => const QueriesScreen(initialScope: 'mine');
+    if (kind == 'inspections_assigned' && s.on('inspections')) b = (_) => const InspectionsScreen();
     if (kind == 'issues') b = (_) => const MyIssuesScreen();
     if ((kind == 'material_requests' || kind == 'dispatch' || kind == 'low_stock') && s.on('materials')) b = (_) => const MaterialsScreen();
     if (kind == 'attendance' && s.on('attendance')) b = (_) => const AttendanceScreen();
@@ -109,6 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(padding: const EdgeInsets.all(16), children: [
+          if (_me?['enabled'] == true) ...[_checkInCard(), const SizedBox(height: 8)],
           if (_attention.isNotEmpty) ...[
             const SectionTitle('Needs your attention'),
             for (final a in _attention)

@@ -14,6 +14,9 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
+  // Only failed attempts count, so a whole site office signing in from one
+  // network in the morning is never locked out; password guessing still is.
+  skipSuccessfulRequests: true,
   legacyHeaders: false,
   message: { success: false, error: { message: 'Too many attempts, try again later' } },
 });

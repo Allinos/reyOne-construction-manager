@@ -27,13 +27,14 @@ const REQ_LABEL = { pending: 'Awaiting approval', approved: 'Approved', partiall
 const TYPE_LABEL = { PURCHASE: 'Received (purchase)', TRANSFER_IN: 'Transfer in', TRANSFER_OUT: 'Transfer out', CONSUME: 'Consumed', ADJUST: 'Adjustment', RETURN: 'Returned', WASTAGE: 'Wastage' };
 
 function useLookups() {
+  const { can } = useAuth();
   const [projects, setProjects] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [materials, setMaterials] = useState([]);
   const reloadMaterials = useCallback(() => api.listItems().then(setMaterials).catch(() => {}), []);
   useEffect(() => {
     api.listProjectsLite().then(setProjects);
-    api.listVendorsLite().then(setVendors);
+    if (can('vendors.read')) api.listVendorsLite().then(setVendors);
     reloadMaterials();
   }, [reloadMaterials]);
   return { projects, vendors, materials, reloadMaterials };

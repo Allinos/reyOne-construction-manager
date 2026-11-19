@@ -6,7 +6,10 @@ import '../core/photos.dart';
 import '../core/session.dart';
 import '../core/widgets.dart';
 
-const _priorityColor = {'low': Colors.blueGrey, 'normal': Colors.blue, 'high': Colors.deepOrange, 'urgent': Colors.red};
+const _priorityColor = {'low': Colors.blueGrey, 'normal': Colors.blueGrey, 'high': Colors.orange, 'urgent': Colors.red};
+const _qStatus = {'open': 'Open', 'assigned': 'Assigned', 'awaiting_response': 'Awaiting response', 'responded': 'Responded', 'resolved': 'Resolved', 'closed': 'Closed'};
+const _qColor = {'open': Colors.blueGrey, 'assigned': Colors.blue, 'awaiting_response': Colors.orange, 'responded': Colors.purple, 'resolved': Colors.green, 'closed': Colors.brown};
+const _qType = {'rfi': 'RFI', 'clarification': 'Clarification', 'site_issue': 'Site issue', 'design_change': 'Design change', 'approval': 'Approval needed', 'general': 'General'};
 
 class QueriesScreen extends StatefulWidget {
   const QueriesScreen({super.key, this.initialScope = 'all'});
@@ -23,6 +26,11 @@ class _QueriesScreenState extends State<QueriesScreen> {
     final title = TextEditingController();
     final desc = TextEditingController();
     var priority = 'normal';
+    var type = 'rfi';
+    final location = TextEditingController();
+    DateTime? due;
+    int? phaseId;
+    List<Map<String, dynamic>> phases = [];
     Map<String, dynamic>? project;
     final assignees = <int>{};
     final users = (await Api.I.get('/users/directory') as List).cast<Map<String, dynamic>>();
@@ -36,9 +44,16 @@ class _QueriesScreenState extends State<QueriesScreen> {
           padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
           child: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const Text('Raise a query', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Text('Raise a query / RFI', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
-              TextField(controller: title, decoration: const InputDecoration(labelText: 'Title')),
+              DropdownButtonFormField<String>(
+                initialValue: type,
+                decoration: const InputDecoration(labelText: 'Type'),
+                items: [for (final e in _qType.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
+                onChanged: (v) => set(() => type = v ?? 'rfi'),
+              ),
+              const SizedBox(height: 10),
+              TextField(controller: title, decoration: const InputDecoration(labelText: 'Subject')),
               const SizedBox(height: 10),
               TextField(controller: desc, maxLines: 3, decoration: const InputDecoration(labelText: 'Details')),
               const SizedBox(height: 10),
@@ -47,7 +62,37 @@ class _QueriesScreenState extends State<QueriesScreen> {
                 label: Text(project == null ? 'Project / site (optional)' : '${project!['name']}'),
                 onPressed: () async {
                   final p = await pickProject(ctx);
-                  set(() => project = p);
+                  List<Map<String, dynamic>> ph = [];
+                  if (p != null) {
+                    try {
+                      ph = (((await Api.I.get('/projects/${p['id']}')) as Map)['phases'] as List).cast<Map<String, dynamic>>();
+                    } catch (_) {}
+                  }
+                  set(() {
+                    project = p;
+                    phases = ph;
+                    phaseId = null;
+                  });
+                },
+              ),
+              if (phases.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                DropdownButtonFormField<int?>(
+                  initialValue: phaseId,
+                  decoration: const InputDecoration(labelText: 'Stage'),
+                  items: [const DropdownMenuItem(value: null, child: Text('Whole project')), for (final ph in phases) DropdownMenuItem(value: ph['id'] as int, child: Text('${ph['name']}'))],
+                  onChanged: (v) => set(() => phaseId = v),
+                ),
+              ],
+              const SizedBox(height: 10),
+              TextField(controller: location, decoration: const InputDecoration(labelText: 'Location (block / floor / grid)')),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.event),
+                label: Text(due == null ? 'Response needed by (optional)' : 'Needed by ${fmtDate(due!.toIso8601String())}'),
+                onPressed: () async {
+                  final d = await showDatePicker(context: ctx, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)), initialDate: DateTime.now().add(const Duration(days: 2)));
+                  if (d != null) set(() => due = d);
                 },
               ),
               const SizedBox(height: 10),
@@ -80,7 +125,11 @@ class _QueriesScreenState extends State<QueriesScreen> {
         'title': title.text.trim(),
         if (desc.text.trim().isNotEmpty) 'description': desc.text.trim(),
         'priority': priority,
+        'type': type,
         'projectId': project?['id'],
+        'phaseId': ?phaseId,
+        if (location.text.trim().isNotEmpty) 'location': location.text.trim(),
+        if (due != null) 'dueDate': due!.toIso8601String().substring(0, 10),
         'assigneeIds': assignees.toList(),
       });
       if (!mounted) return;
@@ -102,9 +151,9 @@ class _QueriesScreenState extends State<QueriesScreen> {
           padding: const EdgeInsets.all(12),
           child: SegmentedButton<String>(
             segments: const [
-              ButtonSegment(value: 'all', label: Text('All')),
               ButtonSegment(value: 'mine', label: Text('Mine')),
-              ButtonSegment(value: 'assigned', label: Text('Assigned')),
+              ButtonSegment(value: 'assigned', label: Text('To answer')),
+              ButtonSegment(value: 'all', label: Text('All')),
             ],
             selected: {_scope},
             onSelectionChanged: (s) => setState(() => _scope = s.first),
@@ -126,8 +175,9 @@ class _QueriesScreenState extends State<QueriesScreen> {
                         child: ListTile(
                           leading: CircleAvatar(radius: 6, backgroundColor: _priorityColor['${q['priority']}'] ?? Colors.grey),
                           title: Text('${q['title']}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('${q['projectName'] ?? 'General'} · by ${q['createdByName']} · ${q['replyCount']} replies'),
-                          trailing: Chip2(label('${q['status']}'), color: statusColor('${q['status']}')),
+                          subtitle: Text('${q['ref']} · ${q['projectName'] ?? 'General'}${q['phaseName'] != null ? ' › ${q['phaseName']}' : ''}${q['dueDate'] != null ? '\nDue ${fmtDate(q['dueDate'])}${q['overdue'] == true ? ' · OVERDUE' : ''}' : ''}'),
+                          isThreeLine: q['dueDate'] != null,
+                          trailing: Chip2(_qStatus['${q['status']}'] ?? label('${q['status']}'), color: _qColor['${q['status']}'] ?? Colors.grey),
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => QueryDetailScreen(id: q['id'] as int))).then((_) => reload()),
                         ),
                       );
@@ -162,8 +212,22 @@ class _QueryDetailScreenState extends State<QueryDetailScreen> {
     if (mounted) setState(() => _sending = false);
   }
 
-  Future<void> _status(String s) async {
-    if (await guard(context, () => Api.I.patch('/queries/${widget.id}', {'status': s}), success: 'Marked ${label(s).toLowerCase()}')) _key.currentState?.reload();
+  Future<void> _resolve(String suggestion) async {
+    final c = TextEditingController(text: suggestion);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Resolve query'),
+        content: TextField(controller: c, maxLines: 4, decoration: const InputDecoration(labelText: 'Resolution / decision')),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Resolve'))],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    if (await guard(context, () => Api.I.post('/queries/${widget.id}/resolve', {'resolution': c.text.trim()}), success: 'Resolved')) _key.currentState?.reload();
+  }
+
+  Future<void> _state(String action) async {
+    if (await guard(context, () => Api.I.post('/queries/${widget.id}/$action', {}), success: action == 'close' ? 'Closed' : 'Reopened')) _key.currentState?.reload();
   }
 
   @override
@@ -185,28 +249,50 @@ class _QueryDetailScreenState extends State<QueryDetailScreen> {
         builder: (context, q, reload) {
           final replies = (q['replies'] as List).cast<Map<String, dynamic>>();
           final me = Session.I.userId;
-          final isAssignee = (q['assignees'] as List).any((a) => a['id'] == me);
-          final canStatus = Session.I.can('queries.manage') || q['createdById'] == me || isAssignee;
+          final isAssignee = q['isAssignee'] == true;
+          final canManage = q['canManage'] == true;
+          final active = !['resolved', 'closed'].contains(q['status']);
+          final lastResponse = replies.lastWhere((r) => r['kind'] == 'response', orElse: () => <String, dynamic>{});
           return Column(children: [
             Expanded(
               child: ListView(padding: const EdgeInsets.all(12), children: [
                 Text('${q['title']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
+                Text('${q['ref']} · ${_qType['${q['type']}'] ?? q['type']}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
                 Wrap(spacing: 6, runSpacing: 6, children: [
-                  Chip2(label('${q['status']}'), color: statusColor('${q['status']}')),
+                  Chip2(_qStatus['${q['status']}'] ?? label('${q['status']}'), color: _qColor['${q['status']}'] ?? Colors.grey),
                   Chip2(label('${q['priority']}'), color: _priorityColor['${q['priority']}'] ?? Colors.grey),
-                  if (q['projectName'] != null) Chip2('${q['projectName']}'),
+                  if (q['projectName'] != null) Chip2('${q['projectName']}${q['phaseName'] != null ? ' › ${q['phaseName']}' : ''}'),
+                  if (q['dueDate'] != null) Chip2('Due ${fmtDate(q['dueDate'])}', color: q['overdue'] == true ? Colors.red : Colors.blueGrey),
                 ]),
+                if (q['location'] != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('📍 ${q['location']}${q['workItem'] != null ? ' · ${q['workItem']}' : ''}', style: const TextStyle(fontSize: 12))),
                 const SizedBox(height: 6),
                 Text('by ${q['createdByName']} · ${fmtDateTime(q['createdAt'])}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                 if ((q['assignees'] as List).isNotEmpty) Text('Assigned: ${(q['assignees'] as List).map((a) => a['name']).join(', ')}', style: const TextStyle(fontSize: 12)),
                 if (q['description'] != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text('${q['description']}')),
                 if ((q['files'] as List).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('📎 ${(q['files'] as List).length} attachment(s)', style: const TextStyle(fontSize: 12))),
-                if (canStatus && q['status'] != 'resolved' && q['status'] != 'closed')
-                  Padding(padding: const EdgeInsets.only(top: 10), child: OutlinedButton.icon(onPressed: () => _status('resolved'), icon: const Icon(Icons.check), label: const Text('Mark resolved'))),
+                if (q['resolution'] != null)
+                  Card(
+                    color: Colors.green.withValues(alpha: 0.08),
+                    margin: const EdgeInsets.only(top: 10),
+                    child: Padding(padding: const EdgeInsets.all(10), child: Text('Resolution: ${q['resolution']}')),
+                  ),
+                if (canManage)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Wrap(spacing: 8, children: [
+                      if (active) FilledButton.icon(onPressed: () => _resolve('${lastResponse['message'] ?? ''}'), icon: const Icon(Icons.check), label: const Text('Resolve')),
+                      if (q['status'] == 'resolved') OutlinedButton(onPressed: () => _state('close'), child: const Text('Close')),
+                      if (!active) OutlinedButton(onPressed: () => _state('reopen'), child: const Text('Reopen')),
+                    ]),
+                  ),
                 const Divider(height: 28),
                 if (replies.isEmpty) const Center(child: Text('No replies yet', style: TextStyle(color: Colors.grey))),
                 for (final r in replies)
+                  if (r['kind'] == 'event')
+                    Padding(padding: const EdgeInsets.only(bottom: 8), child: Center(child: Text('${r['userName']} · ${r['message']}', style: const TextStyle(fontSize: 11, color: Colors.grey))))
+                  else
                   Align(
                     alignment: r['userId'] == me ? Alignment.centerRight : Alignment.centerLeft,
                     child: Container(
@@ -214,23 +300,23 @@ class _QueryDetailScreenState extends State<QueryDetailScreen> {
                       padding: const EdgeInsets.all(10),
                       constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
                       decoration: BoxDecoration(
-                        color: r['userId'] == me ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: r['kind'] == 'response' ? Colors.purple.withValues(alpha: 0.12) : r['userId'] == me ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('${r['userName']} · ${fmtDateTime(r['createdAt'])}', style: TextStyle(fontSize: 10, color: r['userId'] == me ? Colors.white70 : Colors.grey)),
-                        Text('${r['message']}', style: TextStyle(color: r['userId'] == me ? Colors.white : null)),
+                        Text('${r['userName']}${r['kind'] == 'response' ? ' · RESPONSE' : ''} · ${fmtDateTime(r['createdAt'])}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        Text('${r['message']}'),
                       ]),
                     ),
                   ),
               ]),
             ),
-            SafeArea(
+            if (active) SafeArea(
               top: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 8, 8),
                 child: Row(children: [
-                  Expanded(child: TextField(controller: _msg, minLines: 1, maxLines: 4, decoration: const InputDecoration(hintText: 'Reply…', isDense: true))),
+                  Expanded(child: TextField(controller: _msg, minLines: 1, maxLines: 4, decoration: InputDecoration(hintText: isAssignee ? 'Write your response…' : 'Reply or follow up…', isDense: true))),
                   IconButton.filled(onPressed: _sending ? null : _send, icon: const Icon(Icons.send)),
                 ]),
               ),

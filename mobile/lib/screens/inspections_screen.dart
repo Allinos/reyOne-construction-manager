@@ -9,8 +9,8 @@ import '../core/session.dart';
 import '../core/widgets.dart';
 
 const _severityColor = {'low': Colors.blueGrey, 'medium': Colors.orange, 'high': Colors.deepOrange, 'critical': Colors.red};
-const _statusColor = {'assigned': Colors.blueGrey, 'in_progress': Colors.blue, 'completed': Colors.green, 'closed': Colors.brown};
-const _statusLabel = {'assigned': 'Assigned', 'in_progress': 'In progress', 'completed': 'Completed', 'closed': 'Closed'};
+const _statusColor = {'pending': Colors.grey, 'assigned': Colors.blueGrey, 'in_progress': Colors.blue, 'completed': Colors.green, 'follow_up': Colors.orange, 'closed': Colors.brown};
+const _statusLabel = {'pending': 'Pending', 'assigned': 'Assigned', 'in_progress': 'In progress', 'completed': 'Completed', 'follow_up': 'Needs follow-up', 'closed': 'Closed'};
 
 class InspectionsScreen extends StatefulWidget {
   const InspectionsScreen({super.key});
@@ -173,7 +173,7 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
     if (await guard(context, () async {
       await Api.I.patch('/inspections/${widget.id}', {'checklist': _checklist, 'remarks': _notes.text.trim().isEmpty ? null : _notes.text.trim()});
       await Api.I.patch('/inspections/${widget.id}', {'status': 'completed'});
-    }, success: 'Inspection submitted')) {
+    }, success: 'Inspection submitted — items marked Fail/Action go to follow-up')) {
       _load();
     }
   }
@@ -256,7 +256,7 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
     final issues = (d['issues'] as List).cast<Map<String, dynamic>>();
     return Scaffold(
       appBar: AppBar(title: Text('${d['title']}'), actions: [
-        if (_canManage && d['status'] == 'completed') TextButton(onPressed: _close, child: const Text('Close')),
+        if (_canManage && (d['status'] == 'completed' || d['status'] == 'follow_up')) TextButton(onPressed: _close, child: const Text('Close')),
       ]),
       bottomNavigationBar: _editable
           ? SafeArea(
@@ -304,6 +304,7 @@ class _InspectionDetailScreenState extends State<InspectionDetailScreen> {
                       segments: const [
                         ButtonSegment(value: 'pass', label: Text('Pass')),
                         ButtonSegment(value: 'fail', label: Text('Fail')),
+                        ButtonSegment(value: 'action', label: Text('Action')),
                         ButtonSegment(value: 'na', label: Text('N/A')),
                       ],
                       selected: {if ((_checklist[i]['result'] ?? '') != '') '${_checklist[i]['result']}'},

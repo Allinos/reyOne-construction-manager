@@ -47,7 +47,9 @@ function registerRoutes(router) {
   router.put('/company', WRITE, validate({ body: updateCompanySchema }), asyncHandler(controller.updateCompany));
 
   // Field definitions (form customizer)
-  router.get('/field-definitions', READ, validate({ query: entityTypeQuery }), asyncHandler(controller.listFieldDefs));
+  // Any signed-in user may read field definitions — project pages need them
+  // to show custom fields; editing still requires settings.update.
+  router.get('/field-definitions', validate({ query: entityTypeQuery }), asyncHandler(controller.listFieldDefs));
   router.post('/field-definitions', WRITE, validate({ body: createFieldDefSchema }), asyncHandler(controller.createFieldDef));
   router.patch(
     '/field-definitions/:id',
