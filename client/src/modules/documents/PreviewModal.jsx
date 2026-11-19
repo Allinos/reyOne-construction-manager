@@ -53,14 +53,27 @@ export default function PreviewModal({ open, title, load, onClose, actions }) {
 // Sample values so an empty template preview shows its structure.
 export function sampleData(tpl) {
   const out = {};
+  const SAMPLE = {
+    description: ['M20 RCC for slab incl. shuttering', 'Brickwork in CM 1:6, 230 mm'], hsn: ['995411', '995411'], unit: ['cum', 'sqm'],
+    location: ['Ground floor', 'First floor'], agency: ['Ram Constructions', 'Own labour'], supplier: ['ABC Traders', 'Shree Cement'],
+    remarks: ['', 'As per drawing'], status: ['Open', 'Done'], responsibility: ['Civil team', 'Painter'], result: ['OK', 'OK'], regNo: ['BR01-1234', ''],
+  };
   for (const f of tpl?.fields || []) {
+    if (f.legacy) continue;
     if (f.type === 'items') {
-      out[f.key] = [
-        { description: 'Sample item 1', qty: '10', rate: '500' },
-        { description: 'Sample item 2', qty: '4', rate: '1250' },
-      ];
-    } else if (f.type === 'date') out[f.key] = localDate();
-    else if (f.type === 'number' || f.type === 'money') out[f.key] = '10000';
+      const cols = f.columns || [{ key: 'description' }, { key: 'qty', type: 'number' }, { key: 'rate', type: 'money' }];
+      out[f.key] = [0, 1].map((i) => Object.fromEntries(cols.filter((c) => !c.calc).map((c) => {
+        if (SAMPLE[c.key]) return [c.key, SAMPLE[c.key][i]];
+        if (c.type === 'money') return [c.key, i ? '1250' : '5400'];
+        if (c.type === 'number') return [c.key, i ? '4' : '10'];
+        if (c.type === 'date') return [c.key, localDate()];
+        return [c.key, `${c.label} ${i + 1}`];
+      })));
+    } else if (f.default != null && f.default !== '') out[f.key] = f.default;
+    else if (f.type === 'date') out[f.key] = localDate();
+    else if (f.type === 'select') out[f.key] = (f.options || []).find(Boolean) || '';
+    else if (f.type === 'number') out[f.key] = f.key === 'taxPercent' ? '18' : '5';
+    else if (f.type === 'money') out[f.key] = '10000';
     else out[f.key] = `[${f.label}]`;
   }
   return out;

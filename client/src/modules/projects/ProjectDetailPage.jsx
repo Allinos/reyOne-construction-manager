@@ -665,6 +665,11 @@ export default function ProjectDetailPage() {
 
           {full && financeEnabled && <FinanceCard projectId={project.id} currency={currency} navigate={navigate} />}
           {photosEnabled && <PhotosCard projectId={project.id} />}
+          {enabledModules.some((m) => m.key === 'queries') && can('queries.read') && (
+            <SideCard title="Queries" action={queriesEnabled && <button className="text-xs font-medium text-brand-600 hover:underline" onClick={() => navigate(`/queries?new=1&projectId=${project.id}`)}>+ Raise</button>}>
+              <Link className="text-sm font-medium text-brand-700 hover:underline" to={`/queries?projectId=${project.id}`}>View all queries on this project →</Link>
+            </SideCard>
+          )}
 
           {showApprovals && pendingApprovals.length > 0 && (
             <button className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-800 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-200" onClick={() => setTab('approvals')}>

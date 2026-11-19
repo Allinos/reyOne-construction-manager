@@ -50,7 +50,7 @@ const BILL_BADGE = {
   overdue: 'bg-red-50 text-red-700',
 };
 
-function PayModal({ vendor, bills, onClose, onDone }) {
+export function PayModal({ vendor, bills, onClose, onDone }) {
   const { bootstrap } = useAuth();
   const toast = useToast();
   const fin = bootstrap?.settings?.finance || {};
@@ -121,7 +121,7 @@ function PayModal({ vendor, bills, onClose, onDone }) {
   );
 }
 
-function BillModal({ vendor, onClose, onDone }) {
+export function BillModal({ vendor, onClose, onDone }) {
   const { bootstrap } = useAuth();
   const toast = useToast();
   const fin = bootstrap?.settings?.finance || {};

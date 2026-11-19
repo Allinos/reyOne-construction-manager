@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -218,12 +218,43 @@ function QueryDetail({ id, users, projects, onClose, onChanged }) {
 
 const blankQuery = () => ({ type: 'rfi', category: '', projectId: '', phaseId: '', location: '', workItem: '', title: '', description: '', priority: 'normal', visibility: 'assigned', assigneeIds: [], mentionIds: [], dueDate: '', costImpact: false, scheduleImpact: false });
 
+function QueryRow({ q, onOpen, showProject }) {
+  const resolved = ['resolved', 'closed'].includes(q.status);
+  return (
+    <tr className="cursor-pointer align-top hover:bg-slate-50 dark:hover:bg-slate-800/60" onClick={onOpen}>
+      <td className="max-w-sm">
+        <p className="font-medium text-slate-800 dark:text-slate-100">{q.title}</p>
+        <p className="text-xs text-slate-400">{q.ref} · {QTYPE[q.type] || q.type}{q.phaseName ? ` · ${q.phaseName}` : ''}{q.location ? ` · ${q.location}` : ''}</p>
+        {showProject && <p className="mt-0.5 text-xs font-medium text-brand-700 dark:text-brand-300">{q.projectName || 'General'}</p>}
+      </td>
+      <td className="text-sm">
+        {q.assignees.length ? <span className="text-slate-700 dark:text-slate-200">{q.assignees.map((a) => a.name).join(', ')}</span> : <span className="text-amber-700">Unassigned</span>}
+        <span className="block text-xs text-slate-400">Raised by {q.createdByName || '—'}</span>
+      </td>
+      <td className="whitespace-nowrap">
+        <span className={`badge ${QSTATUS[q.status]?.cls}`}>{QSTATUS[q.status]?.label || q.status}</span>
+        {q.priority !== 'normal' && <span className={`badge ml-1 capitalize ${PRIORITY[q.priority]}`}>{q.priority}</span>}
+        <span className={`block pt-0.5 text-xs ${q.overdue ? 'font-semibold text-red-600' : 'text-slate-400'}`}>{q.dueDate ? `${q.overdue ? 'Overdue · ' : 'Due '}${formatDate(q.dueDate)}` : `${q.replyCount} message${q.replyCount === 1 ? '' : 's'}`}</span>
+      </td>
+      <td className="max-w-xs text-sm">
+        {resolved && q.resolution ? (
+          <>
+            <p className="line-clamp-2 text-slate-700 dark:text-slate-200" title={q.resolution}>{q.resolution}</p>
+            <p className="text-xs text-slate-400">{q.resolvedByName || '—'}{q.resolvedAt ? ` · ${formatDate(q.resolvedAt)}` : ''}</p>
+          </>
+        ) : <span className="text-xs text-slate-400">{resolved ? 'Resolved' : 'Not resolved yet'}</span>}
+      </td>
+    </tr>
+  );
+}
+
 export default function QueriesPage() {
   const { can } = useAuth();
   const [params, setParams] = useSearchParams();
   const openId = params.get('id');
-  const [scope, setScope] = useState('mine');
-  const [filters, setFilters] = useState({ status: 'active', projectId: '', type: '', search: '', overdue: '' });
+  const [scope, setScope] = useState(() => (params.get('projectId') ? 'all' : 'mine'));
+  const [filters, setFilters] = useState(() => ({ status: 'active', projectId: params.get('projectId') || '', type: '', search: '', overdue: '' }));
+  const [group, setGroup] = useState(true);
   const [rows, setRows] = useState(null);
   const [counts, setCounts] = useState(null);
   const [users, setUsers] = useState([]);
@@ -245,13 +276,27 @@ export default function QueriesPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const set = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
+  const open = (q) => setParams({ id: String(q.id) });
+
+  // Group by project so each site's queries sit together.
+  const groups = [];
+  if (rows) {
+    const by = new Map();
+    for (const q of rows) {
+      const k = q.projectId || 0;
+      if (!by.has(k)) { by.set(k, { id: k, name: q.projectName || 'General (no project)', rows: [] }); groups.push(by.get(k)); }
+      by.get(k).rows.push(q);
+    }
+    groups.sort((a, b) => (a.id === 0) - (b.id === 0) || a.name.localeCompare(b.name));
+  }
+  const STATUS_CHIPS = [['active', 'Open'], ['responded', 'Answered'], ['resolved', 'Resolved'], ['closed', 'Closed'], ['', 'All']];
 
   return (
     <div>
       <PageHeader
         title="Queries & RFIs"
-        subtitle="Ask, assign, answer and resolve project questions — linked to stages, locations and work items"
-        actions={can('queries.create') && <button className="btn-primary" onClick={() => setCreate(blankQuery())}><Icon name="add" className="h-4 w-4" /> Raise query</button>}
+        subtitle="Questions from site — which project, who must answer, and how each was resolved"
+        actions={can('queries.create') && <button className="btn-primary" onClick={() => setCreate({ ...blankQuery(), projectId: filters.projectId || '' })}><Icon name="add" className="h-4 w-4" /> Raise query</button>}
       />
       {counts && (
         <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -262,41 +307,55 @@ export default function QueriesPage() {
         </div>
       )}
       <Tabs tabs={[{ key: 'mine', label: 'Involving me' }, { key: 'assigned', label: 'Assigned to me' }, { key: 'raised', label: 'Raised by me' }, { key: 'all', label: 'All I can see' }]} value={scope} onChange={setScope} />
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="relative min-w-[200px] flex-1">
           <Icon name="search" className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <input className="input pl-9" placeholder="Search subject, number or location…" value={filters.search} onChange={(e) => set('search', e.target.value)} />
         </div>
-        <Select className="input w-auto" value={filters.status} onChange={(e) => set('status', e.target.value)}>
-          <option value="active">All open</option><option value="">Any status</option>
-          {Object.entries(QSTATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </Select>
+        <Select className="input w-auto" value={filters.projectId} searchable clearable placeholder="All projects" onChange={(e) => set('projectId', e.target.value)}><option value="">All projects</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select>
         <Select className="input w-auto" value={filters.type} onChange={(e) => set('type', e.target.value)}><option value="">All types</option>{Object.entries(QTYPE).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
-        <Select className="input w-auto" value={filters.projectId} onChange={(e) => set('projectId', e.target.value)}><option value="">All projects</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select>
         {filters.overdue && <button className="btn-secondary btn-sm" onClick={() => set('overdue', '')}>Overdue only ×</button>}
+      </div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {STATUS_CHIPS.map(([k, l]) => (
+            <button key={l} onClick={() => set('status', k)} className={`rounded-full px-3 py-1 text-xs font-medium ${filters.status === k ? 'bg-brand-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600'}`}>{l}</button>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300"><input type="checkbox" checked={group} onChange={(e) => setGroup(e.target.checked)} /> Group by project</label>
       </div>
       {!rows ? <div className="flex justify-center p-10"><Spinner /></div> : rows.length === 0 ? (
         <EmptyState title="No queries here" hint={can('queries.create') ? 'Raise a query when site needs an answer, a clarification or a decision.' : undefined} />
+      ) : group ? (
+        <div className="space-y-4">
+          {groups.map((g) => {
+            const openN = g.rows.filter((q) => !['resolved', 'closed'].includes(q.status)).length;
+            return (
+              <div key={g.id} className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cream-200 bg-cream-50 px-4 py-2.5 dark:border-slate-700 dark:bg-slate-800/60">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Icon name="projects" className="h-4 w-4 shrink-0 text-brand-600" />
+                    {g.id ? <Link to={`/projects/${g.id}`} className="truncate font-semibold text-slate-800 hover:text-brand-700 dark:text-slate-100">{g.name}</Link> : <span className="font-semibold text-slate-800 dark:text-slate-100">{g.name}</span>}
+                    <span className="text-xs text-slate-500">{g.rows.length} quer{g.rows.length === 1 ? 'y' : 'ies'}{openN ? ` · ${openN} open` : ''}</span>
+                  </div>
+                  {can('queries.create') && <button className="btn-ghost btn-sm text-brand-700" onClick={() => setCreate({ ...blankQuery(), projectId: g.id ? String(g.id) : '' })}><Icon name="add" className="h-3.5 w-3.5" /> Add query</button>}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="table-base">
+                    <thead><tr><th>Query</th><th>Responsible</th><th>Status</th><th>Outcome / resolution</th></tr></thead>
+                    <tbody>{g.rows.map((q) => <QueryRow key={q.id} q={q} onOpen={() => open(q)} />)}</tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="table-base">
-              <thead><tr><th>Query</th><th>Project / stage</th><th>Responders</th><th>Due</th><th>Priority</th><th>Status</th></tr></thead>
-              <tbody>
-                {rows.map((q) => (
-                  <tr key={q.id} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60" onClick={() => setParams({ id: String(q.id) })}>
-                    <td className="max-w-md">
-                      <p className="truncate font-medium text-slate-800 dark:text-slate-100">{q.title}</p>
-                      <p className="truncate text-xs text-slate-400">{q.ref} · {QTYPE[q.type] || q.type}{q.location ? ` · ${q.location}` : ''} · {q.replyCount} msg</p>
-                    </td>
-                    <td className="text-slate-600 dark:text-slate-300">{q.projectName || 'General'}{q.phaseName && <span className="block text-xs text-slate-400">{q.phaseName}</span>}</td>
-                    <td className="text-xs text-slate-600 dark:text-slate-300">{q.assignees.map((a) => a.name).join(', ') || <span className="text-amber-700">Unassigned</span>}</td>
-                    <td className={`whitespace-nowrap ${q.overdue ? 'font-semibold text-red-600' : 'text-slate-500'}`}>{q.dueDate ? formatDate(q.dueDate) : '—'}</td>
-                    <td><span className={`badge capitalize ${PRIORITY[q.priority]}`}>{q.priority}</span></td>
-                    <td><span className={`badge ${QSTATUS[q.status]?.cls}`}>{QSTATUS[q.status]?.label || q.status}</span></td>
-                  </tr>
-                ))}
-              </tbody>
+              <thead><tr><th>Query · project</th><th>Responsible</th><th>Status</th><th>Outcome / resolution</th></tr></thead>
+              <tbody>{rows.map((q) => <QueryRow key={q.id} q={q} showProject onOpen={() => open(q)} />)}</tbody>
             </table>
           </div>
         </div>

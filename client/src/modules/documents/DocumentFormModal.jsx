@@ -31,46 +31,76 @@ function resolveSource(source, ctx) {
   }
 }
 
-// Line-items editor (description / qty / rate).
-function ItemsEditor({ value = [], onChange, showRate }) {
-  const rows = value.length ? value : [{ description: '', qty: '', rate: '' }];
+const DEFAULT_COLUMNS = [
+  { key: 'description', label: 'Description', type: 'text' },
+  { key: 'qty', label: 'Qty', type: 'number' },
+  { key: 'rate', label: 'Rate', type: 'money' },
+  { key: 'amount', label: 'Amount', type: 'money', calc: 'qty*rate', sum: true },
+];
+const num = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? null : Number(v));
+function calcValue(calc, row) {
+  if (calc.startsWith('product:')) {
+    const vals = calc.slice(8).split(',').map((k) => num(row[k])).filter((v) => v != null);
+    return vals.length ? vals.reduce((x, y) => x * y, 1) : null;
+  }
+  const [a, b] = calc.split('*');
+  return num(row[a]) == null || num(row[b]) == null ? null : num(row[a]) * num(row[b]);
+}
+const fmt = (n, money) => (n == null ? '' : money ? n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : String(Math.round(n * 1000) / 1000));
+
+// Line-items editor driven by the template's column list (HSN, unit, L×B×D, …).
+function ItemsEditor({ value = [], onChange, columns }) {
+  const cols = columns || DEFAULT_COLUMNS;
+  const blankRow = () => Object.fromEntries(cols.filter((c) => !c.calc).map((c) => [c.key, '']));
+  const rows = value.length ? value : [blankRow()];
   const update = (i, patch) => onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
-  const add = () => onChange([...rows, { description: '', qty: '', rate: '' }]);
+  const add = () => onChange([...rows, blankRow()]);
   const remove = (i) => onChange(rows.filter((_, idx) => idx !== i));
+  const sums = {};
+  for (const r of rows) for (const c of cols) if (c.sum) { const v = c.calc ? calcValue(c.calc, r) : num(r[c.key]); if (v != null) sums[c.key] = (sums[c.key] || 0) + v; }
+  const width = (c) => (c.key === 'description' ? 'min-w-0 flex-[3]' : c.type === 'date' ? 'w-36 shrink-0' : c.type === 'text' ? 'min-w-0 flex-1' : c.type === 'money' ? 'w-28 shrink-0' : 'w-20 shrink-0');
   return (
-    <div className="space-y-2">
-      {rows.map((r, i) => (
-        <div key={i} className="flex gap-2">
-          <input
-            className="input flex-1"
-            placeholder="Description"
-            value={r.description || ''}
-            onChange={(e) => update(i, { description: e.target.value })}
-          />
-          <input
-            className="input w-20"
-            placeholder="Qty"
-            value={r.qty ?? ''}
-            onChange={(e) => update(i, { qty: e.target.value })}
-          />
-          {showRate && (
-            <input
-              className="input w-28"
-              placeholder="Rate"
-              type="number"
-              value={r.rate ?? ''}
-              onChange={(e) => update(i, { rate: e.target.value })}
-            />
-          )}
-          <button type="button" className="btn-secondary px-2 text-red-500" onClick={() => remove(i)} aria-label="Remove">×</button>
+    <div className="overflow-x-auto">
+      <div className={`space-y-1.5 ${cols.length > 5 ? 'min-w-[640px]' : 'min-w-[420px]'}`}>
+        <div className="flex gap-2 px-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <span className="w-6 shrink-0 text-center">#</span>
+          {cols.map((c) => <span key={c.key} className={`${width(c)} truncate ${['number', 'money'].includes(c.type) ? 'text-right' : ''}`} title={c.label}>{c.label}</span>)}
+          <span className="w-8 shrink-0" />
         </div>
-      ))}
-      <button type="button" className="btn-ghost text-brand-600" onClick={add}>+ Add row</button>
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="w-6 shrink-0 text-center text-xs text-slate-400">{i + 1}</span>
+            {cols.map((c) => (c.calc ? (
+              <span key={c.key} className={`${width(c)} rounded-md bg-cream-100 px-2 py-2 text-right text-sm tabular-nums text-slate-700 dark:bg-slate-700/60 dark:text-slate-200`}>{fmt(calcValue(c.calc, r), c.type === 'money') || '—'}</span>
+            ) : (
+              <input
+                key={c.key}
+                className={`input ${width(c)} px-2 ${['number', 'money'].includes(c.type) ? 'text-right' : ''}`}
+                type={c.type === 'number' || c.type === 'money' ? 'number' : c.type === 'date' ? 'date' : 'text'}
+                step={c.type === 'money' ? '0.01' : 'any'}
+                placeholder={c.label}
+                aria-label={`${c.label} row ${i + 1}`}
+                value={r[c.key] ?? ''}
+                onChange={(e) => update(i, { [c.key]: e.target.value })}
+              />
+            )))}
+            <button type="button" className="btn-ghost w-8 shrink-0 px-0 text-red-500" onClick={() => remove(i)} aria-label={`Remove row ${i + 1}`}>×</button>
+          </div>
+        ))}
+        {Object.keys(sums).length > 0 && (
+          <div className="flex gap-2 border-t border-cream-200 pt-1.5 text-sm font-semibold dark:border-slate-700">
+            <span className="w-6 shrink-0" />
+            {cols.map((c, idx) => <span key={c.key} className={`${width(c)} ${['number', 'money'].includes(c.type) ? 'text-right tabular-nums' : ''}`}>{c.sum ? fmt(sums[c.key] || 0, c.type === 'money') : idx === 0 ? 'Total' : ''}</span>)}
+            <span className="w-8 shrink-0" />
+          </div>
+        )}
+        <button type="button" className="btn-ghost text-brand-600" onClick={add}>+ Add row</button>
+      </div>
     </div>
   );
 }
 
-export default function DocumentFormModal({ open, templateKey, docId, presetProjectId, presetClientId, presetVendorId, onClose, onSaved }) {
+export default function DocumentFormModal({ open, templateKey, docId, copyFrom, presetProjectId, presetClientId, presetVendorId, onClose, onSaved }) {
   const { bootstrap } = useAuth();
   const toast = useToast();
   const company = bootstrap?.company || {};
@@ -97,7 +127,17 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
         const t = await getTemplate(templateKey);
         if (cancelled) return;
         setTpl(t);
-        if (docId) {
+        if (copyFrom && !docId) {
+          // Duplicate: same content, new number.
+          const doc = await getDocument(copyFrom);
+          if (cancelled) return;
+          const { reference, ...rest } = doc.data || {};
+          setValues({ ...rest, ...(t.fields.some((f) => f.key === 'date') ? { date: todayISO() } : {}) });
+          setTitle(`${doc.title || t.name} (copy)`);
+          setProjectId(doc.projectId || '');
+          setClientId(doc.clientId || '');
+          setVendorId(doc.vendorId || '');
+        } else if (docId) {
           const doc = await getDocument(docId);
           if (cancelled) return;
           setValues(doc.data || {});
@@ -113,6 +153,7 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
               const v = resolveSource(f.source, { company, project: null });
               if (v) seed[f.key] = v;
             }
+            if (seed[f.key] == null && f.default != null && f.default !== '') seed[f.key] = f.default;
           }
           setValues(seed);
           setTitle(t.name);
@@ -131,7 +172,7 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, templateKey, docId]);
+  }, [open, templateKey, docId, copyFrom]);
 
   useEffect(() => {
     if (open) {
@@ -221,8 +262,7 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
   const renderField = (f) => {
     const v = values[f.key] ?? '';
     if (f.type === 'items') {
-      const showRate = !tpl?.hideTotals && !['material_requisition', 'delivery_challan', 'goods_received_note', 'snag_list', 'measurement_sheet'].includes(templateKey);
-      return <ItemsEditor value={Array.isArray(v) ? v : []} onChange={(rows) => setVal(f.key, rows)} showRate={showRate} />;
+      return <ItemsEditor value={Array.isArray(v) ? v : []} onChange={(rows) => setVal(f.key, rows)} columns={f.columns} />;
     }
     if (f.type === 'textarea') {
       return <textarea className="input" rows={3} value={v} onChange={(e) => setVal(f.key, e.target.value)} placeholder={f.placeholder || ''} />;
@@ -253,7 +293,7 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
     <Modal
       open={open}
       onClose={onClose}
-      title={tpl ? `${docId ? 'Edit' : 'New'} · ${tpl.name}` : 'Loading…'}
+      title={tpl ? `${docId ? 'Edit' : copyFrom ? 'Copy' : 'New'} · ${tpl.name}` : 'Loading…'}
       wide
       dismissOnBackdrop={false}
       fullscreenable
@@ -305,7 +345,7 @@ export default function DocumentFormModal({ open, templateKey, docId, presetProj
             </div>
           )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {tpl.fields.map((f) => (
+            {tpl.fields.filter((f) => !f.legacy || (values[f.key] != null && values[f.key] !== '' && !(Array.isArray(values[f.key]) && !values[f.key].length))).map((f) => (
               <div key={f.key} className={f.type === 'items' || f.type === 'textarea' ? 'sm:col-span-2' : ''}>
                 <label className="label">
                   {f.label}{f.required && <span className="text-red-500"> *</span>}
